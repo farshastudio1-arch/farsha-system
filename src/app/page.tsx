@@ -159,6 +159,11 @@ export default function Home() {
                     Tanya Ketersediaan
                   </a>
                 </li>
+                <li>
+                  <a href="/privacy-policy" className="hover:text-white transition-colors">
+                    Kebijakan Privasi / Privacy Policy
+                  </a>
+                </li>
               </ul>
             </div>
 
