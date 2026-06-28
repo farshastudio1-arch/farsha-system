@@ -8,6 +8,14 @@
     "directory": ".open-next/assets",
     "binding": "ASSETS"
   },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "farsha-system-db",
+      "database_id": "b329750d-070f-4525-a41b-43576f0ee38f",
+      "migrations_dir": "migrations"
+    }
+  ],
   "services": [
     {
       // Self-reference service binding. The service name must match this Worker name.
