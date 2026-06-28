@@ -27,36 +27,36 @@ export default function Home() {
             </span>
           </div>
 
-          <nav className="hidden sm:flex items-center gap-8 text-xs font-semibold tracking-widest uppercase">
+          <nav className="hidden sm:flex items-center gap-8 font-sans text-xs font-semibold tracking-widest uppercase">
             <button 
+              type="button"
               onClick={scrollToCatalog}
               className="text-[#4A4A4A] hover:text-[#000000] transition-colors cursor-pointer"
             >
-              Koleksi Kebaya
+              KOLEKSI KEBAYA
             </button>
             <a 
               href="#about-section" 
               className="text-[#4A4A4A] hover:text-[#000000] transition-colors"
             >
-              Tentang Kami
+              TENTANG KAMI
             </a>
             <a 
               href="#contact-section" 
               className="text-[#4A4A4A] hover:text-[#000000] transition-colors"
             >
-              Kontak Studio
+              KONTAK STUDIO
             </a>
           </nav>
 
           <div>
-            <a
-              href={`https://wa.me/${mockCMS.studioPhone.replace(/[^0-9]/g, '')}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="bg-[#000000] hover:bg-[#333333] text-[#FFFFFF] hover:text-[#000000] text-[10px] sm:text-xs font-semibold tracking-widest uppercase px-4.5 py-3 rounded-lg transition-all duration-300 flex items-center gap-1.5 shadow-xs"
+            <button
+              type="button"
+              onClick={scrollToCatalog}
+              className="bg-[#000000] hover:bg-[#333333] text-[#FFFFFF] text-[10px] sm:text-xs font-sans font-semibold tracking-widest uppercase px-4.5 py-3 rounded-lg transition-all duration-300 flex items-center gap-1.5 shadow-xs cursor-pointer"
             >
-              Hubungi Admin
-            </a>
+              LIHAT KOLEKSI
+            </button>
           </div>
         </div>
       </header>
