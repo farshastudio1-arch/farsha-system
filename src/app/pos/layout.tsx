@@ -1,17 +1,26 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
+import { redirect } from 'next/navigation';
 import { Store, LogOut } from 'lucide-react';
+import { signOutAdmin } from '@/app/admin/login/actions';
+import { auth } from '../../../auth';
 
 export const metadata: Metadata = {
   title: 'PoS - Farsha Studio',
   description: 'Point of Sale interface for Farsha Studio',
 };
 
-export default function PosLayout({
+export default async function PosLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  const session = await auth();
+
+  if (session?.user?.role !== 'admin') {
+    redirect('/admin/login');
+  }
+
   return (
     <div className="min-h-screen bg-gray-100 flex flex-col font-sans">
       {/* Top Navigation Bar */}
@@ -45,10 +54,15 @@ export default function PosLayout({
               >
                 Storefront
               </Link>
-              <button className="text-sm font-medium text-red-600 hover:text-red-700 flex items-center transition-colors">
-                <LogOut className="h-4 w-4 mr-1" />
-                Logout
-              </button>
+              <form action={signOutAdmin}>
+                <button
+                  type="submit"
+                  className="text-sm font-medium text-red-600 hover:text-red-700 flex items-center transition-colors"
+                >
+                  <LogOut className="h-4 w-4 mr-1" />
+                  Logout
+                </button>
+              </form>
             </div>
           </div>
         </div>

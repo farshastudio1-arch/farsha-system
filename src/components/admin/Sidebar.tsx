@@ -9,6 +9,7 @@ import {
   LogOut, 
   FileText
 } from 'lucide-react';
+import { signOutAdmin } from '@/app/admin/login/actions';
 
 const navItems = [
   { name: 'Dashboard', href: '/admin', icon: LayoutDashboard },
@@ -53,10 +54,15 @@ export default function Sidebar() {
       </nav>
 
       <div className="p-4 border-t border-neutral-200">
-        <button className="flex w-full items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-neutral-600 hover:bg-neutral-100 hover:text-neutral-900 transition-colors">
-          <LogOut className="h-4 w-4 text-neutral-500" />
-          Logout
-        </button>
+        <form action={signOutAdmin}>
+          <button
+            type="submit"
+            className="flex w-full items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-neutral-600 hover:bg-neutral-100 hover:text-neutral-900 transition-colors"
+          >
+            <LogOut className="h-4 w-4 text-neutral-500" />
+            Logout
+          </button>
+        </form>
       </div>
     </aside>
   );
