@@ -1,8 +1,8 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
-import { Store, LogOut } from 'lucide-react';
-import { signOutAdmin } from '@/app/admin/login/actions';
+import { Store } from 'lucide-react';
+import LogoutButton from '@/components/admin/LogoutButton';
 import { auth } from '../../../auth';
 
 export const metadata: Metadata = {
@@ -54,15 +54,7 @@ export default async function PosLayout({
               >
                 Storefront
               </Link>
-              <form action={signOutAdmin}>
-                <button
-                  type="submit"
-                  className="text-sm font-medium text-red-600 hover:text-red-700 flex items-center transition-colors"
-                >
-                  <LogOut className="h-4 w-4 mr-1" />
-                  Logout
-                </button>
-              </form>
+              <LogoutButton variant="pos" />
             </div>
           </div>
         </div>
