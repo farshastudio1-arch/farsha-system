@@ -164,6 +164,11 @@ export default function Home() {
                     Kebijakan Privasi / Privacy Policy
                   </a>
                 </li>
+                <li>
+                  <a href="/terms" className="hover:text-white transition-colors">
+                    Syarat & Ketentuan / Terms & Conditions
+                  </a>
+                </li>
               </ul>
             </div>
 
