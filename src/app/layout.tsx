@@ -31,6 +31,7 @@ export default function RootLayout({
       <body className="min-h-full flex flex-col bg-[var(--theme-background)] text-[var(--theme-text)] font-sans">
         <ThemeProvider />
         {children}
+        <script src="/farsha-catalog-fallback.js" defer />
       </body>
     </html>
   );

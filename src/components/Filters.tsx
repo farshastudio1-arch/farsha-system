@@ -342,6 +342,7 @@ export default function Filters({
       {!hideMobileTrigger && (
         <div className="lg:hidden w-full flex gap-3 mb-6">
           <button
+            data-farsha-filter-open
             onClick={() => setIsOpenMobile(true)}
             className="theme-primary-action flex-1 px-5 py-3.5 text-sm font-semibold tracking-wider uppercase transition-all flex items-center justify-center gap-2 border"
           >
@@ -376,8 +377,13 @@ export default function Filters({
       )}
 
       {/* MOBILE FULLSCREEN DRAWER DRAWER */}
-      {isOpenMobile && (
-        <div className="theme-surface fixed inset-0 z-50 lg:hidden flex flex-col animate-in slide-in-from-bottom duration-300">
+      <div
+        data-farsha-filter-drawer
+        aria-hidden={!isOpenMobile}
+        className={`theme-surface fixed inset-0 z-50 lg:hidden flex-col animate-in slide-in-from-bottom duration-300 ${
+          isOpenMobile ? 'flex' : 'hidden'
+        }`}
+      >
           {/* Header Mobile Filter Drawer */}
           <div className="theme-surface theme-border flex justify-between items-center px-6 py-4.5 border-b sticky top-0 z-10">
             <div className="flex items-center gap-2">
@@ -392,6 +398,7 @@ export default function Filters({
             </div>
 
             <button
+              data-farsha-filter-close
               onClick={() => setIsOpenMobile(false)}
               className="theme-soft-surface theme-muted-strong p-2 hover:text-[var(--theme-text)] transition-all"
             >
@@ -419,6 +426,7 @@ export default function Filters({
               Hapus Semua
             </button>
             <button
+              data-farsha-filter-close
               onClick={() => setIsOpenMobile(false)}
               className="theme-primary-action flex-1 font-semibold text-xs tracking-wider uppercase py-4.5 transition-all"
             >
@@ -426,7 +434,6 @@ export default function Filters({
             </button>
           </div>
         </div>
-      )}
     </>
   );
 }

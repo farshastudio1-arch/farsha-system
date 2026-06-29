@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useMemo } from 'react';
-import { KebayaItem } from '@/data/mockData';
+import { KebayaItem, mockCMS } from '@/data/mockData';
 import Filters, { FilterState } from './Filters';
 import ProductCard from './ProductCard';
 import ProductDetailModal from './ProductDetailModal';
@@ -41,6 +41,24 @@ export default function Catalog() {
 
   // Modal State
   const [selectedProduct, setSelectedProduct] = useState<KebayaItem | null>(null);
+
+  useEffect(() => {
+    document.documentElement.setAttribute('data-farsha-hydrated', 'true');
+
+    const grid = document.querySelector<HTMLElement>('[data-farsha-grid]');
+    if (grid) {
+      grid.removeAttribute('data-farsha-fallback-columns');
+      grid.style.removeProperty('grid-template-columns');
+      grid.style.removeProperty('max-width');
+      grid.style.removeProperty('margin-left');
+      grid.style.removeProperty('margin-right');
+      grid.style.removeProperty('gap');
+    }
+
+    return () => {
+      document.documentElement.removeAttribute('data-farsha-hydrated');
+    };
+  }, []);
 
   // Maximum price calculation from mock data
   const maxPriceLimit = useMemo(() => {
@@ -184,7 +202,12 @@ export default function Catalog() {
             : 'grid-cols-4 gap-5 sm:gap-6';
 
   return (
-    <div id="catalog-section" className="theme-surface theme-border w-full py-16 sm:py-24 border-t">
+    <div
+      id="catalog-section"
+      data-farsha-catalog
+      data-farsha-phone={mockCMS.studioPhone}
+      className="theme-surface theme-border w-full py-16 sm:py-24 border-t"
+    >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* CATALOG CONTENT CONTAINER HEADER */}
         <div className="theme-border flex flex-col md:flex-row md:items-end justify-between gap-6 mb-8 sm:mb-10 pb-6 border-b">
@@ -200,6 +223,7 @@ export default function Catalog() {
           <div className="flex lg:hidden items-center justify-between gap-3">
             <button
               type="button"
+              data-farsha-filter-open
               onClick={() => setMobileFiltersOpen(true)}
               className="theme-outline-action inline-flex h-11 items-center justify-center gap-2 border px-4 text-xs font-semibold uppercase tracking-wider transition-colors"
             >
@@ -224,6 +248,7 @@ export default function Catalog() {
                 <button
                   key={columns}
                   type="button"
+                  data-farsha-grid-option={columns}
                   onClick={() => selectColumns(columns)}
                   className={`flex h-9 w-10 items-center justify-center text-xs font-semibold transition-all ${
                     layoutColumns === columns
@@ -312,7 +337,7 @@ export default function Catalog() {
               </div>
             ) : (
               /* DYNAMIC GRID CONTAINER */
-              <div className={`grid ${catalogGridClass}`}>
+              <div className={`grid ${catalogGridClass}`} data-farsha-grid>
                 {filteredProducts.map((product) => (
                   <ProductCard
                     key={product.id}

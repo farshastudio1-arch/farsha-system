@@ -20,6 +20,7 @@ export default function ProductCard({
 }: ProductCardProps) {
   const [activeImageIndex, setActiveImageIndex] = useState(0);
   const carouselRef = useRef<HTMLDivElement>(null);
+  const fallbackProductData = JSON.stringify(product);
 
   const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
     const container = e.currentTarget;
@@ -61,6 +62,8 @@ export default function ProductCard({
     return (
       <button
         type="button"
+        data-farsha-card
+        data-farsha-product={fallbackProductData}
         onClick={() => onOpenDetail(product)}
         className="theme-soft-surface group relative aspect-square w-full overflow-hidden text-left"
         aria-label={`Lihat detail ${product.name}`}
@@ -95,6 +98,8 @@ export default function ProductCard({
 
   return (
     <div
+      data-farsha-card
+      data-farsha-product={fallbackProductData}
       className={`theme-surface theme-border group flex flex-col border overflow-hidden transition-all duration-300 ${
         isOneColumn ? ' shadow-sm hover:shadow-md' : ' hover:shadow-sm'
       }`}
