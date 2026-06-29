@@ -7,6 +7,7 @@ import ProductCard from './ProductCard';
 import ProductDetailModal from './ProductDetailModal';
 import { useSavedCatalogItems } from '@/lib/catalog-storage';
 import { useSavedSiteSettings } from '@/lib/site-settings';
+import { readLocalStorageItem, writeLocalStorageItem } from '@/lib/browser-storage';
 
 type MobileGridColumns = 1 | 2 | 3;
 type DesktopGridColumns = 2 | 3 | 4;
@@ -22,7 +23,7 @@ function readSavedMobileGrid(): MobileGridColumns | null {
     return null;
   }
 
-  const savedValue = Number(window.localStorage.getItem(mobileGridStorageKey));
+  const savedValue = Number(readLocalStorageItem(mobileGridStorageKey));
   return isMobileGridColumns(savedValue) ? savedValue : null;
 }
 
@@ -135,7 +136,7 @@ export default function Catalog() {
   const selectColumns = (cols: MobileGridColumns | DesktopGridColumns) => {
     setLayoutColumns(cols);
     if (isMobile && isMobileGridColumns(cols)) {
-      window.localStorage.setItem(mobileGridStorageKey, String(cols));
+      writeLocalStorageItem(mobileGridStorageKey, String(cols));
     }
   };
 

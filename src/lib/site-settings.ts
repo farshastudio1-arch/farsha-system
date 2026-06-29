@@ -3,6 +3,11 @@
 import { useSyncExternalStore } from 'react';
 
 import { mockSiteSettings, SiteSettings } from '@/data/mockData';
+import {
+  dispatchBrowserEvent,
+  readLocalStorageItem,
+  writeLocalStorageItem,
+} from '@/lib/browser-storage';
 
 const storageKey = 'farsha-site-settings-v1';
 const storageChangeEvent = 'farsha-site-settings-storage-change';
@@ -113,7 +118,7 @@ export function readSavedSiteSettings() {
     return mockSiteSettings;
   }
 
-  const storedValue = window.localStorage.getItem(storageKey);
+  const storedValue = readLocalStorageItem(storageKey);
 
   if (storedValue === cachedStoredValue) {
     return cachedSettings;
@@ -140,13 +145,17 @@ export function writeSavedSiteSettings(nextSettings: SiteSettings) {
   const normalizedSettings = normalizeSiteSettings(nextSettings);
   const serializedSettings = JSON.stringify(normalizedSettings);
 
-  window.localStorage.setItem(storageKey, serializedSettings);
+  writeLocalStorageItem(storageKey, serializedSettings);
   cachedStoredValue = serializedSettings;
   cachedSettings = normalizedSettings;
-  window.dispatchEvent(new Event(storageChangeEvent));
+  dispatchBrowserEvent(storageChangeEvent);
 }
 
 function subscribeToSavedSiteSettings(onStoreChange: () => void) {
+  if (typeof window === 'undefined') {
+    return () => {};
+  }
+
   window.addEventListener('storage', onStoreChange);
   window.addEventListener(storageChangeEvent, onStoreChange);
 

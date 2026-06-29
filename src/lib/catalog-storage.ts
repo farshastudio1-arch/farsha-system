@@ -3,6 +3,11 @@
 import { useSyncExternalStore } from 'react';
 
 import { KebayaItem, mockKebayas } from '@/data/mockData';
+import {
+  dispatchBrowserEvent,
+  readLocalStorageItem,
+  writeLocalStorageItem,
+} from '@/lib/browser-storage';
 
 const catalogStorageKey = 'farsha-catalog-items-v1';
 const catalogChangeEvent = 'farsha-catalog-items-storage-change';
@@ -79,7 +84,7 @@ export function readSavedCatalogItems() {
     return mockKebayas;
   }
 
-  const storedValue = window.localStorage.getItem(catalogStorageKey);
+  const storedValue = readLocalStorageItem(catalogStorageKey);
 
   if (storedValue === cachedStoredValue) {
     return cachedCatalogItems;
@@ -105,13 +110,17 @@ export function writeSavedCatalogItems(nextItems: KebayaItem[]) {
   const normalizedItems = normalizeCatalogItems(nextItems);
   const serializedItems = JSON.stringify(normalizedItems);
 
-  window.localStorage.setItem(catalogStorageKey, serializedItems);
+  writeLocalStorageItem(catalogStorageKey, serializedItems);
   cachedStoredValue = serializedItems;
   cachedCatalogItems = normalizedItems;
-  window.dispatchEvent(new Event(catalogChangeEvent));
+  dispatchBrowserEvent(catalogChangeEvent);
 }
 
 function subscribeToSavedCatalogItems(onStoreChange: () => void) {
+  if (typeof window === 'undefined') {
+    return () => {};
+  }
+
   window.addEventListener('storage', onStoreChange);
   window.addEventListener(catalogChangeEvent, onStoreChange);
 
