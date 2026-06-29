@@ -1,12 +1,17 @@
 'use client';
 
 import React, { useState, useEffect, useMemo } from 'react';
-import { mockKebayas, KebayaItem } from '@/data/mockData';
+import { KebayaItem } from '@/data/mockData';
 import Filters, { FilterState } from './Filters';
 import ProductCard from './ProductCard';
 import ProductDetailModal from './ProductDetailModal';
+import { useSavedCatalogItems } from '@/lib/catalog-storage';
+import { useSavedSiteSettings } from '@/lib/site-settings';
 
 export default function Catalog() {
+  const catalogItems = useSavedCatalogItems();
+  const siteSettings = useSavedSiteSettings();
+
   // Device detection state
   const [isMobile, setIsMobile] = useState(true);
   
@@ -18,14 +23,14 @@ export default function Catalog() {
 
   // Maximum price calculation from mock data
   const maxPriceLimit = useMemo(() => {
-    return Math.max(...mockKebayas.map((k) => k.rentalPrice), 400000);
-  }, []);
+    return Math.max(...catalogItems.map((k) => k.rentalPrice), 400000);
+  }, [catalogItems]);
 
   // Extracted unique colors from mock data
   const availableColors = useMemo(() => {
-    const colors = mockKebayas.map((k) => k.color);
+    const colors = catalogItems.map((k) => k.color);
     return Array.from(new Set(colors)).sort();
-  }, []);
+  }, [catalogItems]);
 
   // Filter State
   const [filters, setFilters] = useState<FilterState>({
@@ -62,7 +67,7 @@ export default function Catalog() {
 
   // Filter logic
   const filteredProducts = useMemo(() => {
-    return mockKebayas.filter((item) => {
+    return catalogItems.filter((item) => {
       // 1. Search text filter (case-insensitive on name & code)
       if (filters.search) {
         const query = filters.search.toLowerCase();
@@ -98,7 +103,7 @@ export default function Catalog() {
 
       return true;
     });
-  }, [filters]);
+  }, [catalogItems, filters]);
 
   const handleResetFilters = () => {
     setFilters({
@@ -256,6 +261,7 @@ export default function Catalog() {
                     key={product.id}
                     product={product}
                     layoutColumns={layoutColumns}
+                    displaySettings={siteSettings}
                     onOpenDetail={setSelectedProduct}
                   />
                 ))}
@@ -265,7 +271,7 @@ export default function Catalog() {
             {/* Catalog Info Count */}
             {filteredProducts.length > 0 && (
               <p className="text-right text-[11px] text-[#757575] font-mono mt-5 uppercase tracking-wider">
-                Menampilkan {filteredProducts.length} dari {mockKebayas.length} Koleksi
+                Menampilkan {filteredProducts.length} dari {catalogItems.length} Koleksi
               </p>
             )}
           </div>

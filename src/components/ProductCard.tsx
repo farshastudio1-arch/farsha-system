@@ -1,15 +1,21 @@
 'use client';
 
 import React, { useState, useRef } from 'react';
-import { KebayaItem } from '@/data/mockData';
+import { KebayaItem, SiteSettings } from '@/data/mockData';
 
 interface ProductCardProps {
   product: KebayaItem;
   layoutColumns: number;
+  displaySettings: SiteSettings;
   onOpenDetail: (product: KebayaItem) => void;
 }
 
-export default function ProductCard({ product, layoutColumns, onOpenDetail }: ProductCardProps) {
+export default function ProductCard({
+  product,
+  layoutColumns,
+  displaySettings,
+  onOpenDetail,
+}: ProductCardProps) {
   const [activeImageIndex, setActiveImageIndex] = useState(0);
   const carouselRef = useRef<HTMLDivElement>(null);
 
@@ -127,21 +133,27 @@ export default function ProductCard({ product, layoutColumns, onOpenDetail }: Pr
 
         {/* Floating Code & Status Badge */}
         <div className="absolute top-3 left-3 flex flex-col gap-1.5 items-start z-10 pointer-events-none">
-          <span className="text-[10px] tracking-wider uppercase bg-[#000000]/80 text-[#FFFFFF] px-2 py-0.5 rounded font-mono font-semibold backdrop-blur-xs">
-            {product.code}
-          </span>
-          <span className={`text-[10px] font-semibold tracking-wide border px-2 py-0.5 rounded backdrop-blur-xs shadow-xs ${statusInfo.class}`}>
-            {statusInfo.text}
-          </span>
+          {displaySettings.showProductCode && (
+            <span className="text-[10px] tracking-wider uppercase bg-[#000000]/80 text-[#FFFFFF] px-2 py-0.5 rounded font-mono font-semibold backdrop-blur-xs">
+              {product.code}
+            </span>
+          )}
+          {displaySettings.showAvailabilityBadges && (
+            <span className={`text-[10px] font-semibold tracking-wide border px-2 py-0.5 rounded backdrop-blur-xs shadow-xs ${statusInfo.class}`}>
+              {statusInfo.text}
+            </span>
+          )}
         </div>
       </div>
 
       {/* CARD CONTENT */}
       <div className={`flex flex-col flex-grow ${isOneColumn ? 'p-5' : 'p-3 sm:p-4'}`}>
         {/* Kebaya Model Category */}
-        <span className="text-[10px] sm:text-xs font-semibold tracking-wider text-[#757575] uppercase font-mono mb-1">
-          Koleksi {product.model}
-        </span>
+        {displaySettings.showProductModel && (
+          <span className="text-[10px] sm:text-xs font-semibold tracking-wider text-[#757575] uppercase font-mono mb-1">
+            Koleksi {product.model}
+          </span>
+        )}
 
         {/* Title */}
         <h3 
@@ -154,35 +166,47 @@ export default function ProductCard({ product, layoutColumns, onOpenDetail }: Pr
         </h3>
 
         {/* Technical features summary for 1-column layout */}
-        {isOneColumn && (
+        {isOneColumn && displaySettings.showProductDescription && (
           <p className="text-[#4A4A4A] text-xs sm:text-sm line-clamp-2 mb-4 leading-relaxed font-sans">
             {product.description}
           </p>
         )}
 
         {/* Price & Specs row */}
-        <div className={`mt-auto pt-3 border-t border-[#E5E5E5] flex justify-between items-center ${
-          isOneColumn ? 'flex-row' : 'flex-col items-start gap-1 sm:flex-row sm:items-center sm:gap-0'
-        }`}>
-          <div className="flex flex-col">
-            <span className="text-[9px] uppercase tracking-wider text-[#757575] font-mono">Biaya Sewa</span>
-            <span className={`text-[#000000] font-semibold font-mono ${isOneColumn ? 'text-base sm:text-lg' : 'text-xs sm:text-sm'}`}>
-              {formatPrice(product.rentalPrice)} <span className="text-[9px] font-normal text-[#4A4A4A]">/hari</span>
-            </span>
-          </div>
+        {(displaySettings.showPrices ||
+          displaySettings.showProductSize ||
+          displaySettings.showProductColor) && (
+          <div className={`mt-auto pt-3 border-t border-[#E5E5E5] flex justify-between items-center ${
+            isOneColumn ? 'flex-row' : 'flex-col items-start gap-1 sm:flex-row sm:items-center sm:gap-0'
+          }`}>
+            {displaySettings.showPrices && (
+              <div className="flex flex-col">
+                <span className="text-[9px] uppercase tracking-wider text-[#757575] font-mono">Biaya Sewa</span>
+                <span className={`text-[#000000] font-semibold font-mono ${isOneColumn ? 'text-base sm:text-lg' : 'text-xs sm:text-sm'}`}>
+                  {formatPrice(product.rentalPrice)} <span className="text-[9px] font-normal text-[#4A4A4A]">/hari</span>
+                </span>
+              </div>
+            )}
 
-          <div className={`flex gap-1.5 ${isOneColumn ? 'items-center' : 'mt-1 sm:mt-0'}`}>
-            <span className="text-[10px] font-medium px-2 py-0.5 bg-[#F5F5F5] text-[#4A4A4A] rounded font-mono">
-              Ukuran {product.size}
-            </span>
-            <span className="text-[10px] font-medium px-2 py-0.5 bg-[#F5F5F5] text-[#4A4A4A] rounded font-mono">
-              {product.color}
-            </span>
+            {(displaySettings.showProductSize || displaySettings.showProductColor) && (
+              <div className={`flex flex-wrap gap-1.5 ${isOneColumn ? 'items-center' : 'mt-1 sm:mt-0'}`}>
+                {displaySettings.showProductSize && (
+                  <span className="text-[10px] font-medium px-2 py-0.5 bg-[#F5F5F5] text-[#4A4A4A] rounded font-mono">
+                    Ukuran {product.size}
+                  </span>
+                )}
+                {displaySettings.showProductColor && (
+                  <span className="text-[10px] font-medium px-2 py-0.5 bg-[#F5F5F5] text-[#4A4A4A] rounded font-mono">
+                    {product.color}
+                  </span>
+                )}
+              </div>
+            )}
           </div>
-        </div>
+        )}
 
         {/* WhatsApp Quick Link in 1-column layout */}
-        {isOneColumn && (
+        {displaySettings.showCardCta && (
           <button
             onClick={() => onOpenDetail(product)}
             className="mt-4 w-full bg-[#000000] hover:bg-[#333333] text-[#FFFFFF] hover:text-[#000000] text-xs sm:text-sm font-semibold tracking-wider uppercase py-3 rounded-lg transition-all duration-300 flex items-center justify-center gap-2"

@@ -23,6 +23,39 @@ export interface CMSContent {
   studioPhone: string;
 }
 
+export interface SiteSettings {
+  studioName: string;
+  tagline: string;
+  status: 'active' | 'maintenance' | 'coming-soon';
+  locationLabel: string;
+  whatsappNumber: string;
+  email: string;
+  address: string;
+  instagramUrl: string;
+  tiktokUrl: string;
+  mapsUrl: string;
+  currency: 'IDR';
+  defaultProductStatus: 'available' | 'rented' | 'maintenance' | 'archived';
+  defaultSort: 'newest' | 'price-low' | 'price-high' | 'featured';
+  catalogCardMode: 'minimal' | 'standard' | 'detailed';
+  showPrices: boolean;
+  showAvailabilityBadges: boolean;
+  showProductCode: boolean;
+  showProductModel: boolean;
+  showProductSize: boolean;
+  showProductColor: boolean;
+  showProductDescription: boolean;
+  showCardCta: boolean;
+  defaultMobileGrid: 1 | 2;
+  defaultDesktopGrid: 2 | 3 | 4;
+  brandColor: string;
+  accentColor: string;
+  logoUrl: string;
+  faviconUrl: string;
+  showPromoBanner: boolean;
+  updatedAt: string;
+}
+
 export const mockCMS: CMSContent = {
   heroTitle: "Sewa Kebaya Premium untuk Momen Istimewamu",
   heroSubtitle: "Temukan koleksi kebaya modern dan klasik terbaik di Farsha Studio. Pilihan elegan, ukuran lengkap, dan siap membuat penampilanmu memukau.",
@@ -32,6 +65,39 @@ export const mockCMS: CMSContent = {
   aboutText: "Farsha Studio adalah destinasi utama penyewaan kebaya premium yang berfokus pada kualitas jahatan, detail payet yang indah, dan kecocokan fitting yang sempurna. Koleksi kami berkisar dari kebaya tradisional klasik hingga desain modern kontemporer untuk wisuda, pernikahan, pertunangan, dan acara formal lainnya. Kami percaya bahwa setiap wanita berhak tampil anggun dan percaya diri di hari spesialnya.",
   studioAddress: "Jl. Kebon Jeruk Raya No. 45, Jakarta Barat, DKI Jakarta 11530",
   studioPhone: "+62 812-3456-7890"
+};
+
+export const mockSiteSettings: SiteSettings = {
+  studioName: "Farsha Studio",
+  tagline: "Premium kebaya rental studio",
+  status: "active",
+  locationLabel: "Jakarta Barat, Indonesia",
+  whatsappNumber: "+62 812-3456-7890",
+  email: "hello@farshastudio.com",
+  address: "Jl. Kebon Jeruk Raya No. 45, Jakarta Barat, DKI Jakarta 11530",
+  instagramUrl: "https://instagram.com/farshastudio",
+  tiktokUrl: "https://tiktok.com/@farshastudio",
+  mapsUrl: "https://maps.google.com/?q=Farsha%20Studio%20Jakarta%20Barat",
+  currency: "IDR",
+  defaultProductStatus: "available",
+  defaultSort: "newest",
+  catalogCardMode: "standard",
+  showPrices: true,
+  showAvailabilityBadges: true,
+  showProductCode: false,
+  showProductModel: true,
+  showProductSize: true,
+  showProductColor: false,
+  showProductDescription: false,
+  showCardCta: false,
+  defaultMobileGrid: 1,
+  defaultDesktopGrid: 3,
+  brandColor: "#111111",
+  accentColor: "#25D366",
+  logoUrl: "",
+  faviconUrl: "",
+  showPromoBanner: true,
+  updatedAt: "2026-06-29T00:00:00.000Z"
 };
 
 export const mockKebayas: KebayaItem[] = [
