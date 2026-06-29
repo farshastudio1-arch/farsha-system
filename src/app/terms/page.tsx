@@ -12,21 +12,21 @@ export const metadata: Metadata = {
 
 export default function TermsPage() {
   return (
-    <main className="min-h-screen bg-[#FFFFFF] text-[#000000] font-sans">
-      <header className="border-b border-[#E5E5E5] bg-[#FFFFFF]">
+    <main className="theme-surface min-h-screen font-sans">
+      <header className="theme-surface theme-border border-b">
         <div className="mx-auto flex h-20 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
           <Link href="/" className="flex flex-col">
-            <span className="font-serif text-xl font-bold uppercase tracking-widest text-[#000000] sm:text-2xl">
+            <span className="font-serif text-xl font-bold uppercase tracking-widest text-[var(--theme-text)] sm:text-2xl">
               FARSHA
             </span>
-            <span className="-mt-1 pl-[2px] font-mono text-[9px] font-bold uppercase tracking-[0.25em] text-[#757575]">
+            <span className="theme-muted -mt-1 pl-[2px] font-mono text-[9px] font-bold uppercase tracking-[0.25em]">
               STUDIO
             </span>
           </Link>
 
           <Link
             href="/"
-            className="rounded-lg border border-[#E5E5E5] px-4 py-3 text-[10px] font-semibold uppercase tracking-widest text-[#4A4A4A] transition-colors hover:border-[#000000] hover:text-[#000000] sm:text-xs"
+            className="theme-outline-action border px-4 py-3 text-[10px] font-semibold uppercase tracking-widest transition-colors sm:text-xs"
           >
             Kembali
           </Link>
@@ -37,8 +37,8 @@ export default function TermsPage() {
         <TermsTabs />
       </div>
 
-      <footer className="border-t border-[#E5E5E5] bg-[#FAFAFA]">
-        <div className="mx-auto flex max-w-5xl flex-col gap-3 px-4 py-8 text-xs text-[#757575] sm:flex-row sm:items-center sm:justify-between sm:px-6 lg:px-8">
+      <footer className="theme-soft-surface theme-border border-t">
+        <div className="theme-muted mx-auto flex max-w-5xl flex-col gap-3 px-4 py-8 text-xs sm:flex-row sm:items-center sm:justify-between sm:px-6 lg:px-8">
           <p>© {new Date().getFullYear()} Farsha Studio. All rights reserved.</p>
           <p>{mockCMS.studioPhone}</p>
         </div>

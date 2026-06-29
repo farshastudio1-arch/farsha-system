@@ -99,7 +99,7 @@ const terms: Record<Language, TermsContent> = {
         title: '3. Rental Duration',
         body: [
           'The standard rental duration is 3 days (pickup day, event day, and return day), unless agreed otherwise.',
-          'Late returns will incur a daily late fee in accordance with Farsha Studio\'s policy.',
+          "Late returns will incur a daily late fee in accordance with Farsha Studio's policy.",
         ],
       },
       {
@@ -126,7 +126,7 @@ export default function TermsTabs() {
 
   return (
     <section className="space-y-10">
-      <div className="inline-flex w-full rounded-lg border border-[#E5E5E5] bg-[#F5F5F5] p-1 sm:w-auto">
+      <div className="theme-soft-surface theme-border inline-flex w-full border p-1 sm:w-auto">
         {(Object.keys(terms) as Language[]).map((language) => {
           const isActive = activeLanguage === language;
 
@@ -135,10 +135,10 @@ export default function TermsTabs() {
               key={language}
               type="button"
               onClick={() => setActiveLanguage(language)}
-              className={`min-h-11 flex-1 rounded-md px-4 py-2.5 text-xs font-semibold uppercase tracking-widest transition-colors sm:min-w-34 ${
+              className={`min-h-11 flex-1 px-4 py-2.5 text-xs font-semibold uppercase tracking-widest transition-colors sm:min-w-34 ${
                 isActive
-                  ? 'bg-[#000000] text-[#FFFFFF]'
-                  : 'text-[#4A4A4A] hover:bg-[#FFFFFF] hover:text-[#000000]'
+                  ? 'theme-selected'
+                  : 'theme-muted-strong hover:bg-[var(--theme-surface)] hover:text-[var(--theme-text)]'
               }`}
               aria-pressed={isActive}
             >
@@ -149,21 +149,21 @@ export default function TermsTabs() {
       </div>
 
       <article className="space-y-10">
-        <header className="space-y-5 border-b border-[#E5E5E5] pb-8">
+        <header className="theme-border space-y-5 border-b pb-8">
           <div className="space-y-2">
-            <p className="font-mono text-xs font-bold uppercase tracking-widest text-[#333333]">
+            <p className="theme-muted-strong font-mono text-xs font-bold uppercase tracking-widest">
               {term.eyebrow}
             </p>
-            <h1 className="max-w-3xl font-serif text-4xl font-semibold leading-tight tracking-tight text-[#000000] sm:text-5xl">
+            <h1 className="max-w-3xl font-serif text-4xl font-semibold leading-tight tracking-tight text-[var(--theme-text)] sm:text-5xl">
               {term.title}
             </h1>
           </div>
-          <div className="max-w-3xl space-y-4 text-sm leading-relaxed text-[#4A4A4A] sm:text-base">
+          <div className="theme-muted-strong max-w-3xl space-y-4 text-sm leading-relaxed sm:text-base">
             <p>{term.intro}</p>
-            <p className="rounded-lg border border-[#E5E5E5] bg-[#FAFAFA] p-4 text-xs leading-relaxed text-[#333333] sm:text-sm">
+            <p className="theme-soft-surface theme-border border p-4 text-xs leading-relaxed text-[var(--theme-text)] sm:text-sm">
               {term.reviewNote}
             </p>
-            <p className="font-mono text-[11px] font-semibold uppercase tracking-wider text-[#757575]">
+            <p className="theme-muted font-mono text-[11px] font-semibold uppercase tracking-wider">
               {term.lastUpdated}
             </p>
           </div>
@@ -171,14 +171,11 @@ export default function TermsTabs() {
 
         <div className="grid gap-5 lg:grid-cols-2">
           {term.sections.map((section) => (
-            <section
-              key={section.title}
-              className="rounded-lg border border-[#E5E5E5] bg-[#FFFFFF] p-5 sm:p-6"
-            >
-              <h2 className="font-serif text-xl font-semibold text-[#000000]">
+            <section key={section.title} className="theme-surface theme-border border p-5 sm:p-6">
+              <h2 className="font-serif text-xl font-semibold text-[var(--theme-text)]">
                 {section.title}
               </h2>
-              <div className="mt-4 space-y-3 text-sm leading-relaxed text-[#4A4A4A]">
+              <div className="theme-muted-strong mt-4 space-y-3 text-sm leading-relaxed">
                 {section.body.map((paragraph) => (
                   <p key={paragraph}>{paragraph}</p>
                 ))}

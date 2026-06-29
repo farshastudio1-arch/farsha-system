@@ -1,20 +1,24 @@
-import type { Metadata } from "next";
-import { Playfair_Display, Outfit } from "next/font/google";
-import "./globals.css";
+import type { Metadata } from 'next';
+import { Lora, Manrope } from 'next/font/google';
+import ThemeProvider from '@/components/ThemeProvider';
+import './globals.css';
 
-const playfair = Playfair_Display({
-  variable: "--font-playfair",
-  subsets: ["latin"],
+const lora = Lora({
+  variable: '--font-lora',
+  subsets: ['latin'],
+  display: 'swap',
 });
 
-const outfit = Outfit({
-  variable: "--font-outfit",
-  subsets: ["latin"],
+const manrope = Manrope({
+  variable: '--font-manrope',
+  subsets: ['latin'],
+  display: 'swap',
 });
 
 export const metadata: Metadata = {
-  title: "Farsha Studio — Etalase Kebaya Premium",
-  description: "Koleksi kebaya modern dan klasik terlengkap di Farsha Studio. Temukan kebaya impianmu untuk momen spesial.",
+  title: 'Farsha Studio — Etalase Kebaya Premium',
+  description:
+    'Koleksi kebaya modern dan klasik terlengkap di Farsha Studio. Temukan kebaya impianmu untuk momen spesial.',
 };
 
 export default function RootLayout({
@@ -23,14 +27,11 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html
-      lang="id"
-      className={`${playfair.variable} ${outfit.variable} h-full antialiased`}
-    >
-      <body className="min-h-full flex flex-col bg-[#FFFFFF] text-[#000000] font-sans">
+    <html lang="id" className={`${lora.variable} ${manrope.variable} h-full antialiased`}>
+      <body className="min-h-full flex flex-col bg-[var(--theme-background)] text-[var(--theme-text)] font-sans">
+        <ThemeProvider />
         {children}
       </body>
     </html>
   );
 }
-

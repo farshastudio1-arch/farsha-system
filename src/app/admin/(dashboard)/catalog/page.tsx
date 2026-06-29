@@ -159,8 +159,7 @@ export default function CatalogManagement() {
     const code = form.code.trim();
     const name = form.name.trim();
     const duplicateCode = catalogItems.some(
-      (item) =>
-        item.code.toLowerCase() === code.toLowerCase() && item.id !== editingItem?.id,
+      (item) => item.code.toLowerCase() === code.toLowerCase() && item.id !== editingItem?.id,
     );
 
     if (!name || !code || !form.color.trim()) {
@@ -201,14 +200,14 @@ export default function CatalogManagement() {
         <button
           type="button"
           onClick={openCreateModal}
-          className="flex items-center gap-2 rounded-lg bg-neutral-900 px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-neutral-800"
+          className="flex items-center gap-2 bg-neutral-900 px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-neutral-800"
         >
           <Plus className="h-4 w-4" />
           Add New Item
         </button>
       </div>
 
-      <div className="overflow-hidden rounded-xl border border-neutral-200 bg-white shadow-sm">
+      <div className="overflow-hidden border border-neutral-200 bg-white shadow-sm">
         <div className="flex items-center justify-between gap-4 border-b border-neutral-200 p-4">
           <div className="relative w-72">
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-neutral-400" />
@@ -217,7 +216,7 @@ export default function CatalogManagement() {
               value={searchQuery}
               onChange={(event) => setSearchQuery(event.target.value)}
               placeholder="Search by name or code..."
-              className="w-full rounded-lg border border-neutral-200 bg-neutral-50 py-2 pl-9 pr-4 text-sm transition-all focus:bg-white focus:outline-none focus:ring-2 focus:ring-neutral-900"
+              className="w-full border border-neutral-200 bg-neutral-50 py-2 pl-9 pr-4 text-sm transition-all focus:bg-white focus:outline-none focus:ring-2 focus:ring-neutral-900"
             />
           </div>
           <select
@@ -225,7 +224,7 @@ export default function CatalogManagement() {
             onChange={(event) =>
               setStatusFilter(event.target.value as KebayaItem['status'] | 'all')
             }
-            className="rounded-lg border border-neutral-200 bg-white px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-neutral-900"
+            className=" border border-neutral-200 bg-white px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-neutral-900"
           >
             {statusOptions.map((option) => (
               <option key={option.value} value={option.value}>
@@ -251,9 +250,13 @@ export default function CatalogManagement() {
                 <tr key={item.id} className="transition-colors hover:bg-neutral-50/50">
                   <td className="px-6 py-4">
                     <div className="flex items-center gap-3">
-                      <div className="relative h-10 w-10 shrink-0 overflow-hidden rounded-md bg-neutral-100">
+                      <div className="relative h-10 w-10 shrink-0 overflow-hidden bg-neutral-100">
                         {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img src={item.imageUrls[0]} alt={item.name} className="h-full w-full object-cover" />
+                        <img
+                          src={item.imageUrls[0]}
+                          alt={item.name}
+                          className="h-full w-full object-cover"
+                        />
                       </div>
                       <div>
                         <span className="block font-medium text-neutral-900">{item.name}</span>
@@ -269,7 +272,7 @@ export default function CatalogManagement() {
                   </td>
                   <td className="px-6 py-4">
                     <span
-                      className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium capitalize ${statusStyles[item.status]}`}
+                      className={`inline-flex items-center px-2.5 py-1 text-xs font-medium capitalize ${statusStyles[item.status]}`}
                     >
                       {item.status}
                     </span>
@@ -280,7 +283,7 @@ export default function CatalogManagement() {
                         type="button"
                         onClick={() => openEditModal(item)}
                         aria-label={`Edit ${item.name}`}
-                        className="rounded-md p-2 text-neutral-400 transition-colors hover:bg-neutral-100 hover:text-neutral-900"
+                        className=" p-2 text-neutral-400 transition-colors hover:bg-neutral-100 hover:text-neutral-900"
                       >
                         <Edit className="h-4 w-4" />
                       </button>
@@ -288,7 +291,7 @@ export default function CatalogManagement() {
                         type="button"
                         onClick={() => deleteItem(item.id)}
                         aria-label={`Delete ${item.name}`}
-                        className="rounded-md p-2 text-neutral-400 transition-colors hover:bg-red-50 hover:text-red-600"
+                        className=" p-2 text-neutral-400 transition-colors hover:bg-red-50 hover:text-red-600"
                       >
                         <Trash2 className="h-4 w-4" />
                       </button>
@@ -303,7 +306,9 @@ export default function CatalogManagement() {
         {filteredItems.length === 0 && (
           <div className="border-t border-neutral-200 px-6 py-10 text-center">
             <p className="text-sm font-medium text-neutral-900">No catalog items found.</p>
-            <p className="mt-1 text-sm text-neutral-500">Try a different search or add a new item.</p>
+            <p className="mt-1 text-sm text-neutral-500">
+              Try a different search or add a new item.
+            </p>
           </div>
         )}
 
@@ -316,14 +321,14 @@ export default function CatalogManagement() {
             <button
               type="button"
               disabled
-              className="rounded-md border border-neutral-200 px-3 py-1 opacity-50"
+              className=" border border-neutral-200 px-3 py-1 opacity-50"
             >
               Prev
             </button>
             <button
               type="button"
               disabled
-              className="rounded-md border border-neutral-200 px-3 py-1 opacity-50"
+              className=" border border-neutral-200 px-3 py-1 opacity-50"
             >
               Next
             </button>
@@ -333,7 +338,7 @@ export default function CatalogManagement() {
 
       {isModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm">
-          <div className="max-h-[90vh] w-full max-w-3xl overflow-hidden rounded-xl bg-white shadow-xl">
+          <div className="max-h-[90vh] w-full max-w-3xl overflow-hidden bg-white shadow-xl">
             <div className="flex items-start justify-between gap-4 border-b border-neutral-200 px-6 py-5">
               <div>
                 <h2 className="text-lg font-semibold text-neutral-900">
@@ -347,7 +352,7 @@ export default function CatalogManagement() {
                 type="button"
                 onClick={closeModal}
                 aria-label="Close catalog item form"
-                className="rounded-md p-2 text-neutral-400 transition-colors hover:bg-neutral-100 hover:text-neutral-900"
+                className=" p-2 text-neutral-400 transition-colors hover:bg-neutral-100 hover:text-neutral-900"
               >
                 <X className="h-5 w-5" />
               </button>
@@ -361,7 +366,7 @@ export default function CatalogManagement() {
                     type="text"
                     value={form.name}
                     onChange={(event) => updateFormField('name', event.target.value)}
-                    className="w-full rounded-lg border border-neutral-200 bg-neutral-50 px-4 py-2 text-sm transition-all focus:bg-white focus:outline-none focus:ring-2 focus:ring-neutral-900"
+                    className="w-full border border-neutral-200 bg-neutral-50 px-4 py-2 text-sm transition-all focus:bg-white focus:outline-none focus:ring-2 focus:ring-neutral-900"
                   />
                 </label>
 
@@ -372,7 +377,7 @@ export default function CatalogManagement() {
                     value={form.code}
                     onChange={(event) => updateFormField('code', event.target.value)}
                     placeholder="KB-NEW-11"
-                    className="w-full rounded-lg border border-neutral-200 bg-neutral-50 px-4 py-2 text-sm uppercase transition-all focus:bg-white focus:outline-none focus:ring-2 focus:ring-neutral-900"
+                    className="w-full border border-neutral-200 bg-neutral-50 px-4 py-2 text-sm uppercase transition-all focus:bg-white focus:outline-none focus:ring-2 focus:ring-neutral-900"
                   />
                 </label>
 
@@ -386,7 +391,7 @@ export default function CatalogManagement() {
                     value={form.rentalPrice}
                     onChange={(event) => updateFormField('rentalPrice', event.target.value)}
                     placeholder="350000"
-                    className="w-full rounded-lg border border-neutral-200 bg-neutral-50 px-4 py-2 text-sm transition-all focus:bg-white focus:outline-none focus:ring-2 focus:ring-neutral-900"
+                    className="w-full border border-neutral-200 bg-neutral-50 px-4 py-2 text-sm transition-all focus:bg-white focus:outline-none focus:ring-2 focus:ring-neutral-900"
                   />
                 </label>
 
@@ -397,7 +402,7 @@ export default function CatalogManagement() {
                     onChange={(event) =>
                       updateFormField('status', event.target.value as KebayaItem['status'])
                     }
-                    className="w-full rounded-lg border border-neutral-200 bg-white px-4 py-2 text-sm outline-none focus:ring-2 focus:ring-neutral-900"
+                    className="w-full border border-neutral-200 bg-white px-4 py-2 text-sm outline-none focus:ring-2 focus:ring-neutral-900"
                   >
                     {itemStatusOptions.map((option) => (
                       <option key={option.value} value={option.value}>
@@ -414,7 +419,7 @@ export default function CatalogManagement() {
                     onChange={(event) =>
                       updateFormField('model', event.target.value as KebayaItem['model'])
                     }
-                    className="w-full rounded-lg border border-neutral-200 bg-white px-4 py-2 text-sm outline-none focus:ring-2 focus:ring-neutral-900"
+                    className="w-full border border-neutral-200 bg-white px-4 py-2 text-sm outline-none focus:ring-2 focus:ring-neutral-900"
                   >
                     {modelOptions.map((option) => (
                       <option key={option} value={option}>
@@ -431,7 +436,7 @@ export default function CatalogManagement() {
                     onChange={(event) =>
                       updateFormField('size', event.target.value as KebayaItem['size'])
                     }
-                    className="w-full rounded-lg border border-neutral-200 bg-white px-4 py-2 text-sm outline-none focus:ring-2 focus:ring-neutral-900"
+                    className="w-full border border-neutral-200 bg-white px-4 py-2 text-sm outline-none focus:ring-2 focus:ring-neutral-900"
                   >
                     {sizeOptions.map((option) => (
                       <option key={option} value={option}>
@@ -448,7 +453,7 @@ export default function CatalogManagement() {
                     value={form.color}
                     onChange={(event) => updateFormField('color', event.target.value)}
                     placeholder="Sage Green"
-                    className="w-full rounded-lg border border-neutral-200 bg-neutral-50 px-4 py-2 text-sm transition-all focus:bg-white focus:outline-none focus:ring-2 focus:ring-neutral-900"
+                    className="w-full border border-neutral-200 bg-neutral-50 px-4 py-2 text-sm transition-all focus:bg-white focus:outline-none focus:ring-2 focus:ring-neutral-900"
                   />
                 </label>
 
@@ -459,7 +464,7 @@ export default function CatalogManagement() {
                     value={form.imageUrl}
                     onChange={(event) => updateFormField('imageUrl', event.target.value)}
                     placeholder="https://..."
-                    className="w-full rounded-lg border border-neutral-200 bg-neutral-50 px-4 py-2 text-sm transition-all focus:bg-white focus:outline-none focus:ring-2 focus:ring-neutral-900"
+                    className="w-full border border-neutral-200 bg-neutral-50 px-4 py-2 text-sm transition-all focus:bg-white focus:outline-none focus:ring-2 focus:ring-neutral-900"
                   />
                 </label>
 
@@ -471,7 +476,7 @@ export default function CatalogManagement() {
                     rows={4}
                     value={form.description}
                     onChange={(event) => updateFormField('description', event.target.value)}
-                    className="w-full resize-none rounded-lg border border-neutral-200 bg-neutral-50 px-4 py-2 text-sm transition-all focus:bg-white focus:outline-none focus:ring-2 focus:ring-neutral-900"
+                    className="w-full resize-none border border-neutral-200 bg-neutral-50 px-4 py-2 text-sm transition-all focus:bg-white focus:outline-none focus:ring-2 focus:ring-neutral-900"
                   />
                 </label>
               </div>
@@ -482,13 +487,13 @@ export default function CatalogManagement() {
                 <button
                   type="button"
                   onClick={closeModal}
-                  className="rounded-lg border border-neutral-200 bg-white px-4 py-2 text-sm font-medium text-neutral-700 transition-colors hover:bg-neutral-50"
+                  className=" border border-neutral-200 bg-white px-4 py-2 text-sm font-medium text-neutral-700 transition-colors hover:bg-neutral-50"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="rounded-lg bg-neutral-900 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-neutral-800"
+                  className=" bg-neutral-900 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-neutral-800"
                 >
                   {editingItem ? 'Save Item' : 'Add Item'}
                 </button>

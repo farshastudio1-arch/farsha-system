@@ -6,6 +6,7 @@ import { KebayaItem, SiteSettings } from '@/data/mockData';
 interface ProductCardProps {
   product: KebayaItem;
   layoutColumns: number;
+  isMobile: boolean;
   displaySettings: SiteSettings;
   onOpenDetail: (product: KebayaItem) => void;
 }
@@ -13,6 +14,7 @@ interface ProductCardProps {
 export default function ProductCard({
   product,
   layoutColumns,
+  isMobile,
   displaySettings,
   onOpenDetail,
 }: ProductCardProps) {
@@ -49,41 +51,77 @@ export default function ProductCard({
   };
 
   const statusInfo = getStatusDetails(product.status);
+  const isSquareTile = isMobile && layoutColumns === 3;
 
   // Layout-specific styling classes
   const isOneColumn = layoutColumns === 1;
+  const isMobileTwoColumn = isMobile && layoutColumns === 2;
+
+  if (isSquareTile) {
+    return (
+      <button
+        type="button"
+        onClick={() => onOpenDetail(product)}
+        className="theme-soft-surface group relative aspect-square w-full overflow-hidden text-left"
+        aria-label={`Lihat detail ${product.name}`}
+      >
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src={product.imageUrls[0]}
+          alt=""
+          className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
+          loading="lazy"
+          onError={(event) => {
+            event.currentTarget.style.display = 'none';
+          }}
+        />
+        {displaySettings.showAvailabilityBadges && (
+          <span
+            className={`mobile-availability-dot absolute right-1.5 top-1.5 h-2.5 w-2.5 border border-[var(--theme-surface)] shadow-sm ${
+              product.status === 'available'
+                ? 'bg-emerald-500'
+                : product.status === 'rented'
+                  ? 'bg-amber-500'
+                  : product.status === 'maintenance'
+                    ? 'bg-rose-500'
+                    : 'bg-slate-400'
+            }`}
+            aria-label={statusInfo.text}
+          />
+        )}
+      </button>
+    );
+  }
 
   return (
-    <div 
-      className={`group flex flex-col bg-[#FFFFFF] border border-[#E5E5E5] overflow-hidden transition-all duration-300 ${
-        isOneColumn 
-          ? 'rounded-2xl shadow-sm hover:shadow-md' 
-          : 'rounded-xl hover:shadow-sm'
+    <div
+      className={`theme-surface theme-border group flex flex-col border overflow-hidden transition-all duration-300 ${
+        isOneColumn ? ' shadow-sm hover:shadow-md' : ' hover:shadow-sm'
       }`}
     >
       {/* CARD IMAGE AREA */}
-      <div className="relative w-full overflow-hidden bg-[#E5E5E5]">
+      <div className="theme-soft-surface relative w-full overflow-hidden">
         {isOneColumn ? (
           /* 1 COLUMN MOBILE VIEW: Swipable Carousel */
           <div className="relative">
-            <div 
+            <div
               ref={carouselRef}
               onScroll={handleScroll}
               className="flex w-full overflow-x-auto scroll-snap-x snap-mandatory no-scrollbar"
               style={{ WebkitOverflowScrolling: 'touch' }}
             >
               {product.imageUrls.map((url, index) => (
-                <div 
+                <div
                   key={index}
                   onClick={() => onOpenDetail(product)}
                   className="w-full shrink-0 aspect-[3/4] scroll-snap-align-center cursor-pointer relative"
                 >
                   {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img 
-                    src={url} 
+                  <img
+                    src={url}
                     alt={`${product.name} - Foto ${index + 1}`}
                     className="w-full h-full object-cover transition-transform duration-700 hover:scale-105"
-                    loading={index === 0 ? "eager" : "lazy"}
+                    loading={index === 0 ? 'eager' : 'lazy'}
                   />
                 </div>
               ))}
@@ -91,7 +129,7 @@ export default function ProductCard({
 
             {/* Carousel Dot Indicators */}
             {product.imageUrls.length > 1 && (
-              <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex items-center gap-1.5 bg-[#000000]/60 backdrop-blur-xs px-2.5 py-1.5 rounded-full z-10">
+              <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex items-center gap-1.5 bg-[color-mix(in_srgb,var(--theme-text)_72%,transparent)] backdrop-blur-xs px-2.5 py-1.5 z-10">
                 {product.imageUrls.map((_, index) => (
                   <button
                     key={index}
@@ -99,15 +137,15 @@ export default function ProductCard({
                       if (carouselRef.current) {
                         carouselRef.current.scrollTo({
                           left: index * carouselRef.current.clientWidth,
-                          behavior: 'smooth'
+                          behavior: 'smooth',
                         });
                         setActiveImageIndex(index);
                       }
                     }}
-                    className={`w-1.5 h-1.5 rounded-full transition-all duration-300 ${
-                      activeImageIndex === index 
-                        ? 'bg-[#FFFFFF] w-3' 
-                        : 'bg-[#FFFFFF]/40 hover:bg-[#FFFFFF]/70'
+                    className={`w-1.5 h-1.5 transition-all duration-300 ${
+                      activeImageIndex === index
+                        ? 'bg-[var(--theme-surface)] w-3'
+                        : 'bg-[color-mix(in_srgb,var(--theme-surface)_42%,transparent)] hover:bg-[color-mix(in_srgb,var(--theme-surface)_72%,transparent)]'
                     }`}
                     aria-label={`Lihat foto ${index + 1}`}
                   />
@@ -117,13 +155,13 @@ export default function ProductCard({
           </div>
         ) : (
           /* MULTI-COLUMN VIEW: Single Static Image */
-          <div 
+          <div
             onClick={() => onOpenDetail(product)}
             className="w-full aspect-[3/4] cursor-pointer relative overflow-hidden"
           >
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img 
-              src={product.imageUrls[0]} 
+            <img
+              src={product.imageUrls[0]}
               alt={product.name}
               className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
               loading="lazy"
@@ -134,12 +172,14 @@ export default function ProductCard({
         {/* Floating Code & Status Badge */}
         <div className="absolute top-3 left-3 flex flex-col gap-1.5 items-start z-10 pointer-events-none">
           {displaySettings.showProductCode && (
-            <span className="text-[10px] tracking-wider uppercase bg-[#000000]/80 text-[#FFFFFF] px-2 py-0.5 rounded font-mono font-semibold backdrop-blur-xs">
+            <span className="text-[10px] tracking-wider uppercase bg-[color-mix(in_srgb,var(--theme-text)_82%,transparent)] text-[var(--theme-surface)] px-2 py-0.5 font-mono font-semibold backdrop-blur-xs">
               {product.code}
             </span>
           )}
           {displaySettings.showAvailabilityBadges && (
-            <span className={`text-[10px] font-semibold tracking-wide border px-2 py-0.5 rounded backdrop-blur-xs shadow-xs ${statusInfo.class}`}>
+            <span
+              className={`text-[10px] font-semibold tracking-wide border px-2 py-0.5 backdrop-blur-xs shadow-xs ${statusInfo.class}`}
+            >
               {statusInfo.text}
             </span>
           )}
@@ -147,18 +187,22 @@ export default function ProductCard({
       </div>
 
       {/* CARD CONTENT */}
-      <div className={`flex flex-col flex-grow ${isOneColumn ? 'p-5' : 'p-3 sm:p-4'}`}>
+      <div
+        className={`flex flex-col flex-grow ${
+          isOneColumn ? 'p-5' : isMobileTwoColumn ? 'p-2.5' : 'p-3 sm:p-4'
+        }`}
+      >
         {/* Kebaya Model Category */}
         {displaySettings.showProductModel && (
-          <span className="text-[10px] sm:text-xs font-semibold tracking-wider text-[#757575] uppercase font-mono mb-1">
+          <span className="theme-muted text-[10px] sm:text-xs font-semibold tracking-wider uppercase font-mono mb-1">
             Koleksi {product.model}
           </span>
         )}
 
         {/* Title */}
-        <h3 
+        <h3
           onClick={() => onOpenDetail(product)}
-          className={`font-serif text-[#000000] cursor-pointer hover:text-[#333333] transition-colors leading-tight font-medium ${
+          className={`font-serif text-[var(--theme-text)] cursor-pointer hover:text-[var(--theme-accent)] transition-colors leading-tight font-medium ${
             isOneColumn ? 'text-lg sm:text-xl mb-2' : 'text-sm sm:text-base mb-1 line-clamp-2'
           }`}
         >
@@ -167,7 +211,7 @@ export default function ProductCard({
 
         {/* Technical features summary for 1-column layout */}
         {isOneColumn && displaySettings.showProductDescription && (
-          <p className="text-[#4A4A4A] text-xs sm:text-sm line-clamp-2 mb-4 leading-relaxed font-sans">
+          <p className="theme-muted-strong text-xs sm:text-sm line-clamp-2 mb-4 leading-relaxed font-sans">
             {product.description}
           </p>
         )}
@@ -176,27 +220,38 @@ export default function ProductCard({
         {(displaySettings.showPrices ||
           displaySettings.showProductSize ||
           displaySettings.showProductColor) && (
-          <div className={`mt-auto pt-3 border-t border-[#E5E5E5] flex justify-between items-center ${
-            isOneColumn ? 'flex-row' : 'flex-col items-start gap-1 sm:flex-row sm:items-center sm:gap-0'
-          }`}>
+          <div
+            className={`theme-border mt-auto pt-3 border-t flex justify-between items-center ${
+              isOneColumn
+                ? 'flex-row'
+                : 'flex-col items-start gap-1 sm:flex-row sm:items-center sm:gap-0'
+            }`}
+          >
             {displaySettings.showPrices && (
               <div className="flex flex-col">
-                <span className="text-[9px] uppercase tracking-wider text-[#757575] font-mono">Biaya Sewa</span>
-                <span className={`text-[#000000] font-semibold font-mono ${isOneColumn ? 'text-base sm:text-lg' : 'text-xs sm:text-sm'}`}>
-                  {formatPrice(product.rentalPrice)} <span className="text-[9px] font-normal text-[#4A4A4A]">/hari</span>
+                <span className="theme-muted text-[9px] uppercase tracking-wider font-mono">
+                  Biaya Sewa
+                </span>
+                <span
+                  className={`text-[var(--theme-text)] font-semibold font-mono ${isOneColumn ? 'text-base sm:text-lg' : 'text-xs sm:text-sm'}`}
+                >
+                  {formatPrice(product.rentalPrice)}{' '}
+                  <span className="theme-muted-strong text-[9px] font-normal">/hari</span>
                 </span>
               </div>
             )}
 
             {(displaySettings.showProductSize || displaySettings.showProductColor) && (
-              <div className={`flex flex-wrap gap-1.5 ${isOneColumn ? 'items-center' : 'mt-1 sm:mt-0'}`}>
+              <div
+                className={`flex flex-wrap gap-1.5 ${isOneColumn ? 'items-center' : 'mt-1 sm:mt-0'}`}
+              >
                 {displaySettings.showProductSize && (
-                  <span className="text-[10px] font-medium px-2 py-0.5 bg-[#F5F5F5] text-[#4A4A4A] rounded font-mono">
+                  <span className="theme-soft-surface theme-muted-strong text-[10px] font-medium px-2 py-0.5 font-mono">
                     Ukuran {product.size}
                   </span>
                 )}
                 {displaySettings.showProductColor && (
-                  <span className="text-[10px] font-medium px-2 py-0.5 bg-[#F5F5F5] text-[#4A4A4A] rounded font-mono">
+                  <span className="theme-soft-surface theme-muted-strong text-[10px] font-medium px-2 py-0.5 font-mono">
                     {product.color}
                   </span>
                 )}
@@ -209,9 +264,9 @@ export default function ProductCard({
         {displaySettings.showCardCta && (
           <button
             onClick={() => onOpenDetail(product)}
-            className="mt-4 w-full bg-[#000000] hover:bg-[#333333] text-[#FFFFFF] hover:text-[#000000] text-xs sm:text-sm font-semibold tracking-wider uppercase py-3 rounded-lg transition-all duration-300 flex items-center justify-center gap-2"
+            className="theme-primary-action mt-4 w-full text-xs sm:text-sm font-semibold tracking-wider uppercase py-3 transition-all duration-300 flex items-center justify-center gap-2"
           >
-            Detail & Cek Ketersediaan
+            Detail
           </button>
         )}
       </div>

@@ -62,6 +62,19 @@ function isCatalogCardMode(value: unknown): value is SiteSettings['catalogCardMo
   return value === 'minimal' || value === 'standard' || value === 'detailed';
 }
 
+function normalizeHexColor(value: unknown, fallback: string) {
+  return typeof value === 'string' && /^#[0-9A-Fa-f]{6}$/.test(value.trim())
+    ? value.trim().toUpperCase()
+    : fallback;
+}
+
+function normalizeRadius(value: unknown, fallback: number) {
+  const numberValue = typeof value === 'number' ? value : Number(value);
+  return Number.isFinite(numberValue) && numberValue >= 0 && numberValue <= 32
+    ? numberValue
+    : fallback;
+}
+
 export function normalizeSiteSettings(value: Partial<SiteSettings>): SiteSettings {
   const catalogCardMode = isCatalogCardMode(value.catalogCardMode)
     ? value.catalogCardMode
@@ -72,8 +85,18 @@ export function normalizeSiteSettings(value: Partial<SiteSettings>): SiteSetting
     ...value,
     catalogCardMode,
     currency: 'IDR',
+    brandColor: normalizeHexColor(value.brandColor, mockSiteSettings.brandColor),
+    accentColor: normalizeHexColor(value.accentColor, mockSiteSettings.accentColor),
+    backgroundColor: normalizeHexColor(value.backgroundColor, mockSiteSettings.backgroundColor),
+    textColor: normalizeHexColor(value.textColor, mockSiteSettings.textColor),
+    primaryColor: normalizeHexColor(value.primaryColor, mockSiteSettings.primaryColor),
+    surfaceColor: normalizeHexColor(value.surfaceColor, mockSiteSettings.surfaceColor),
+    borderColor: normalizeHexColor(value.borderColor, mockSiteSettings.borderColor),
+    borderRadius: normalizeRadius(value.borderRadius, mockSiteSettings.borderRadius),
     defaultMobileGrid:
-      value.defaultMobileGrid === 2 || value.defaultMobileGrid === 1
+      value.defaultMobileGrid === 3 ||
+      value.defaultMobileGrid === 2 ||
+      value.defaultMobileGrid === 1
         ? value.defaultMobileGrid
         : mockSiteSettings.defaultMobileGrid,
     defaultDesktopGrid:
@@ -114,11 +137,12 @@ export function readSavedSiteSettings() {
 }
 
 export function writeSavedSiteSettings(nextSettings: SiteSettings) {
-  const serializedSettings = JSON.stringify(nextSettings);
+  const normalizedSettings = normalizeSiteSettings(nextSettings);
+  const serializedSettings = JSON.stringify(normalizedSettings);
 
   window.localStorage.setItem(storageKey, serializedSettings);
   cachedStoredValue = serializedSettings;
-  cachedSettings = nextSettings;
+  cachedSettings = normalizedSettings;
   window.dispatchEvent(new Event(storageChangeEvent));
 }
 

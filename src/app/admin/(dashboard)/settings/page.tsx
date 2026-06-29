@@ -56,6 +56,10 @@ type BooleanField = Extract<
 >;
 
 type ColorField = Extract<keyof SiteSettings, 'brandColor' | 'accentColor'>;
+type ThemeColorField = Extract<
+  keyof SiteSettings,
+  'backgroundColor' | 'textColor' | 'primaryColor' | 'accentColor' | 'surfaceColor' | 'borderColor'
+>;
 
 const tabs: Array<{
   id: SettingsTab;
@@ -180,6 +184,47 @@ const catalogCardToggleOptions: Array<{
   },
 ];
 
+const themeColorOptions: Array<{
+  key: ThemeColorField;
+  label: string;
+  description: string;
+}> = [
+  {
+    key: 'backgroundColor',
+    label: 'Background',
+    description: 'Page background.',
+  },
+  {
+    key: 'textColor',
+    label: 'Text',
+    description: 'Primary text and icon color.',
+  },
+  {
+    key: 'primaryColor',
+    label: 'Primary',
+    description: 'Main CTAs and selected states.',
+  },
+  {
+    key: 'accentColor',
+    label: 'Accent',
+    description: 'Dark supporting surfaces.',
+  },
+  {
+    key: 'surfaceColor',
+    label: 'Surface',
+    description: 'Cards, forms, and panels.',
+  },
+  {
+    key: 'borderColor',
+    label: 'Border',
+    description: 'Default divider and outline color.',
+  },
+];
+
+function isValidHexColor(value: string) {
+  return /^#[0-9A-Fa-f]{6}$/.test(value.trim());
+}
+
 function getValidationErrors(settings: SiteSettings) {
   const errors: Record<string, string> = {};
   const urlFields: Array<{ key: TextField; label: string }> = [
@@ -222,6 +267,20 @@ function getValidationErrors(settings: SiteSettings) {
     }
   }
 
+  for (const option of themeColorOptions) {
+    if (!isValidHexColor(settings[option.key])) {
+      errors[option.key] = 'Use a 6-digit hex color, for example #FFDE00.';
+    }
+  }
+
+  if (
+    !Number.isFinite(settings.borderRadius) ||
+    settings.borderRadius < 0 ||
+    settings.borderRadius > 32
+  ) {
+    errors.borderRadius = 'Use a value from 0 to 32.';
+  }
+
   return errors;
 }
 
@@ -246,6 +305,46 @@ function FieldError({ children }: { children?: string }) {
   return <p className="mt-1 text-xs font-medium text-red-600">{children}</p>;
 }
 
+function ThemeColorControl({
+  option,
+  value,
+  onChange,
+  error,
+}: {
+  option: (typeof themeColorOptions)[number];
+  value: string;
+  onChange: (event: ChangeEvent<HTMLInputElement>) => void;
+  error?: string;
+}) {
+  return (
+    <div>
+      <label className="mb-1 block text-sm font-medium text-neutral-700">{option.label}</label>
+      <div className="flex items-center gap-3 border border-neutral-200 bg-neutral-50 px-3 py-2">
+        <input
+          type="color"
+          value={value}
+          onChange={onChange}
+          className="h-9 w-11 cursor-pointer border border-neutral-200 bg-white"
+          aria-label={`${option.label} color`}
+        />
+        <input
+          type="text"
+          value={value}
+          onChange={onChange}
+          className="w-full bg-transparent font-mono text-sm uppercase outline-none"
+        />
+        <span
+          className="h-7 w-7 shrink-0 border border-neutral-200"
+          style={{ backgroundColor: value }}
+          aria-hidden="true"
+        />
+      </div>
+      <p className="mt-1 text-xs text-neutral-500">{option.description}</p>
+      <FieldError>{error}</FieldError>
+    </div>
+  );
+}
+
 function SectionPanel({
   title,
   description,
@@ -256,7 +355,7 @@ function SectionPanel({
   children: React.ReactNode;
 }) {
   return (
-    <section className="rounded-xl border border-neutral-200 bg-white p-6 shadow-sm">
+    <section className=" border border-neutral-200 bg-white p-6 shadow-sm">
       <div className="mb-5">
         <h2 className="text-lg font-semibold text-neutral-900">{title}</h2>
         {description && <p className="mt-1 text-sm text-neutral-500">{description}</p>}
@@ -278,7 +377,7 @@ function ToggleRow({
   onChange: (checked: boolean) => void;
 }) {
   return (
-    <div className="flex items-center justify-between gap-4 rounded-lg border border-neutral-200 p-4">
+    <div className="flex items-center justify-between gap-4 border border-neutral-200 p-4">
       <div>
         <p className="text-sm font-medium text-neutral-900">{title}</p>
         <p className="mt-1 text-xs text-neutral-500">{description}</p>
@@ -287,12 +386,12 @@ function ToggleRow({
         type="button"
         aria-pressed={checked}
         onClick={() => onChange(!checked)}
-        className={`relative h-6 w-11 shrink-0 rounded-full transition-colors ${
+        className={`relative h-6 w-11 shrink-0 transition-colors ${
           checked ? 'bg-neutral-900' : 'bg-neutral-200'
         }`}
       >
         <span
-          className={`absolute top-1 h-4 w-4 rounded-full bg-white transition-transform ${
+          className={`absolute top-1 h-4 w-4 bg-white transition-transform ${
             checked ? 'translate-x-6' : 'translate-x-1'
           }`}
         />
@@ -333,7 +432,7 @@ function CatalogCardPreview({
   const statusInfo = getStatusDetails(product.status);
 
   return (
-    <div className="rounded-xl border border-neutral-200 p-5">
+    <div className=" border border-neutral-200 p-5">
       <div className="mb-4 flex items-center justify-between">
         <p className="text-xs font-semibold uppercase tracking-widest text-neutral-500">
           Catalog Card Preview
@@ -341,7 +440,7 @@ function CatalogCardPreview({
         <Eye className="h-4 w-4 text-neutral-400" />
       </div>
 
-      <div className="overflow-hidden rounded-xl border border-neutral-200 bg-white">
+      <div className="overflow-hidden border border-neutral-200 bg-white">
         <div className="relative aspect-[3/4] overflow-hidden bg-neutral-100">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
@@ -351,13 +450,13 @@ function CatalogCardPreview({
           />
           <div className="absolute left-3 top-3 flex flex-col items-start gap-1.5">
             {settings.showProductCode && (
-              <span className="rounded bg-black/80 px-2 py-0.5 font-mono text-[10px] font-semibold uppercase tracking-wider text-white backdrop-blur-xs">
+              <span className=" bg-black/80 px-2 py-0.5 font-mono text-[10px] font-semibold uppercase tracking-wider text-white backdrop-blur-xs">
                 {product.code}
               </span>
             )}
             {settings.showAvailabilityBadges && (
               <span
-                className={`rounded border px-2 py-0.5 text-[10px] font-semibold tracking-wide shadow-xs backdrop-blur-xs ${statusInfo.className}`}
+                className={` border px-2 py-0.5 text-[10px] font-semibold tracking-wide shadow-xs backdrop-blur-xs ${statusInfo.className}`}
               >
                 {statusInfo.text}
               </span>
@@ -397,12 +496,12 @@ function CatalogCardPreview({
               {(settings.showProductSize || settings.showProductColor) && (
                 <div className="flex flex-wrap gap-1.5">
                   {settings.showProductSize && (
-                    <span className="rounded bg-neutral-100 px-2 py-0.5 font-mono text-[10px] font-medium text-neutral-600">
+                    <span className=" bg-neutral-100 px-2 py-0.5 font-mono text-[10px] font-medium text-neutral-600">
                       Ukuran {product.size}
                     </span>
                   )}
                   {settings.showProductColor && (
-                    <span className="rounded bg-neutral-100 px-2 py-0.5 font-mono text-[10px] font-medium text-neutral-600">
+                    <span className=" bg-neutral-100 px-2 py-0.5 font-mono text-[10px] font-medium text-neutral-600">
                       {product.color}
                     </span>
                   )}
@@ -414,9 +513,9 @@ function CatalogCardPreview({
           {settings.showCardCta && (
             <button
               type="button"
-              className="mt-4 w-full rounded-lg bg-neutral-900 py-3 text-xs font-semibold uppercase tracking-wider text-white"
+              className="mt-4 w-full bg-neutral-900 py-3 text-xs font-semibold uppercase tracking-wider text-white"
             >
-              Detail & Cek Ketersediaan
+              Detail
             </button>
           )}
         </div>
@@ -442,10 +541,7 @@ export default function SettingsPage() {
     [settings, savedSettings],
   );
 
-  const updateField = <Key extends keyof SiteSettings>(
-    key: Key,
-    value: SiteSettings[Key],
-  ) => {
+  const updateField = <Key extends keyof SiteSettings>(key: Key, value: SiteSettings[Key]) => {
     setSaveState('idle');
     setSettingsDraft((current) => ({
       ...(current ?? savedSettings),
@@ -454,8 +550,7 @@ export default function SettingsPage() {
   };
 
   const updateTextField =
-    (key: TextField) =>
-    (event: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    (key: TextField) => (event: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
       updateField(key, event.target.value);
     };
 
@@ -469,9 +564,13 @@ export default function SettingsPage() {
   };
 
   const updateColorField =
-    (key: ColorField) => (event: ChangeEvent<HTMLInputElement>) => {
+    (key: ColorField | ThemeColorField) => (event: ChangeEvent<HTMLInputElement>) => {
       updateField(key, event.target.value);
     };
+
+  const updateBorderRadius = (event: ChangeEvent<HTMLInputElement>) => {
+    updateField('borderRadius', Number(event.target.value));
+  };
 
   const saveSettings = () => {
     if (hasErrors) {
@@ -481,6 +580,7 @@ export default function SettingsPage() {
 
     const nextSettings: SiteSettings = {
       ...settings,
+      brandColor: settings.textColor,
       updatedAt: new Date().toISOString(),
     };
 
@@ -561,13 +661,13 @@ export default function SettingsPage() {
 
         <div className="flex flex-wrap items-center gap-3">
           {saveState === 'saved' && (
-            <span className="inline-flex items-center gap-1.5 rounded-lg bg-green-50 px-3 py-2 text-sm font-medium text-green-700">
+            <span className="inline-flex items-center gap-1.5 bg-green-50 px-3 py-2 text-sm font-medium text-green-700">
               <Check className="h-4 w-4" />
               Saved locally
             </span>
           )}
           {saveState === 'error' && (
-            <span className="inline-flex items-center gap-1.5 rounded-lg bg-red-50 px-3 py-2 text-sm font-medium text-red-700">
+            <span className="inline-flex items-center gap-1.5 bg-red-50 px-3 py-2 text-sm font-medium text-red-700">
               <AlertTriangle className="h-4 w-4" />
               Review fields
             </span>
@@ -576,7 +676,7 @@ export default function SettingsPage() {
             <button
               type="button"
               onClick={discardChanges}
-              className="rounded-lg border border-neutral-200 bg-white px-4 py-2.5 text-sm font-medium text-neutral-700 transition-colors hover:bg-neutral-50"
+              className=" border border-neutral-200 bg-white px-4 py-2.5 text-sm font-medium text-neutral-700 transition-colors hover:bg-neutral-50"
             >
               Discard
             </button>
@@ -585,7 +685,7 @@ export default function SettingsPage() {
             type="button"
             onClick={saveSettings}
             disabled={!hasChanges || hasErrors}
-            className="flex items-center gap-2 rounded-lg bg-neutral-900 px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-neutral-800 disabled:cursor-not-allowed disabled:opacity-45"
+            className="flex items-center gap-2 bg-neutral-900 px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-neutral-800 disabled:cursor-not-allowed disabled:opacity-45"
           >
             <Save className="h-4 w-4" />
             Save Changes
@@ -594,7 +694,7 @@ export default function SettingsPage() {
       </div>
 
       <div className="grid gap-6 xl:grid-cols-[220px_minmax(0,1fr)]">
-        <nav className="flex gap-2 overflow-x-auto rounded-xl border border-neutral-200 bg-white p-2 shadow-sm xl:flex-col xl:self-start">
+        <nav className="flex gap-2 overflow-x-auto border border-neutral-200 bg-white p-2 shadow-sm xl:flex-col xl:self-start">
           {tabs.map((tab) => {
             const Icon = tab.icon;
             const isActive = activeTab === tab.id;
@@ -604,7 +704,7 @@ export default function SettingsPage() {
                 key={tab.id}
                 type="button"
                 onClick={() => setActiveTab(tab.id)}
-                className={`flex min-w-max items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors ${
+                className={`flex min-w-max items-center gap-3 px-3 py-2.5 text-sm font-medium transition-colors ${
                   isActive
                     ? 'bg-neutral-900 text-white'
                     : 'text-neutral-600 hover:bg-neutral-100 hover:text-neutral-900'
@@ -633,7 +733,7 @@ export default function SettingsPage() {
                       type="text"
                       value={settings.studioName}
                       onChange={updateTextField('studioName')}
-                      className="w-full rounded-lg border border-neutral-200 bg-neutral-50 px-4 py-2 text-sm transition-all focus:bg-white focus:outline-none focus:ring-2 focus:ring-neutral-900"
+                      className="w-full border border-neutral-200 bg-neutral-50 px-4 py-2 text-sm transition-all focus:bg-white focus:outline-none focus:ring-2 focus:ring-neutral-900"
                     />
                     <FieldError>{validationErrors.studioName}</FieldError>
                   </div>
@@ -646,7 +746,7 @@ export default function SettingsPage() {
                       type="text"
                       value={settings.locationLabel}
                       onChange={updateTextField('locationLabel')}
-                      className="w-full rounded-lg border border-neutral-200 bg-neutral-50 px-4 py-2 text-sm transition-all focus:bg-white focus:outline-none focus:ring-2 focus:ring-neutral-900"
+                      className="w-full border border-neutral-200 bg-neutral-50 px-4 py-2 text-sm transition-all focus:bg-white focus:outline-none focus:ring-2 focus:ring-neutral-900"
                     />
                   </div>
 
@@ -658,7 +758,7 @@ export default function SettingsPage() {
                       rows={3}
                       value={settings.tagline}
                       onChange={updateTextField('tagline')}
-                      className="w-full resize-none rounded-lg border border-neutral-200 bg-neutral-50 px-4 py-2 text-sm transition-all focus:bg-white focus:outline-none focus:ring-2 focus:ring-neutral-900"
+                      className="w-full resize-none border border-neutral-200 bg-neutral-50 px-4 py-2 text-sm transition-all focus:bg-white focus:outline-none focus:ring-2 focus:ring-neutral-900"
                     />
                   </div>
                 </div>
@@ -671,7 +771,7 @@ export default function SettingsPage() {
                       key={option.value}
                       type="button"
                       onClick={() => updateField('status', option.value)}
-                      className={`rounded-xl border p-4 text-left transition-colors ${
+                      className={` border p-4 text-left transition-colors ${
                         settings.status === option.value
                           ? 'border-neutral-900 bg-neutral-900 text-white'
                           : 'border-neutral-200 bg-white text-neutral-700 hover:bg-neutral-50'
@@ -680,9 +780,7 @@ export default function SettingsPage() {
                       <span className="block text-sm font-semibold">{option.label}</span>
                       <span
                         className={`mt-1 block text-xs ${
-                          settings.status === option.value
-                            ? 'text-neutral-300'
-                            : 'text-neutral-500'
+                          settings.status === option.value ? 'text-neutral-300' : 'text-neutral-500'
                         }`}
                       >
                         {option.description}
@@ -708,33 +806,29 @@ export default function SettingsPage() {
                     type="tel"
                     value={settings.whatsappNumber}
                     onChange={updateTextField('whatsappNumber')}
-                    className="w-full rounded-lg border border-neutral-200 bg-neutral-50 px-4 py-2 text-sm transition-all focus:bg-white focus:outline-none focus:ring-2 focus:ring-neutral-900"
+                    className="w-full border border-neutral-200 bg-neutral-50 px-4 py-2 text-sm transition-all focus:bg-white focus:outline-none focus:ring-2 focus:ring-neutral-900"
                   />
                   <FieldError>{validationErrors.whatsappNumber}</FieldError>
                 </div>
 
                 <div>
-                  <label className="mb-1 block text-sm font-medium text-neutral-700">
-                    Email
-                  </label>
+                  <label className="mb-1 block text-sm font-medium text-neutral-700">Email</label>
                   <input
                     type="email"
                     value={settings.email}
                     onChange={updateTextField('email')}
-                    className="w-full rounded-lg border border-neutral-200 bg-neutral-50 px-4 py-2 text-sm transition-all focus:bg-white focus:outline-none focus:ring-2 focus:ring-neutral-900"
+                    className="w-full border border-neutral-200 bg-neutral-50 px-4 py-2 text-sm transition-all focus:bg-white focus:outline-none focus:ring-2 focus:ring-neutral-900"
                   />
                   <FieldError>{validationErrors.email}</FieldError>
                 </div>
 
                 <div className="md:col-span-2">
-                  <label className="mb-1 block text-sm font-medium text-neutral-700">
-                    Address
-                  </label>
+                  <label className="mb-1 block text-sm font-medium text-neutral-700">Address</label>
                   <textarea
                     rows={3}
                     value={settings.address}
                     onChange={updateTextField('address')}
-                    className="w-full resize-none rounded-lg border border-neutral-200 bg-neutral-50 px-4 py-2 text-sm transition-all focus:bg-white focus:outline-none focus:ring-2 focus:ring-neutral-900"
+                    className="w-full resize-none border border-neutral-200 bg-neutral-50 px-4 py-2 text-sm transition-all focus:bg-white focus:outline-none focus:ring-2 focus:ring-neutral-900"
                   />
                 </div>
 
@@ -746,7 +840,7 @@ export default function SettingsPage() {
                     type="url"
                     value={settings.instagramUrl}
                     onChange={updateTextField('instagramUrl')}
-                    className="w-full rounded-lg border border-neutral-200 bg-neutral-50 px-4 py-2 text-sm transition-all focus:bg-white focus:outline-none focus:ring-2 focus:ring-neutral-900"
+                    className="w-full border border-neutral-200 bg-neutral-50 px-4 py-2 text-sm transition-all focus:bg-white focus:outline-none focus:ring-2 focus:ring-neutral-900"
                   />
                   <FieldError>{validationErrors.instagramUrl}</FieldError>
                 </div>
@@ -759,7 +853,7 @@ export default function SettingsPage() {
                     type="url"
                     value={settings.tiktokUrl}
                     onChange={updateTextField('tiktokUrl')}
-                    className="w-full rounded-lg border border-neutral-200 bg-neutral-50 px-4 py-2 text-sm transition-all focus:bg-white focus:outline-none focus:ring-2 focus:ring-neutral-900"
+                    className="w-full border border-neutral-200 bg-neutral-50 px-4 py-2 text-sm transition-all focus:bg-white focus:outline-none focus:ring-2 focus:ring-neutral-900"
                   />
                   <FieldError>{validationErrors.tiktokUrl}</FieldError>
                 </div>
@@ -772,7 +866,7 @@ export default function SettingsPage() {
                     type="url"
                     value={settings.mapsUrl}
                     onChange={updateTextField('mapsUrl')}
-                    className="w-full rounded-lg border border-neutral-200 bg-neutral-50 px-4 py-2 text-sm transition-all focus:bg-white focus:outline-none focus:ring-2 focus:ring-neutral-900"
+                    className="w-full border border-neutral-200 bg-neutral-50 px-4 py-2 text-sm transition-all focus:bg-white focus:outline-none focus:ring-2 focus:ring-neutral-900"
                   />
                   <FieldError>{validationErrors.mapsUrl}</FieldError>
                 </div>
@@ -794,7 +888,7 @@ export default function SettingsPage() {
                     <select
                       value={settings.currency}
                       onChange={() => updateField('currency', 'IDR')}
-                      className="w-full rounded-lg border border-neutral-200 bg-white px-4 py-2 text-sm outline-none focus:ring-2 focus:ring-neutral-900"
+                      className="w-full border border-neutral-200 bg-white px-4 py-2 text-sm outline-none focus:ring-2 focus:ring-neutral-900"
                     >
                       <option value="IDR">IDR - Indonesian Rupiah</option>
                     </select>
@@ -812,7 +906,7 @@ export default function SettingsPage() {
                           event.target.value as SiteSettings['defaultProductStatus'],
                         )
                       }
-                      className="w-full rounded-lg border border-neutral-200 bg-white px-4 py-2 text-sm outline-none focus:ring-2 focus:ring-neutral-900"
+                      className="w-full border border-neutral-200 bg-white px-4 py-2 text-sm outline-none focus:ring-2 focus:ring-neutral-900"
                     >
                       {productStatusOptions.map((option) => (
                         <option key={option.value} value={option.value}>
@@ -834,7 +928,7 @@ export default function SettingsPage() {
                           event.target.value as SiteSettings['defaultSort'],
                         )
                       }
-                      className="w-full rounded-lg border border-neutral-200 bg-white px-4 py-2 text-sm outline-none focus:ring-2 focus:ring-neutral-900"
+                      className="w-full border border-neutral-200 bg-white px-4 py-2 text-sm outline-none focus:ring-2 focus:ring-neutral-900"
                     >
                       {sortOptions.map((option) => (
                         <option key={option.value} value={option.value}>
@@ -858,7 +952,7 @@ export default function SettingsPage() {
                           key={option.value}
                           type="button"
                           onClick={() => updateCatalogCardMode(option.value)}
-                          className={`rounded-xl border p-4 text-left transition-colors ${
+                          className={` border p-4 text-left transition-colors ${
                             settings.catalogCardMode === option.value
                               ? 'border-neutral-900 bg-neutral-900 text-white'
                               : 'border-neutral-200 bg-white text-neutral-700 hover:bg-neutral-50'
@@ -900,48 +994,58 @@ export default function SettingsPage() {
           {activeTab === 'display' && (
             <>
               <SectionPanel
-                title="Brand Appearance"
-                description="Global visual defaults, not a replacement for page-specific CMS content."
+                title="Theme Appearance"
+                description="Global design tokens used by public, admin, and POS surfaces."
               >
-                <div className="grid gap-5 md:grid-cols-2">
-                  <div>
-                    <label className="mb-1 block text-sm font-medium text-neutral-700">
-                      Brand Color
-                    </label>
-                    <div className="flex items-center gap-3 rounded-lg border border-neutral-200 bg-neutral-50 px-3 py-2">
-                      <input
-                        type="color"
-                        value={settings.brandColor}
-                        onChange={updateColorField('brandColor')}
-                        className="h-9 w-11 cursor-pointer rounded border border-neutral-200 bg-white"
+                <div className="space-y-6">
+                  <div className="grid gap-5 md:grid-cols-2">
+                    {themeColorOptions.map((option) => (
+                      <ThemeColorControl
+                        key={option.key}
+                        option={option}
+                        value={settings[option.key]}
+                        onChange={updateColorField(option.key)}
+                        error={validationErrors[option.key]}
                       />
-                      <input
-                        type="text"
-                        value={settings.brandColor}
-                        onChange={updateColorField('brandColor')}
-                        className="w-full bg-transparent text-sm outline-none"
-                      />
-                    </div>
+                    ))}
                   </div>
 
-                  <div>
-                    <label className="mb-1 block text-sm font-medium text-neutral-700">
-                      Accent Color
-                    </label>
-                    <div className="flex items-center gap-3 rounded-lg border border-neutral-200 bg-neutral-50 px-3 py-2">
-                      <input
-                        type="color"
-                        value={settings.accentColor}
-                        onChange={updateColorField('accentColor')}
-                        className="h-9 w-11 cursor-pointer rounded border border-neutral-200 bg-white"
-                      />
-                      <input
-                        type="text"
-                        value={settings.accentColor}
-                        onChange={updateColorField('accentColor')}
-                        className="w-full bg-transparent text-sm outline-none"
-                      />
+                  <div className="border border-neutral-200 bg-neutral-50 p-4">
+                    <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+                      <div>
+                        <label
+                          htmlFor="theme-radius"
+                          className="block text-sm font-medium text-neutral-700"
+                        >
+                          Border Radius
+                        </label>
+                        <p className="mt-1 text-xs text-neutral-500">
+                          Set to 0 for strict sharp edges across the app.
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-3 md:min-w-80">
+                        <input
+                          id="theme-radius"
+                          type="range"
+                          min="0"
+                          max="32"
+                          step="1"
+                          value={settings.borderRadius}
+                          onChange={updateBorderRadius}
+                          className="h-1 flex-1 appearance-none bg-neutral-200 accent-neutral-900"
+                        />
+                        <input
+                          type="number"
+                          min="0"
+                          max="32"
+                          value={settings.borderRadius}
+                          onChange={updateBorderRadius}
+                          className="w-20 border border-neutral-200 bg-white px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-neutral-900"
+                        />
+                        <span className="text-sm font-medium text-neutral-600">px</span>
+                      </div>
                     </div>
+                    <FieldError>{validationErrors.borderRadius}</FieldError>
                   </div>
 
                   <div>
@@ -949,7 +1053,7 @@ export default function SettingsPage() {
                       Logo URL
                     </label>
                     <div className="flex items-center gap-3">
-                      <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border border-neutral-200 bg-neutral-50">
+                      <div className="flex h-11 w-11 shrink-0 items-center justify-center border border-neutral-200 bg-neutral-50">
                         <ImageIcon className="h-5 w-5 text-neutral-400" />
                       </div>
                       <input
@@ -957,7 +1061,7 @@ export default function SettingsPage() {
                         value={settings.logoUrl}
                         onChange={updateTextField('logoUrl')}
                         placeholder="https://..."
-                        className="w-full rounded-lg border border-neutral-200 bg-neutral-50 px-4 py-2 text-sm transition-all focus:bg-white focus:outline-none focus:ring-2 focus:ring-neutral-900"
+                        className="w-full border border-neutral-200 bg-neutral-50 px-4 py-2 text-sm transition-all focus:bg-white focus:outline-none focus:ring-2 focus:ring-neutral-900"
                       />
                     </div>
                     <FieldError>{validationErrors.logoUrl}</FieldError>
@@ -968,7 +1072,7 @@ export default function SettingsPage() {
                       Favicon URL
                     </label>
                     <div className="flex items-center gap-3">
-                      <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border border-neutral-200 bg-neutral-50">
+                      <div className="flex h-11 w-11 shrink-0 items-center justify-center border border-neutral-200 bg-neutral-50">
                         <ImageIcon className="h-5 w-5 text-neutral-400" />
                       </div>
                       <input
@@ -976,7 +1080,7 @@ export default function SettingsPage() {
                         value={settings.faviconUrl}
                         onChange={updateTextField('faviconUrl')}
                         placeholder="https://..."
-                        className="w-full rounded-lg border border-neutral-200 bg-neutral-50 px-4 py-2 text-sm transition-all focus:bg-white focus:outline-none focus:ring-2 focus:ring-neutral-900"
+                        className="w-full border border-neutral-200 bg-neutral-50 px-4 py-2 text-sm transition-all focus:bg-white focus:outline-none focus:ring-2 focus:ring-neutral-900"
                       />
                     </div>
                     <FieldError>{validationErrors.faviconUrl}</FieldError>
@@ -990,21 +1094,24 @@ export default function SettingsPage() {
                     <label className="mb-2 block text-sm font-medium text-neutral-700">
                       Mobile Grid
                     </label>
-                    <div className="grid grid-cols-2 gap-2">
-                      {[1, 2].map((value) => (
+                    <div className="grid grid-cols-3 gap-2">
+                      {[1, 2, 3].map((value) => (
                         <button
                           key={value}
                           type="button"
                           onClick={() =>
-                            updateField('defaultMobileGrid', value as SiteSettings['defaultMobileGrid'])
+                            updateField(
+                              'defaultMobileGrid',
+                              value as SiteSettings['defaultMobileGrid'],
+                            )
                           }
-                          className={`rounded-lg border px-3 py-2 text-sm font-medium transition-colors ${
+                          className={` border px-3 py-2 text-sm font-medium transition-colors ${
                             settings.defaultMobileGrid === value
                               ? 'border-neutral-900 bg-neutral-900 text-white'
                               : 'border-neutral-200 bg-white text-neutral-700 hover:bg-neutral-50'
                           }`}
                         >
-                          {value} Column
+                          {value} Column{value > 1 ? 's' : ''}
                         </button>
                       ))}
                     </div>
@@ -1025,7 +1132,7 @@ export default function SettingsPage() {
                               value as SiteSettings['defaultDesktopGrid'],
                             )
                           }
-                          className={`rounded-lg border px-3 py-2 text-sm font-medium transition-colors ${
+                          className={` border px-3 py-2 text-sm font-medium transition-colors ${
                             settings.defaultDesktopGrid === value
                               ? 'border-neutral-900 bg-neutral-900 text-white'
                               : 'border-neutral-200 bg-white text-neutral-700 hover:bg-neutral-50'
@@ -1060,7 +1167,7 @@ export default function SettingsPage() {
                   <button
                     type="button"
                     onClick={exportSettings}
-                    className="flex items-center justify-center gap-2 rounded-lg border border-neutral-200 bg-white px-4 py-3 text-sm font-medium text-neutral-700 transition-colors hover:bg-neutral-50"
+                    className="flex items-center justify-center gap-2 border border-neutral-200 bg-white px-4 py-3 text-sm font-medium text-neutral-700 transition-colors hover:bg-neutral-50"
                   >
                     <Download className="h-4 w-4" />
                     Export JSON
@@ -1068,7 +1175,7 @@ export default function SettingsPage() {
                   <button
                     type="button"
                     onClick={() => fileInputRef.current?.click()}
-                    className="flex items-center justify-center gap-2 rounded-lg border border-neutral-200 bg-white px-4 py-3 text-sm font-medium text-neutral-700 transition-colors hover:bg-neutral-50"
+                    className="flex items-center justify-center gap-2 border border-neutral-200 bg-white px-4 py-3 text-sm font-medium text-neutral-700 transition-colors hover:bg-neutral-50"
                   >
                     <Upload className="h-4 w-4" />
                     Import JSON
@@ -1076,7 +1183,7 @@ export default function SettingsPage() {
                   <button
                     type="button"
                     onClick={resetToDefaults}
-                    className="flex items-center justify-center gap-2 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium text-red-700 transition-colors hover:bg-red-100"
+                    className="flex items-center justify-center gap-2 border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium text-red-700 transition-colors hover:bg-red-100"
                   >
                     <RefreshCcw className="h-4 w-4" />
                     Reset Defaults
@@ -1096,7 +1203,7 @@ export default function SettingsPage() {
 
               <SectionPanel title="System Snapshot">
                 <div className="grid gap-4 md:grid-cols-2">
-                  <div className="rounded-lg border border-neutral-200 p-4">
+                  <div className=" border border-neutral-200 p-4">
                     <p className="text-xs font-medium uppercase tracking-wide text-neutral-500">
                       Save Mode
                     </p>
@@ -1104,7 +1211,7 @@ export default function SettingsPage() {
                       Browser local storage
                     </p>
                   </div>
-                  <div className="rounded-lg border border-neutral-200 p-4">
+                  <div className=" border border-neutral-200 p-4">
                     <p className="text-xs font-medium uppercase tracking-wide text-neutral-500">
                       Last Updated
                     </p>
@@ -1112,13 +1219,13 @@ export default function SettingsPage() {
                       {formatDateTime(settings.updatedAt)}
                     </p>
                   </div>
-                  <div className="rounded-lg border border-neutral-200 p-4">
+                  <div className=" border border-neutral-200 p-4">
                     <p className="text-xs font-medium uppercase tracking-wide text-neutral-500">
                       Settings Version
                     </p>
                     <p className="mt-1 text-sm font-semibold text-neutral-900">V1</p>
                   </div>
-                  <div className="rounded-lg border border-neutral-200 p-4">
+                  <div className=" border border-neutral-200 p-4">
                     <p className="text-xs font-medium uppercase tracking-wide text-neutral-500">
                       Public Status
                     </p>
