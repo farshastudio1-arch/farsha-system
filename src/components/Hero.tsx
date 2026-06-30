@@ -1,16 +1,8 @@
-'use client';
+import Link from 'next/link';
 
-import React from 'react';
 import { mockCMS } from '@/data/mockData';
 
 export default function Hero() {
-  const scrollToCatalog = () => {
-    const catalogEl = document.getElementById('catalog-section');
-    if (catalogEl) {
-      catalogEl.scrollIntoView({ behavior: 'smooth' });
-    }
-  };
-
   return (
     <section className="theme-surface relative w-full flex flex-col">
       {/* 1. TOP PROMO BANNER (Marquee/Notice bar style) */}
@@ -41,12 +33,12 @@ export default function Hero() {
 
           {/* Action buttons */}
           <div className="flex flex-col sm:flex-row gap-4 w-full sm:w-auto">
-            <button
-              onClick={scrollToCatalog}
+            <Link
+              href="/catalog"
               className="theme-primary-action px-8 py-4 text-xs sm:text-sm font-semibold tracking-widest uppercase transition-all duration-300 shadow-xs hover:shadow-md text-center cursor-pointer"
             >
               Jelajahi Katalog
-            </button>
+            </Link>
 
             <a
               href={`https://wa.me/${mockCMS.studioPhone.replace(/[^0-9]/g, '')}`}

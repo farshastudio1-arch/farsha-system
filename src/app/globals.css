@@ -7,11 +7,11 @@
 
 :root {
   --theme-background: #ffffff;
-  --theme-text: #280f00;
-  --theme-primary: #ffde00;
-  --theme-accent: #5b3900;
+  --theme-text: #111111;
+  --theme-primary: #111111;
+  --theme-accent: #111111;
   --theme-surface: #ffffff;
-  --theme-border: #e2e8f0;
+  --theme-border: #e5e5e5;
   --theme-radius: 0px;
 }
 
@@ -85,7 +85,7 @@ select {
 .bg-neutral-900,
 .bg-indigo-600 {
   background-color: var(--theme-primary) !important;
-  color: var(--theme-text) !important;
+  color: var(--theme-background) !important;
 }
 
 .hover\:bg-neutral-800:hover,
@@ -145,7 +145,7 @@ select {
 .theme-selected {
   background-color: var(--theme-primary) !important;
   border-color: var(--theme-primary) !important;
-  color: var(--theme-text) !important;
+  color: var(--theme-background) !important;
 }
 
 .theme-primary-action:hover {
