@@ -2,7 +2,7 @@
 
 import { useSyncExternalStore } from 'react';
 
-import { KebayaItem, mockKebayas } from '@/data/mockData';
+import { KebayaItem, KebayaMeasurements, mockKebayas } from '@/data/mockData';
 import {
   dispatchBrowserEvent,
   readLocalStorageItem,
@@ -20,6 +20,12 @@ let cachedCatalogItems: KebayaItem[] = mockKebayas;
 
 const validSizes = new Set<KebayaItem['size']>(['S', 'M', 'L', 'XL', 'Custom']);
 const validModels = new Set<KebayaItem['model']>(['Modern', 'Klasik', 'Kartini', 'Kutubaru']);
+const validCategories = new Set<NonNullable<KebayaItem['categories']>[number]>([
+  'wisuda',
+  'lamaran',
+  'kondangan',
+  'bridesmaid',
+]);
 const validStatuses = new Set<KebayaItem['status']>([
   'available',
   'rented',
@@ -34,6 +40,38 @@ function normalizeText(value: unknown, fallback = '') {
 function normalizeNumber(value: unknown, fallback: number) {
   const numberValue = typeof value === 'number' ? value : Number(value);
   return Number.isFinite(numberValue) && numberValue >= 0 ? numberValue : fallback;
+}
+
+function normalizeMeasurements(value: unknown): Partial<KebayaMeasurements> | undefined {
+  if (!value || typeof value !== 'object') {
+    return undefined;
+  }
+
+  const measurements = value as Partial<KebayaMeasurements>;
+  const normalized = {
+    bust: normalizeText(measurements.bust),
+    waist: normalizeText(measurements.waist),
+    length: normalizeText(measurements.length),
+    sleeveLength: normalizeText(measurements.sleeveLength),
+    armhole: normalizeText(measurements.armhole),
+    otherDetails: normalizeText(measurements.otherDetails),
+    rentalCategory: normalizeText(measurements.rentalCategory),
+  };
+
+  return Object.values(normalized).some(Boolean) ? normalized : undefined;
+}
+
+function normalizeCategories(value: unknown): KebayaItem['categories'] | undefined {
+  if (!Array.isArray(value)) {
+    return undefined;
+  }
+
+  const categories = value.filter(
+    (category): category is NonNullable<KebayaItem['categories']>[number] =>
+      validCategories.has(category as NonNullable<KebayaItem['categories']>[number]),
+  );
+
+  return categories.length > 0 ? categories : undefined;
 }
 
 function normalizeCatalogItem(value: Partial<KebayaItem>, index: number): KebayaItem | null {
@@ -66,6 +104,8 @@ function normalizeCatalogItem(value: Partial<KebayaItem>, index: number): Kebaya
     rentalEndDate: typeof value.rentalEndDate === 'string' ? value.rentalEndDate : null,
     imageUrls: imageUrls.length > 0 ? imageUrls : [defaultImageUrl],
     description: normalizeText(value.description),
+    categories: normalizeCategories(value.categories),
+    measurements: normalizeMeasurements(value.measurements),
   };
 }
 

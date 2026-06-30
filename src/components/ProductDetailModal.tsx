@@ -74,23 +74,71 @@ export default function ProductDetailModal({ product, onClose }: ProductDetailMo
 
   const statusBadge = getStatusBadge(product.status);
 
-  // Size measurements lookup helper
-  const getMeasurements = (size: string) => {
+  const getDefaultMeasurements = (size: string) => {
     switch (size) {
       case 'S':
-        return { ld: '88 cm', lp: '70 cm', pb: '60 cm', pl: '52 cm', kk: '42 cm' };
+        return {
+          bust: '88 cm',
+          waist: '70 cm',
+          length: '60 cm',
+          sleeveLength: '52 cm',
+          armhole: '42 cm',
+          otherDetails: '',
+          rentalCategory: 'Offline Studio',
+        };
       case 'M':
-        return { ld: '94 cm', lp: '76 cm', pb: '62 cm', pl: '54 cm', kk: '44 cm' };
+        return {
+          bust: '94 cm',
+          waist: '76 cm',
+          length: '62 cm',
+          sleeveLength: '54 cm',
+          armhole: '44 cm',
+          otherDetails: '',
+          rentalCategory: 'Offline Studio',
+        };
       case 'L':
-        return { ld: '100 cm', lp: '82 cm', pb: '64 cm', pl: '56 cm', kk: '46 cm' };
+        return {
+          bust: '100 cm',
+          waist: '82 cm',
+          length: '64 cm',
+          sleeveLength: '56 cm',
+          armhole: '46 cm',
+          otherDetails: '',
+          rentalCategory: 'Offline Studio',
+        };
       case 'XL':
-        return { ld: '106 cm', lp: '88 cm', pb: '66 cm', pl: '58 cm', kk: '48 cm' };
+        return {
+          bust: '106 cm',
+          waist: '88 cm',
+          length: '66 cm',
+          sleeveLength: '58 cm',
+          armhole: '48 cm',
+          otherDetails: '',
+          rentalCategory: 'Offline Studio',
+        };
       default:
-        return { ld: '90-102 cm (Adjustable)', lp: '72-84 cm', pb: '63 cm', pl: '55 cm', kk: '45 cm' };
+        return {
+          bust: '90-102 cm (Adjustable)',
+          waist: '72-84 cm',
+          length: '63 cm',
+          sleeveLength: '55 cm',
+          armhole: '45 cm',
+          otherDetails: '',
+          rentalCategory: 'Offline Studio',
+        };
     }
   };
 
-  const measurements = getMeasurements(product.size);
+  const defaultMeasurements = getDefaultMeasurements(product.size);
+  const measurements = {
+    bust: product.measurements?.bust || defaultMeasurements.bust,
+    waist: product.measurements?.waist || defaultMeasurements.waist,
+    length: product.measurements?.length || defaultMeasurements.length,
+    sleeveLength: product.measurements?.sleeveLength || defaultMeasurements.sleeveLength,
+    armhole: product.measurements?.armhole || defaultMeasurements.armhole,
+    otherDetails: product.measurements?.otherDetails || defaultMeasurements.otherDetails,
+    rentalCategory: product.measurements?.rentalCategory || defaultMeasurements.rentalCategory,
+  };
 
   // Get matched event categories
   const matchedCategories = (['wisuda', 'lamaran', 'kondangan', 'bridesmaid'] as const)
@@ -220,15 +268,15 @@ export default function ProductDetailModal({ product, onClose }: ProductDetailMo
                   <ul className="space-y-1.5 text-xs text-[var(--theme-text)] font-mono">
                     <li className="flex justify-between border-b border-dashed theme-border pb-1">
                       <span className="theme-muted">Lingkar Dada:</span>
-                      <span className="font-semibold">{measurements.ld}</span>
+                      <span className="font-semibold">{measurements.bust}</span>
                     </li>
                     <li className="flex justify-between border-b border-dashed theme-border pb-1">
                       <span className="theme-muted">Lingkar Pinggang:</span>
-                      <span className="font-semibold">{measurements.lp}</span>
+                      <span className="font-semibold">{measurements.waist}</span>
                     </li>
                     <li className="flex justify-between border-b border-dashed theme-border pb-1">
                       <span className="theme-muted">Panjang Baju:</span>
-                      <span className="font-semibold">{measurements.pb}</span>
+                      <span className="font-semibold">{measurements.length}</span>
                     </li>
                   </ul>
                 </div>
@@ -239,19 +287,30 @@ export default function ProductDetailModal({ product, onClose }: ProductDetailMo
                   <ul className="space-y-1.5 text-xs text-[var(--theme-text)] font-mono">
                     <li className="flex justify-between border-b border-dashed theme-border pb-1">
                       <span className="theme-muted">Panjang Lengan:</span>
-                      <span className="font-semibold">{measurements.pl}</span>
+                      <span className="font-semibold">{measurements.sleeveLength}</span>
                     </li>
                     <li className="flex justify-between border-b border-dashed theme-border pb-1">
                       <span className="theme-muted">Kerung Ketiak:</span>
-                      <span className="font-semibold">{measurements.kk}</span>
+                      <span className="font-semibold">{measurements.armhole}</span>
                     </li>
                     <li className="flex justify-between border-b border-dashed theme-border pb-1">
                       <span className="theme-muted">Kategori Sewa:</span>
-                      <span className="font-semibold">Offline Studio</span>
+                      <span className="font-semibold">{measurements.rentalCategory}</span>
                     </li>
                   </ul>
                 </div>
               </div>
+
+              {measurements.otherDetails && (
+                <div className="mb-6 border theme-border theme-soft-surface p-4">
+                  <h4 className="theme-muted text-[10px] font-bold uppercase tracking-wider font-mono mb-2">
+                    Catatan Detail
+                  </h4>
+                  <p className="theme-muted-strong text-xs leading-relaxed">
+                    {measurements.otherDetails}
+                  </p>
+                </div>
+              )}
 
               {/* Ketentuan Sewa (Competitor Layout element) */}
               <div className="mb-6">

@@ -134,7 +134,7 @@ export default function ProductCard({
 
             {/* Carousel Dot Indicators */}
             {product.imageUrls.length > 1 && (
-              <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex items-center gap-1.5 bg-[color-mix(in_srgb,var(--theme-text)_72%,transparent)] backdrop-blur-xs px-2.5 py-1.5 z-10">
+              <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex items-center gap-1.5 bg-[color-mix(in_srgb,var(--theme-text)_60%,transparent)] backdrop-blur-xs px-2.5 py-1 rounded-full z-10">
                 {product.imageUrls.map((_, index) => (
                   <button
                     key={index}
@@ -147,10 +147,10 @@ export default function ProductCard({
                         setActiveImageIndex(index);
                       }
                     }}
-                    className={`w-1.5 h-1.5 transition-all duration-300 ${
+                    className={`w-1.5 h-1.5 rounded-full transition-all duration-300 ${
                       activeImageIndex === index
                         ? 'bg-[var(--theme-surface)] w-3'
-                        : 'bg-[color-mix(in_srgb,var(--theme-surface)_42%,transparent)] hover:bg-[color-mix(in_srgb,var(--theme-surface)_72%,transparent)]'
+                        : 'bg-[color-mix(in_srgb,var(--theme-surface)_40%,transparent)] hover:bg-[color-mix(in_srgb,var(--theme-surface)_70%,transparent)]'
                     }`}
                     aria-label={`Lihat foto ${index + 1}`}
                   />

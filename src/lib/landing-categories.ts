@@ -1,4 +1,6 @@
-import { KebayaItem, mockKebayas } from '@/data/mockData';
+import { KebayaItem, KebayaCategory, mockKebayas } from '@/data/mockData';
+
+export type { KebayaCategory };
 
 export type LandingCategorySlug = 'wisuda' | 'lamaran' | 'kondangan' | 'bridesmaid';
 
@@ -72,6 +74,11 @@ function itemText(item: KebayaItem) {
 }
 
 export function matchesLandingCategory(item: KebayaItem, slug: LandingCategorySlug) {
+  // Manual override: if the item has explicit categories set, use those exclusively
+  if (item.categories && item.categories.length > 0) {
+    return item.categories.includes(slug as KebayaCategory);
+  }
+
   const text = itemText(item);
 
   if (slug === 'wisuda') {

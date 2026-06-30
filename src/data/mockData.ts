@@ -1,3 +1,15 @@
+export type KebayaCategory = 'wisuda' | 'lamaran' | 'kondangan' | 'bridesmaid';
+
+export interface KebayaMeasurements {
+  bust: string;
+  waist: string;
+  length: string;
+  sleeveLength: string;
+  armhole: string;
+  otherDetails: string;
+  rentalCategory: string;
+}
+
 export interface KebayaItem {
   id: string;
   code: string;
@@ -10,6 +22,8 @@ export interface KebayaItem {
   rentalEndDate: string | null;
   imageUrls: string[];
   description: string;
+  categories?: KebayaCategory[];
+  measurements?: Partial<KebayaMeasurements>;
 }
 
 export interface CMSContent {

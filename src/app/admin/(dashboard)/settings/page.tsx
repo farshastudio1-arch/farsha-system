@@ -1,31 +1,23 @@
 'use client';
 
-import { ChangeEvent, useMemo, useRef, useState } from 'react';
+import { ChangeEvent, useMemo, useState } from 'react';
 import {
   AlertTriangle,
   Check,
-  Download,
   Eye,
-  Image as ImageIcon,
-  Link as LinkIcon,
+  MessageCircle,
   Palette,
-  RefreshCcw,
   Save,
-  Settings as SettingsIcon,
   SlidersHorizontal,
   Store,
-  Upload,
 } from 'lucide-react';
 
-import { KebayaItem, mockKebayas, mockSiteSettings, SiteSettings } from '@/data/mockData';
+import { KebayaItem, mockKebayas, SiteSettings } from '@/data/mockData';
 import {
   applyCatalogCardMode,
-  normalizeSiteSettings,
   useSavedSiteSettings,
   writeSavedSiteSettings,
 } from '@/lib/site-settings';
-
-type SettingsTab = 'profile' | 'contact' | 'catalog' | 'display' | 'system';
 
 type TextField = Extract<
   keyof SiteSettings,
@@ -38,8 +30,6 @@ type TextField = Extract<
   | 'instagramUrl'
   | 'tiktokUrl'
   | 'mapsUrl'
-  | 'logoUrl'
-  | 'faviconUrl'
 >;
 
 type BooleanField = Extract<
@@ -52,26 +42,12 @@ type BooleanField = Extract<
   | 'showProductColor'
   | 'showProductDescription'
   | 'showCardCta'
-  | 'showPromoBanner'
 >;
 
-type ColorField = Extract<keyof SiteSettings, 'brandColor' | 'accentColor'>;
 type ThemeColorField = Extract<
   keyof SiteSettings,
   'backgroundColor' | 'textColor' | 'primaryColor' | 'accentColor' | 'surfaceColor' | 'borderColor'
 >;
-
-const tabs: Array<{
-  id: SettingsTab;
-  label: string;
-  icon: typeof Store;
-}> = [
-  { id: 'profile', label: 'Profile', icon: Store },
-  { id: 'contact', label: 'Contact', icon: LinkIcon },
-  { id: 'catalog', label: 'Catalog', icon: SlidersHorizontal },
-  { id: 'display', label: 'Display', icon: Palette },
-  { id: 'system', label: 'System', icon: SettingsIcon },
-];
 
 const statusOptions: Array<{
   value: SiteSettings['status'];
@@ -81,38 +57,18 @@ const statusOptions: Array<{
   {
     value: 'active',
     label: 'Active',
-    description: 'Public catalog stays available.',
+    description: 'Public catalog is ready for normal customer browsing.',
   },
   {
     value: 'maintenance',
     label: 'Maintenance',
-    description: 'Use when catalog work is in progress.',
+    description: 'Use when catalog data is being cleaned up.',
   },
   {
     value: 'coming-soon',
     label: 'Coming Soon',
-    description: 'Use before public launch.',
+    description: 'Use before a launch or major catalog refresh.',
   },
-];
-
-const productStatusOptions: Array<{
-  value: SiteSettings['defaultProductStatus'];
-  label: string;
-}> = [
-  { value: 'available', label: 'Available' },
-  { value: 'rented', label: 'Rented' },
-  { value: 'maintenance', label: 'Maintenance' },
-  { value: 'archived', label: 'Archived' },
-];
-
-const sortOptions: Array<{
-  value: SiteSettings['defaultSort'];
-  label: string;
-}> = [
-  { value: 'newest', label: 'Newest first' },
-  { value: 'featured', label: 'Featured first' },
-  { value: 'price-low', label: 'Price low to high' },
-  { value: 'price-high', label: 'Price high to low' },
 ];
 
 const catalogCardModeOptions: Array<{
@@ -123,17 +79,17 @@ const catalogCardModeOptions: Array<{
   {
     value: 'minimal',
     label: 'Minimal',
-    description: 'Image, name, and availability.',
+    description: 'Image-first browsing with only core availability.',
   },
   {
     value: 'standard',
     label: 'Standard',
-    description: 'Best browsing balance for customers.',
+    description: 'Best default balance for shoppers scanning the catalog.',
   },
   {
     value: 'detailed',
     label: 'Detailed',
-    description: 'Adds code, specs, description, and CTA.',
+    description: 'Shows more context before opening product detail.',
   },
 ];
 
@@ -145,42 +101,42 @@ const catalogCardToggleOptions: Array<{
   {
     key: 'showAvailabilityBadges',
     title: 'Availability badge',
-    description: 'Show whether an item is available, rented, maintenance, or archived.',
+    description: 'Shows available, rented, maintenance, or archived status.',
   },
   {
     key: 'showPrices',
     title: 'Rental price',
-    description: 'Show the rental price on catalog cards.',
+    description: 'Shows rental price before opening product details.',
   },
   {
     key: 'showProductModel',
-    title: 'Model',
-    description: 'Show the kebaya model such as Modern, Klasik, Kartini, or Kutubaru.',
+    title: 'Model label',
+    description: 'Shows Modern, Klasik, Kartini, or Kutubaru.',
   },
   {
     key: 'showProductSize',
-    title: 'Size',
-    description: 'Show the item size directly on the card.',
+    title: 'Size chip',
+    description: 'Shows the size label directly on catalog cards.',
   },
   {
     key: 'showProductCode',
-    title: 'Product code',
-    description: 'Show the unique inventory code on the image.',
+    title: 'Inventory code',
+    description: 'Useful internally, but noisier for customers.',
   },
   {
     key: 'showProductColor',
-    title: 'Color',
-    description: 'Show the main color as a product spec chip.',
+    title: 'Color chip',
+    description: 'Shows the main color as a quick comparison cue.',
   },
   {
     key: 'showProductDescription',
     title: 'Short description',
-    description: 'Show a compact description on larger cards.',
+    description: 'Adds copy on spacious card layouts.',
   },
   {
     key: 'showCardCta',
-    title: 'Detail CTA',
-    description: 'Show a card-level detail button.',
+    title: 'Detail button',
+    description: 'Adds a clear card-level command.',
   },
 ];
 
@@ -192,12 +148,17 @@ const themeColorOptions: Array<{
   {
     key: 'backgroundColor',
     label: 'Background',
-    description: 'Page background.',
+    description: 'Page background color.',
+  },
+  {
+    key: 'surfaceColor',
+    label: 'Surface',
+    description: 'Cards, forms, and panels.',
   },
   {
     key: 'textColor',
     label: 'Text',
-    description: 'Primary text and icon color.',
+    description: 'Primary copy and icon color.',
   },
   {
     key: 'primaryColor',
@@ -210,19 +171,40 @@ const themeColorOptions: Array<{
     description: 'Dark supporting surfaces.',
   },
   {
-    key: 'surfaceColor',
-    label: 'Surface',
-    description: 'Cards, forms, and panels.',
-  },
-  {
     key: 'borderColor',
     label: 'Border',
-    description: 'Default divider and outline color.',
+    description: 'Dividers and outlines.',
   },
 ];
 
 function isValidHexColor(value: string) {
   return /^#[0-9A-Fa-f]{6}$/.test(value.trim());
+}
+
+function formatPrice(price: number) {
+  return new Intl.NumberFormat('id-ID', {
+    style: 'currency',
+    currency: 'IDR',
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
+  }).format(price);
+}
+
+function getStatusDetails(status: KebayaItem['status']) {
+  switch (status) {
+    case 'available':
+      return { text: 'Tersedia', className: 'bg-emerald-50 text-emerald-800 border-emerald-200' };
+    case 'rented':
+      return { text: 'Disewa', className: 'bg-amber-50 text-amber-800 border-amber-200' };
+    case 'maintenance':
+      return { text: 'Perbaikan', className: 'bg-rose-50 text-rose-800 border-rose-200' };
+    default:
+      return { text: 'Arsip', className: 'bg-slate-100 text-slate-700 border-slate-300' };
+  }
+}
+
+function cleanPhone(value: string) {
+  return value.replace(/\D/g, '');
 }
 
 function getValidationErrors(settings: SiteSettings) {
@@ -231,8 +213,6 @@ function getValidationErrors(settings: SiteSettings) {
     { key: 'instagramUrl', label: 'Instagram URL' },
     { key: 'tiktokUrl', label: 'TikTok URL' },
     { key: 'mapsUrl', label: 'Google Maps URL' },
-    { key: 'logoUrl', label: 'Logo URL' },
-    { key: 'faviconUrl', label: 'Favicon URL' },
   ];
 
   if (!settings.studioName.trim()) {
@@ -241,7 +221,7 @@ function getValidationErrors(settings: SiteSettings) {
 
   if (!settings.whatsappNumber.trim()) {
     errors.whatsappNumber = 'WhatsApp number is required.';
-  } else if (settings.whatsappNumber.replace(/\D/g, '').length < 9) {
+  } else if (cleanPhone(settings.whatsappNumber).length < 9) {
     errors.whatsappNumber = 'Use a complete WhatsApp number.';
   }
 
@@ -269,7 +249,7 @@ function getValidationErrors(settings: SiteSettings) {
 
   for (const option of themeColorOptions) {
     if (!isValidHexColor(settings[option.key])) {
-      errors[option.key] = 'Use a 6-digit hex color, for example #FFDE00.';
+      errors[option.key] = 'Use a 6-digit hex color, for example #111111.';
     }
   }
 
@@ -284,83 +264,37 @@ function getValidationErrors(settings: SiteSettings) {
   return errors;
 }
 
-function formatDateTime(value: string) {
-  const date = new Date(value);
-
-  if (Number.isNaN(date.getTime())) {
-    return 'Not saved yet';
-  }
-
-  return new Intl.DateTimeFormat('id-ID', {
-    dateStyle: 'medium',
-    timeStyle: 'short',
-  }).format(date);
-}
-
 function FieldError({ children }: { children?: string }) {
   if (!children) {
     return null;
   }
 
-  return <p className="mt-1 text-xs font-medium text-red-600">{children}</p>;
-}
-
-function ThemeColorControl({
-  option,
-  value,
-  onChange,
-  error,
-}: {
-  option: (typeof themeColorOptions)[number];
-  value: string;
-  onChange: (event: ChangeEvent<HTMLInputElement>) => void;
-  error?: string;
-}) {
-  return (
-    <div>
-      <label className="mb-1 block text-sm font-medium text-neutral-700">{option.label}</label>
-      <div className="flex items-center gap-3 border border-neutral-200 bg-neutral-50 px-3 py-2">
-        <input
-          type="color"
-          value={value}
-          onChange={onChange}
-          className="h-9 w-11 cursor-pointer border border-neutral-200 bg-white"
-          aria-label={`${option.label} color`}
-        />
-        <input
-          type="text"
-          value={value}
-          onChange={onChange}
-          className="w-full bg-transparent font-mono text-sm uppercase outline-none"
-        />
-        <span
-          className="h-7 w-7 shrink-0 border border-neutral-200"
-          style={{ backgroundColor: value }}
-          aria-hidden="true"
-        />
-      </div>
-      <p className="mt-1 text-xs text-neutral-500">{option.description}</p>
-      <FieldError>{error}</FieldError>
-    </div>
-  );
+  return <p className="mt-1 text-xs font-semibold text-red-600">{children}</p>;
 }
 
 function SectionPanel({
   title,
   description,
+  icon: Icon,
   children,
 }: {
   title: string;
   description?: string;
+  icon: typeof Store;
   children: React.ReactNode;
 }) {
   return (
-    <section className=" border border-neutral-200 bg-white p-6 shadow-sm">
-      <div className="mb-5">
-        <h2 className="text-lg font-semibold text-neutral-900">{title}</h2>
-        {description && <p className="mt-1 text-sm text-neutral-500">{description}</p>}
+    <section className="border border-neutral-200 bg-white shadow-sm">
+      <div className="flex items-start gap-3 border-b border-neutral-200 p-4 sm:p-5">
+        <div className="border border-neutral-200 bg-neutral-50 p-2 text-neutral-700">
+          <Icon className="h-5 w-5" />
+        </div>
+        <div className="min-w-0">
+          <h2 className="text-base font-semibold text-neutral-950">{title}</h2>
+          {description && <p className="mt-1 text-sm leading-relaxed text-neutral-500">{description}</p>}
+        </div>
       </div>
-      {children}
+      <div className="p-4 sm:p-5">{children}</div>
     </section>
   );
 }
@@ -377,17 +311,25 @@ function ToggleRow({
   onChange: (checked: boolean) => void;
 }) {
   return (
-    <div className="flex items-center justify-between gap-4 border border-neutral-200 p-4">
-      <div>
-        <p className="text-sm font-medium text-neutral-900">{title}</p>
-        <p className="mt-1 text-xs text-neutral-500">{description}</p>
-      </div>
-      <button
-        type="button"
-        aria-pressed={checked}
-        onClick={() => onChange(!checked)}
-        className={`relative h-6 w-11 shrink-0 transition-colors ${
-          checked ? 'bg-neutral-900' : 'bg-neutral-200'
+    <button
+      type="button"
+      aria-pressed={checked}
+      onClick={() => onChange(!checked)}
+      className={`flex w-full items-start justify-between gap-4 border p-4 text-left transition-colors ${
+        checked
+          ? 'border-neutral-900 bg-neutral-900 text-white'
+          : 'border-neutral-200 bg-white text-neutral-700 hover:bg-neutral-50'
+      }`}
+    >
+      <span>
+        <span className="block text-sm font-semibold">{title}</span>
+        <span className={`mt-1 block text-xs ${checked ? 'text-neutral-300' : 'text-neutral-500'}`}>
+          {description}
+        </span>
+      </span>
+      <span
+        className={`relative mt-0.5 h-6 w-11 shrink-0 transition-colors ${
+          checked ? 'bg-white/25' : 'bg-neutral-200'
         }`}
       >
         <span
@@ -395,31 +337,49 @@ function ToggleRow({
             checked ? 'translate-x-6' : 'translate-x-1'
           }`}
         />
-      </button>
-    </div>
+      </span>
+    </button>
   );
 }
 
-function formatPrice(price: number) {
-  return new Intl.NumberFormat('id-ID', {
-    style: 'currency',
-    currency: 'IDR',
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0,
-  }).format(price);
-}
-
-function getStatusDetails(status: KebayaItem['status']) {
-  switch (status) {
-    case 'available':
-      return { text: 'Tersedia', className: 'bg-emerald-50 text-emerald-800 border-emerald-200' };
-    case 'rented':
-      return { text: 'Disewa', className: 'bg-amber-50 text-amber-800 border-amber-200' };
-    case 'maintenance':
-      return { text: 'Perbaikan', className: 'bg-rose-50 text-rose-800 border-rose-200' };
-    default:
-      return { text: 'Arsip', className: 'bg-slate-100 text-slate-700 border-slate-300' };
-  }
+function ThemeColorControl({
+  option,
+  value,
+  onChange,
+  error,
+}: {
+  option: (typeof themeColorOptions)[number];
+  value: string;
+  onChange: (event: ChangeEvent<HTMLInputElement>) => void;
+  error?: string;
+}) {
+  return (
+    <div>
+      <label className="mb-1 block text-sm font-semibold text-neutral-700">{option.label}</label>
+      <div className="flex items-center gap-3 border border-neutral-200 bg-neutral-50 px-3 py-2">
+        <input
+          type="color"
+          value={value}
+          onChange={onChange}
+          className="h-9 w-11 cursor-pointer border border-neutral-200 bg-white"
+          aria-label={`${option.label} color`}
+        />
+        <input
+          type="text"
+          value={value}
+          onChange={onChange}
+          className="min-w-0 flex-1 bg-transparent font-mono text-sm uppercase outline-none"
+        />
+        <span
+          className="h-7 w-7 shrink-0 border border-neutral-200"
+          style={{ backgroundColor: value }}
+          aria-hidden="true"
+        />
+      </div>
+      <p className="mt-1 text-xs text-neutral-500">{option.description}</p>
+      <FieldError>{error}</FieldError>
+    </div>
+  );
 }
 
 function CatalogCardPreview({
@@ -432,10 +392,10 @@ function CatalogCardPreview({
   const statusInfo = getStatusDetails(product.status);
 
   return (
-    <div className=" border border-neutral-200 p-5">
-      <div className="mb-4 flex items-center justify-between">
-        <p className="text-xs font-semibold uppercase tracking-widest text-neutral-500">
-          Catalog Card Preview
+    <div className="border border-neutral-200 bg-white p-4">
+      <div className="mb-4 flex items-center justify-between gap-3">
+        <p className="font-mono text-[10px] font-bold uppercase tracking-widest text-neutral-400">
+          Card preview
         </p>
         <Eye className="h-4 w-4 text-neutral-400" />
       </div>
@@ -450,13 +410,13 @@ function CatalogCardPreview({
           />
           <div className="absolute left-3 top-3 flex flex-col items-start gap-1.5">
             {settings.showProductCode && (
-              <span className=" bg-black/80 px-2 py-0.5 font-mono text-[10px] font-semibold uppercase tracking-wider text-white backdrop-blur-xs">
+              <span className="bg-black/80 px-2 py-0.5 font-mono text-[10px] font-semibold uppercase tracking-wider text-white">
                 {product.code}
               </span>
             )}
             {settings.showAvailabilityBadges && (
               <span
-                className={` border px-2 py-0.5 text-[10px] font-semibold tracking-wide shadow-xs backdrop-blur-xs ${statusInfo.className}`}
+                className={`border px-2 py-0.5 text-[10px] font-semibold ${statusInfo.className}`}
               >
                 {statusInfo.text}
               </span>
@@ -464,16 +424,15 @@ function CatalogCardPreview({
           </div>
         </div>
 
-        <div className="flex flex-col p-4">
+        <div className="p-4">
           {settings.showProductModel && (
-            <span className="mb-1 font-mono text-[10px] font-semibold uppercase tracking-wider text-neutral-500">
+            <span className="mb-1 block font-mono text-[10px] font-semibold uppercase tracking-wider text-neutral-500">
               Koleksi {product.model}
             </span>
           )}
-          <h3 className="font-serif text-base font-medium leading-tight text-neutral-950">
+          <h3 className="font-serif text-base font-semibold leading-tight text-neutral-950">
             {product.name}
           </h3>
-
           {settings.showProductDescription && (
             <p className="mt-2 line-clamp-2 text-xs leading-relaxed text-neutral-600">
               {product.description}
@@ -496,12 +455,12 @@ function CatalogCardPreview({
               {(settings.showProductSize || settings.showProductColor) && (
                 <div className="flex flex-wrap gap-1.5">
                   {settings.showProductSize && (
-                    <span className=" bg-neutral-100 px-2 py-0.5 font-mono text-[10px] font-medium text-neutral-600">
+                    <span className="bg-neutral-100 px-2 py-0.5 font-mono text-[10px] font-medium text-neutral-600">
                       Ukuran {product.size}
                     </span>
                   )}
                   {settings.showProductColor && (
-                    <span className=" bg-neutral-100 px-2 py-0.5 font-mono text-[10px] font-medium text-neutral-600">
+                    <span className="bg-neutral-100 px-2 py-0.5 font-mono text-[10px] font-medium text-neutral-600">
                       {product.color}
                     </span>
                   )}
@@ -525,12 +484,9 @@ function CatalogCardPreview({
 }
 
 export default function SettingsPage() {
-  const [activeTab, setActiveTab] = useState<SettingsTab>('profile');
   const savedSettings = useSavedSiteSettings();
   const [settingsDraft, setSettingsDraft] = useState<SiteSettings | null>(null);
   const [saveState, setSaveState] = useState<'idle' | 'saved' | 'error'>('idle');
-  const [importError, setImportError] = useState('');
-  const fileInputRef = useRef<HTMLInputElement | null>(null);
   const settings = settingsDraft ?? savedSettings;
   const previewProduct = mockKebayas[0];
 
@@ -540,6 +496,11 @@ export default function SettingsPage() {
     () => JSON.stringify(settings) !== JSON.stringify(savedSettings),
     [settings, savedSettings],
   );
+  const whatsappReady = cleanPhone(settings.whatsappNumber).length >= 9;
+  const publicStatusTone =
+    settings.status === 'active'
+      ? 'border-emerald-200 bg-emerald-50 text-emerald-700'
+      : 'border-amber-200 bg-amber-50 text-amber-700';
 
   const updateField = <Key extends keyof SiteSettings>(key: Key, value: SiteSettings[Key]) => {
     setSaveState('idle');
@@ -564,7 +525,7 @@ export default function SettingsPage() {
   };
 
   const updateColorField =
-    (key: ColorField | ThemeColorField) => (event: ChangeEvent<HTMLInputElement>) => {
+    (key: ThemeColorField) => (event: ChangeEvent<HTMLInputElement>) => {
       updateField(key, event.target.value);
     };
 
@@ -581,6 +542,7 @@ export default function SettingsPage() {
     const nextSettings: SiteSettings = {
       ...settings,
       brandColor: settings.textColor,
+      currency: 'IDR',
       updatedAt: new Date().toISOString(),
     };
 
@@ -591,83 +553,34 @@ export default function SettingsPage() {
 
   const discardChanges = () => {
     setSettingsDraft(null);
-    setImportError('');
     setSaveState('idle');
   };
 
-  const resetToDefaults = () => {
-    const nextSettings: SiteSettings = {
-      ...mockSiteSettings,
-      updatedAt: new Date().toISOString(),
-    };
-
-    writeSavedSiteSettings(nextSettings);
-    setSettingsDraft(null);
-    setImportError('');
-    setSaveState('saved');
-  };
-
-  const exportSettings = () => {
-    const payload = JSON.stringify(settings, null, 2);
-    const blob = new Blob([payload], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-
-    link.href = url;
-    link.download = 'farsha-studio-settings.json';
-    document.body.appendChild(link);
-    link.click();
-    link.remove();
-    URL.revokeObjectURL(url);
-  };
-
-  const importSettings = async (event: ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-
-    if (!file) {
-      return;
-    }
-
-    try {
-      const text = await file.text();
-      const parsed = JSON.parse(text) as Partial<SiteSettings>;
-      const nextSettings = normalizeSiteSettings(parsed);
-      const nextErrors = getValidationErrors(nextSettings);
-
-      if (Object.keys(nextErrors).length > 0) {
-        setImportError('Imported file has invalid settings values.');
-        return;
-      }
-
-      setSettingsDraft(nextSettings);
-      setImportError('');
-      setSaveState('idle');
-    } catch {
-      setImportError('Choose a valid Farsha Studio settings JSON file.');
-    } finally {
-      event.target.value = '';
-    }
-  };
-
   return (
-    <div className="p-8">
-      <div className="mb-8 flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+    <div className="mx-auto flex w-full max-w-7xl flex-col gap-5 px-4 py-5 sm:px-6 sm:py-6 lg:px-8 lg:py-8">
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-neutral-900">Settings</h1>
-          <p className="mt-1 text-neutral-500">
-            Manage global studio preferences and admin defaults.
+          <p className="font-mono text-[10px] font-bold uppercase tracking-widest text-neutral-400">
+            Studio settings
+          </p>
+          <h1 className="mt-2 text-2xl font-semibold tracking-tight text-neutral-950 sm:text-3xl">
+            Customer-facing controls
+          </h1>
+          <p className="mt-2 max-w-2xl text-sm leading-relaxed text-neutral-500 sm:text-base">
+            Settings here affect the catalog experience, saved contact references, and shared theme
+            tokens. Non-wired logo/favicon utilities were removed from this screen.
           </p>
         </div>
 
-        <div className="flex flex-wrap items-center gap-3">
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
           {saveState === 'saved' && (
-            <span className="inline-flex items-center gap-1.5 bg-green-50 px-3 py-2 text-sm font-medium text-green-700">
+            <span className="inline-flex items-center justify-center gap-1.5 border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm font-semibold text-emerald-700">
               <Check className="h-4 w-4" />
               Saved locally
             </span>
           )}
           {saveState === 'error' && (
-            <span className="inline-flex items-center gap-1.5 bg-red-50 px-3 py-2 text-sm font-medium text-red-700">
+            <span className="inline-flex items-center justify-center gap-1.5 border border-red-200 bg-red-50 px-3 py-2 text-sm font-semibold text-red-700">
               <AlertTriangle className="h-4 w-4" />
               Review fields
             </span>
@@ -676,7 +589,7 @@ export default function SettingsPage() {
             <button
               type="button"
               onClick={discardChanges}
-              className=" border border-neutral-200 bg-white px-4 py-2.5 text-sm font-medium text-neutral-700 transition-colors hover:bg-neutral-50"
+              className="border border-neutral-200 bg-white px-4 py-2.5 text-sm font-semibold text-neutral-700 transition-colors hover:bg-neutral-50"
             >
               Discard
             </button>
@@ -685,559 +598,364 @@ export default function SettingsPage() {
             type="button"
             onClick={saveSettings}
             disabled={!hasChanges || hasErrors}
-            className="flex items-center gap-2 bg-neutral-900 px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-neutral-800 disabled:cursor-not-allowed disabled:opacity-45"
+            className="inline-flex items-center justify-center gap-2 bg-neutral-900 px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-neutral-800 disabled:cursor-not-allowed disabled:opacity-45"
           >
             <Save className="h-4 w-4" />
-            Save Changes
+            Save changes
           </button>
         </div>
       </div>
 
-      <div className="grid gap-6 xl:grid-cols-[220px_minmax(0,1fr)]">
-        <nav className="flex gap-2 overflow-x-auto border border-neutral-200 bg-white p-2 shadow-sm xl:flex-col xl:self-start">
-          {tabs.map((tab) => {
-            const Icon = tab.icon;
-            const isActive = activeTab === tab.id;
+      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        <div className={`border p-4 shadow-sm ${publicStatusTone}`}>
+          <p className="text-xs font-semibold uppercase tracking-widest">Store status</p>
+          <p className="mt-3 text-2xl font-semibold capitalize tracking-tight">
+            {settings.status.replace('-', ' ')}
+          </p>
+          <p className="mt-2 text-sm opacity-80">Reference for admin readiness checks.</p>
+        </div>
+        <div className="border border-neutral-200 bg-white p-4 shadow-sm">
+          <p className="text-xs font-semibold uppercase tracking-widest text-neutral-500">
+            WhatsApp
+          </p>
+          <p className="mt-3 break-words text-lg font-semibold text-neutral-950">
+            {whatsappReady ? settings.whatsappNumber : 'Needs number'}
+          </p>
+          <p className="mt-2 text-sm text-neutral-500">Used by admin dashboard readiness.</p>
+        </div>
+        <div className="border border-neutral-200 bg-white p-4 shadow-sm">
+          <p className="text-xs font-semibold uppercase tracking-widest text-neutral-500">
+            Catalog mode
+          </p>
+          <p className="mt-3 text-2xl font-semibold capitalize tracking-tight text-neutral-950">
+            {settings.catalogCardMode}
+          </p>
+          <p className="mt-2 text-sm text-neutral-500">Controls public catalog card density.</p>
+        </div>
+        <div className="border border-neutral-200 bg-white p-4 shadow-sm">
+          <p className="text-xs font-semibold uppercase tracking-widest text-neutral-500">
+            Grid defaults
+          </p>
+          <p className="mt-3 text-2xl font-semibold tracking-tight text-neutral-950">
+            {settings.defaultMobileGrid}/{settings.defaultDesktopGrid}
+          </p>
+          <p className="mt-2 text-sm text-neutral-500">Mobile and desktop catalog columns.</p>
+        </div>
+      </div>
 
-            return (
-              <button
-                key={tab.id}
-                type="button"
-                onClick={() => setActiveTab(tab.id)}
-                className={`flex min-w-max items-center gap-3 px-3 py-2.5 text-sm font-medium transition-colors ${
-                  isActive
-                    ? 'bg-neutral-900 text-white'
-                    : 'text-neutral-600 hover:bg-neutral-100 hover:text-neutral-900'
-                }`}
-              >
-                <Icon className="h-4 w-4" />
-                {tab.label}
-              </button>
-            );
-          })}
-        </nav>
+      <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_340px]">
+        <div className="space-y-5">
+          <SectionPanel
+            title="Public identity"
+            description="Reference values used by admin readiness and future public integrations."
+            icon={Store}
+          >
+            <div className="grid gap-4 md:grid-cols-2">
+              <div>
+                <label className="mb-1 block text-sm font-semibold text-neutral-700">
+                  Studio name
+                </label>
+                <input
+                  type="text"
+                  value={settings.studioName}
+                  onChange={updateTextField('studioName')}
+                  className="w-full border border-neutral-200 bg-neutral-50 px-4 py-2.5 text-sm transition-all focus:bg-white focus:outline-none focus:ring-2 focus:ring-neutral-900"
+                />
+                <FieldError>{validationErrors.studioName}</FieldError>
+              </div>
+              <div>
+                <label className="mb-1 block text-sm font-semibold text-neutral-700">
+                  Location label
+                </label>
+                <input
+                  type="text"
+                  value={settings.locationLabel}
+                  onChange={updateTextField('locationLabel')}
+                  className="w-full border border-neutral-200 bg-neutral-50 px-4 py-2.5 text-sm transition-all focus:bg-white focus:outline-none focus:ring-2 focus:ring-neutral-900"
+                />
+              </div>
+              <div className="md:col-span-2">
+                <label className="mb-1 block text-sm font-semibold text-neutral-700">
+                  Tagline
+                </label>
+                <textarea
+                  rows={3}
+                  value={settings.tagline}
+                  onChange={updateTextField('tagline')}
+                  className="w-full resize-none border border-neutral-200 bg-neutral-50 px-4 py-2.5 text-sm transition-all focus:bg-white focus:outline-none focus:ring-2 focus:ring-neutral-900"
+                />
+              </div>
+            </div>
 
-        <div className="min-w-0 space-y-6">
-          {activeTab === 'profile' && (
-            <>
-              <SectionPanel
-                title="Store Profile"
-                description="These values identify the studio across admin and public surfaces."
-              >
-                <div className="grid gap-5 md:grid-cols-2">
-                  <div>
-                    <label className="mb-1 block text-sm font-medium text-neutral-700">
-                      Studio Name
-                    </label>
-                    <input
-                      type="text"
-                      value={settings.studioName}
-                      onChange={updateTextField('studioName')}
-                      className="w-full border border-neutral-200 bg-neutral-50 px-4 py-2 text-sm transition-all focus:bg-white focus:outline-none focus:ring-2 focus:ring-neutral-900"
-                    />
-                    <FieldError>{validationErrors.studioName}</FieldError>
-                  </div>
+            <div className="mt-5 grid gap-3 md:grid-cols-3">
+              {statusOptions.map((option) => (
+                <button
+                  key={option.value}
+                  type="button"
+                  onClick={() => updateField('status', option.value)}
+                  className={`border p-4 text-left transition-colors ${
+                    settings.status === option.value
+                      ? 'border-neutral-900 bg-neutral-900 text-white'
+                      : 'border-neutral-200 bg-white text-neutral-700 hover:bg-neutral-50'
+                  }`}
+                >
+                  <span className="block text-sm font-semibold">{option.label}</span>
+                  <span
+                    className={`mt-1 block text-xs ${
+                      settings.status === option.value ? 'text-neutral-300' : 'text-neutral-500'
+                    }`}
+                  >
+                    {option.description}
+                  </span>
+                </button>
+              ))}
+            </div>
+          </SectionPanel>
 
-                  <div>
-                    <label className="mb-1 block text-sm font-medium text-neutral-700">
-                      Public Location Label
-                    </label>
-                    <input
-                      type="text"
-                      value={settings.locationLabel}
-                      onChange={updateTextField('locationLabel')}
-                      className="w-full border border-neutral-200 bg-neutral-50 px-4 py-2 text-sm transition-all focus:bg-white focus:outline-none focus:ring-2 focus:ring-neutral-900"
-                    />
-                  </div>
+          <SectionPanel
+            title="Contact and social"
+            description="Saved contact references. The current public landing still has some hardcoded copy, so this section is intentionally conservative."
+            icon={MessageCircle}
+          >
+            <div className="grid gap-4 md:grid-cols-2">
+              <div>
+                <label className="mb-1 block text-sm font-semibold text-neutral-700">
+                  WhatsApp number
+                </label>
+                <input
+                  type="tel"
+                  value={settings.whatsappNumber}
+                  onChange={updateTextField('whatsappNumber')}
+                  className="w-full border border-neutral-200 bg-neutral-50 px-4 py-2.5 text-sm transition-all focus:bg-white focus:outline-none focus:ring-2 focus:ring-neutral-900"
+                />
+                <FieldError>{validationErrors.whatsappNumber}</FieldError>
+              </div>
+              <div>
+                <label className="mb-1 block text-sm font-semibold text-neutral-700">Email</label>
+                <input
+                  type="email"
+                  value={settings.email}
+                  onChange={updateTextField('email')}
+                  className="w-full border border-neutral-200 bg-neutral-50 px-4 py-2.5 text-sm transition-all focus:bg-white focus:outline-none focus:ring-2 focus:ring-neutral-900"
+                />
+                <FieldError>{validationErrors.email}</FieldError>
+              </div>
+              <div className="md:col-span-2">
+                <label className="mb-1 block text-sm font-semibold text-neutral-700">Address</label>
+                <textarea
+                  rows={3}
+                  value={settings.address}
+                  onChange={updateTextField('address')}
+                  className="w-full resize-none border border-neutral-200 bg-neutral-50 px-4 py-2.5 text-sm transition-all focus:bg-white focus:outline-none focus:ring-2 focus:ring-neutral-900"
+                />
+              </div>
+              <div>
+                <label className="mb-1 block text-sm font-semibold text-neutral-700">
+                  Instagram URL
+                </label>
+                <input
+                  type="url"
+                  value={settings.instagramUrl}
+                  onChange={updateTextField('instagramUrl')}
+                  className="w-full border border-neutral-200 bg-neutral-50 px-4 py-2.5 text-sm transition-all focus:bg-white focus:outline-none focus:ring-2 focus:ring-neutral-900"
+                />
+                <FieldError>{validationErrors.instagramUrl}</FieldError>
+              </div>
+              <div>
+                <label className="mb-1 block text-sm font-semibold text-neutral-700">
+                  TikTok URL
+                </label>
+                <input
+                  type="url"
+                  value={settings.tiktokUrl}
+                  onChange={updateTextField('tiktokUrl')}
+                  className="w-full border border-neutral-200 bg-neutral-50 px-4 py-2.5 text-sm transition-all focus:bg-white focus:outline-none focus:ring-2 focus:ring-neutral-900"
+                />
+                <FieldError>{validationErrors.tiktokUrl}</FieldError>
+              </div>
+              <div className="md:col-span-2">
+                <label className="mb-1 block text-sm font-semibold text-neutral-700">
+                  Google Maps URL
+                </label>
+                <input
+                  type="url"
+                  value={settings.mapsUrl}
+                  onChange={updateTextField('mapsUrl')}
+                  className="w-full border border-neutral-200 bg-neutral-50 px-4 py-2.5 text-sm transition-all focus:bg-white focus:outline-none focus:ring-2 focus:ring-neutral-900"
+                />
+                <FieldError>{validationErrors.mapsUrl}</FieldError>
+              </div>
+            </div>
+          </SectionPanel>
 
-                  <div className="md:col-span-2">
-                    <label className="mb-1 block text-sm font-medium text-neutral-700">
-                      Tagline
-                    </label>
-                    <textarea
-                      rows={3}
-                      value={settings.tagline}
-                      onChange={updateTextField('tagline')}
-                      className="w-full resize-none border border-neutral-200 bg-neutral-50 px-4 py-2 text-sm transition-all focus:bg-white focus:outline-none focus:ring-2 focus:ring-neutral-900"
-                    />
-                  </div>
-                </div>
-              </SectionPanel>
+          <SectionPanel
+            title="Catalog display"
+            description="These controls are wired to the public catalog grid and product cards."
+            icon={SlidersHorizontal}
+          >
+            <div className="grid gap-4 lg:grid-cols-3">
+              {catalogCardModeOptions.map((option) => (
+                <button
+                  key={option.value}
+                  type="button"
+                  onClick={() => updateCatalogCardMode(option.value)}
+                  className={`border p-4 text-left transition-colors ${
+                    settings.catalogCardMode === option.value
+                      ? 'border-neutral-900 bg-neutral-900 text-white'
+                      : 'border-neutral-200 bg-white text-neutral-700 hover:bg-neutral-50'
+                  }`}
+                >
+                  <span className="block text-sm font-semibold">{option.label}</span>
+                  <span
+                    className={`mt-1 block text-xs ${
+                      settings.catalogCardMode === option.value
+                        ? 'text-neutral-300'
+                        : 'text-neutral-500'
+                    }`}
+                  >
+                    {option.description}
+                  </span>
+                </button>
+              ))}
+            </div>
 
-              <SectionPanel title="Store Status">
-                <div className="grid gap-3 md:grid-cols-3">
-                  {statusOptions.map((option) => (
+            <div className="mt-5 grid gap-3 md:grid-cols-2">
+              {catalogCardToggleOptions.map((option) => (
+                <ToggleRow
+                  key={option.key}
+                  title={option.title}
+                  description={option.description}
+                  checked={Boolean(settings[option.key])}
+                  onChange={(checked) => updateBooleanField(option.key, checked)}
+                />
+              ))}
+            </div>
+
+            <div className="mt-5 grid gap-5 md:grid-cols-2">
+              <div>
+                <label className="mb-2 block text-sm font-semibold text-neutral-700">
+                  Mobile grid
+                </label>
+                <div className="grid grid-cols-3 gap-2">
+                  {[1, 2, 3].map((value) => (
                     <button
-                      key={option.value}
+                      key={value}
                       type="button"
-                      onClick={() => updateField('status', option.value)}
-                      className={` border p-4 text-left transition-colors ${
-                        settings.status === option.value
+                      onClick={() =>
+                        updateField('defaultMobileGrid', value as SiteSettings['defaultMobileGrid'])
+                      }
+                      className={`border px-3 py-2 text-sm font-semibold transition-colors ${
+                        settings.defaultMobileGrid === value
                           ? 'border-neutral-900 bg-neutral-900 text-white'
                           : 'border-neutral-200 bg-white text-neutral-700 hover:bg-neutral-50'
                       }`}
                     >
-                      <span className="block text-sm font-semibold">{option.label}</span>
-                      <span
-                        className={`mt-1 block text-xs ${
-                          settings.status === option.value ? 'text-neutral-300' : 'text-neutral-500'
-                        }`}
-                      >
-                        {option.description}
-                      </span>
+                      {value}
                     </button>
                   ))}
                 </div>
-              </SectionPanel>
-            </>
-          )}
-
-          {activeTab === 'contact' && (
-            <SectionPanel
-              title="Contact & Social"
-              description="Use one source for customer contact links and footer information."
-            >
-              <div className="grid gap-5 md:grid-cols-2">
-                <div>
-                  <label className="mb-1 block text-sm font-medium text-neutral-700">
-                    WhatsApp Number
-                  </label>
-                  <input
-                    type="tel"
-                    value={settings.whatsappNumber}
-                    onChange={updateTextField('whatsappNumber')}
-                    className="w-full border border-neutral-200 bg-neutral-50 px-4 py-2 text-sm transition-all focus:bg-white focus:outline-none focus:ring-2 focus:ring-neutral-900"
-                  />
-                  <FieldError>{validationErrors.whatsappNumber}</FieldError>
-                </div>
-
-                <div>
-                  <label className="mb-1 block text-sm font-medium text-neutral-700">Email</label>
-                  <input
-                    type="email"
-                    value={settings.email}
-                    onChange={updateTextField('email')}
-                    className="w-full border border-neutral-200 bg-neutral-50 px-4 py-2 text-sm transition-all focus:bg-white focus:outline-none focus:ring-2 focus:ring-neutral-900"
-                  />
-                  <FieldError>{validationErrors.email}</FieldError>
-                </div>
-
-                <div className="md:col-span-2">
-                  <label className="mb-1 block text-sm font-medium text-neutral-700">Address</label>
-                  <textarea
-                    rows={3}
-                    value={settings.address}
-                    onChange={updateTextField('address')}
-                    className="w-full resize-none border border-neutral-200 bg-neutral-50 px-4 py-2 text-sm transition-all focus:bg-white focus:outline-none focus:ring-2 focus:ring-neutral-900"
-                  />
-                </div>
-
-                <div>
-                  <label className="mb-1 block text-sm font-medium text-neutral-700">
-                    Instagram URL
-                  </label>
-                  <input
-                    type="url"
-                    value={settings.instagramUrl}
-                    onChange={updateTextField('instagramUrl')}
-                    className="w-full border border-neutral-200 bg-neutral-50 px-4 py-2 text-sm transition-all focus:bg-white focus:outline-none focus:ring-2 focus:ring-neutral-900"
-                  />
-                  <FieldError>{validationErrors.instagramUrl}</FieldError>
-                </div>
-
-                <div>
-                  <label className="mb-1 block text-sm font-medium text-neutral-700">
-                    TikTok URL
-                  </label>
-                  <input
-                    type="url"
-                    value={settings.tiktokUrl}
-                    onChange={updateTextField('tiktokUrl')}
-                    className="w-full border border-neutral-200 bg-neutral-50 px-4 py-2 text-sm transition-all focus:bg-white focus:outline-none focus:ring-2 focus:ring-neutral-900"
-                  />
-                  <FieldError>{validationErrors.tiktokUrl}</FieldError>
-                </div>
-
-                <div className="md:col-span-2">
-                  <label className="mb-1 block text-sm font-medium text-neutral-700">
-                    Google Maps URL
-                  </label>
-                  <input
-                    type="url"
-                    value={settings.mapsUrl}
-                    onChange={updateTextField('mapsUrl')}
-                    className="w-full border border-neutral-200 bg-neutral-50 px-4 py-2 text-sm transition-all focus:bg-white focus:outline-none focus:ring-2 focus:ring-neutral-900"
-                  />
-                  <FieldError>{validationErrors.mapsUrl}</FieldError>
+              </div>
+              <div>
+                <label className="mb-2 block text-sm font-semibold text-neutral-700">
+                  Desktop grid
+                </label>
+                <div className="grid grid-cols-3 gap-2">
+                  {[2, 3, 4].map((value) => (
+                    <button
+                      key={value}
+                      type="button"
+                      onClick={() =>
+                        updateField(
+                          'defaultDesktopGrid',
+                          value as SiteSettings['defaultDesktopGrid'],
+                        )
+                      }
+                      className={`border px-3 py-2 text-sm font-semibold transition-colors ${
+                        settings.defaultDesktopGrid === value
+                          ? 'border-neutral-900 bg-neutral-900 text-white'
+                          : 'border-neutral-200 bg-white text-neutral-700 hover:bg-neutral-50'
+                      }`}
+                    >
+                      {value}
+                    </button>
+                  ))}
                 </div>
               </div>
-            </SectionPanel>
-          )}
+            </div>
+          </SectionPanel>
 
-          {activeTab === 'catalog' && (
-            <>
-              <SectionPanel
-                title="Catalog Defaults"
-                description="Defaults used when creating or presenting collection items."
-              >
-                <div className="grid gap-5 md:grid-cols-2">
-                  <div>
-                    <label className="mb-1 block text-sm font-medium text-neutral-700">
-                      Currency
-                    </label>
-                    <select
-                      value={settings.currency}
-                      onChange={() => updateField('currency', 'IDR')}
-                      className="w-full border border-neutral-200 bg-white px-4 py-2 text-sm outline-none focus:ring-2 focus:ring-neutral-900"
-                    >
-                      <option value="IDR">IDR - Indonesian Rupiah</option>
-                    </select>
-                  </div>
-
-                  <div>
-                    <label className="mb-1 block text-sm font-medium text-neutral-700">
-                      Default Product Status
-                    </label>
-                    <select
-                      value={settings.defaultProductStatus}
-                      onChange={(event) =>
-                        updateField(
-                          'defaultProductStatus',
-                          event.target.value as SiteSettings['defaultProductStatus'],
-                        )
-                      }
-                      className="w-full border border-neutral-200 bg-white px-4 py-2 text-sm outline-none focus:ring-2 focus:ring-neutral-900"
-                    >
-                      {productStatusOptions.map((option) => (
-                        <option key={option.value} value={option.value}>
-                          {option.label}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-
-                  <div>
-                    <label className="mb-1 block text-sm font-medium text-neutral-700">
-                      Default Sort
-                    </label>
-                    <select
-                      value={settings.defaultSort}
-                      onChange={(event) =>
-                        updateField(
-                          'defaultSort',
-                          event.target.value as SiteSettings['defaultSort'],
-                        )
-                      }
-                      className="w-full border border-neutral-200 bg-white px-4 py-2 text-sm outline-none focus:ring-2 focus:ring-neutral-900"
-                    >
-                      {sortOptions.map((option) => (
-                        <option key={option.value} value={option.value}>
-                          {option.label}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                </div>
-              </SectionPanel>
-
-              <SectionPanel
-                title="Product Card Display"
-                description="Choose how much information customers see before opening an item."
-              >
-                <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_280px]">
-                  <div>
-                    <div className="mb-5 grid gap-3 md:grid-cols-3">
-                      {catalogCardModeOptions.map((option) => (
-                        <button
-                          key={option.value}
-                          type="button"
-                          onClick={() => updateCatalogCardMode(option.value)}
-                          className={` border p-4 text-left transition-colors ${
-                            settings.catalogCardMode === option.value
-                              ? 'border-neutral-900 bg-neutral-900 text-white'
-                              : 'border-neutral-200 bg-white text-neutral-700 hover:bg-neutral-50'
-                          }`}
-                        >
-                          <span className="block text-sm font-semibold">{option.label}</span>
-                          <span
-                            className={`mt-1 block text-xs ${
-                              settings.catalogCardMode === option.value
-                                ? 'text-neutral-300'
-                                : 'text-neutral-500'
-                            }`}
-                          >
-                            {option.description}
-                          </span>
-                        </button>
-                      ))}
-                    </div>
-
-                    <div className="grid gap-3 md:grid-cols-2">
-                      {catalogCardToggleOptions.map((option) => (
-                        <ToggleRow
-                          key={option.key}
-                          title={option.title}
-                          description={option.description}
-                          checked={Boolean(settings[option.key])}
-                          onChange={(checked) => updateBooleanField(option.key, checked)}
-                        />
-                      ))}
-                    </div>
-                  </div>
-
-                  <CatalogCardPreview settings={settings} product={previewProduct} />
-                </div>
-              </SectionPanel>
-            </>
-          )}
-
-          {activeTab === 'display' && (
-            <>
-              <SectionPanel
-                title="Theme Appearance"
-                description="Global design tokens used by public, admin, and POS surfaces."
-              >
-                <div className="space-y-6">
-                  <div className="grid gap-5 md:grid-cols-2">
-                    {themeColorOptions.map((option) => (
-                      <ThemeColorControl
-                        key={option.key}
-                        option={option}
-                        value={settings[option.key]}
-                        onChange={updateColorField(option.key)}
-                        error={validationErrors[option.key]}
-                      />
-                    ))}
-                  </div>
-
-                  <div className="border border-neutral-200 bg-neutral-50 p-4">
-                    <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-                      <div>
-                        <label
-                          htmlFor="theme-radius"
-                          className="block text-sm font-medium text-neutral-700"
-                        >
-                          Border Radius
-                        </label>
-                        <p className="mt-1 text-xs text-neutral-500">
-                          Set to 0 for strict sharp edges across the app.
-                        </p>
-                      </div>
-                      <div className="flex items-center gap-3 md:min-w-80">
-                        <input
-                          id="theme-radius"
-                          type="range"
-                          min="0"
-                          max="32"
-                          step="1"
-                          value={settings.borderRadius}
-                          onChange={updateBorderRadius}
-                          className="h-1 flex-1 appearance-none bg-neutral-200 accent-neutral-900"
-                        />
-                        <input
-                          type="number"
-                          min="0"
-                          max="32"
-                          value={settings.borderRadius}
-                          onChange={updateBorderRadius}
-                          className="w-20 border border-neutral-200 bg-white px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-neutral-900"
-                        />
-                        <span className="text-sm font-medium text-neutral-600">px</span>
-                      </div>
-                    </div>
-                    <FieldError>{validationErrors.borderRadius}</FieldError>
-                  </div>
-
-                  <div>
-                    <label className="mb-1 block text-sm font-medium text-neutral-700">
-                      Logo URL
-                    </label>
-                    <div className="flex items-center gap-3">
-                      <div className="flex h-11 w-11 shrink-0 items-center justify-center border border-neutral-200 bg-neutral-50">
-                        <ImageIcon className="h-5 w-5 text-neutral-400" />
-                      </div>
-                      <input
-                        type="url"
-                        value={settings.logoUrl}
-                        onChange={updateTextField('logoUrl')}
-                        placeholder="https://..."
-                        className="w-full border border-neutral-200 bg-neutral-50 px-4 py-2 text-sm transition-all focus:bg-white focus:outline-none focus:ring-2 focus:ring-neutral-900"
-                      />
-                    </div>
-                    <FieldError>{validationErrors.logoUrl}</FieldError>
-                  </div>
-
-                  <div>
-                    <label className="mb-1 block text-sm font-medium text-neutral-700">
-                      Favicon URL
-                    </label>
-                    <div className="flex items-center gap-3">
-                      <div className="flex h-11 w-11 shrink-0 items-center justify-center border border-neutral-200 bg-neutral-50">
-                        <ImageIcon className="h-5 w-5 text-neutral-400" />
-                      </div>
-                      <input
-                        type="url"
-                        value={settings.faviconUrl}
-                        onChange={updateTextField('faviconUrl')}
-                        placeholder="https://..."
-                        className="w-full border border-neutral-200 bg-neutral-50 px-4 py-2 text-sm transition-all focus:bg-white focus:outline-none focus:ring-2 focus:ring-neutral-900"
-                      />
-                    </div>
-                    <FieldError>{validationErrors.faviconUrl}</FieldError>
-                  </div>
-                </div>
-              </SectionPanel>
-
-              <SectionPanel title="Public Catalog Layout">
-                <div className="grid gap-5 md:grid-cols-2">
-                  <div>
-                    <label className="mb-2 block text-sm font-medium text-neutral-700">
-                      Mobile Grid
-                    </label>
-                    <div className="grid grid-cols-3 gap-2">
-                      {[1, 2, 3].map((value) => (
-                        <button
-                          key={value}
-                          type="button"
-                          onClick={() =>
-                            updateField(
-                              'defaultMobileGrid',
-                              value as SiteSettings['defaultMobileGrid'],
-                            )
-                          }
-                          className={` border px-3 py-2 text-sm font-medium transition-colors ${
-                            settings.defaultMobileGrid === value
-                              ? 'border-neutral-900 bg-neutral-900 text-white'
-                              : 'border-neutral-200 bg-white text-neutral-700 hover:bg-neutral-50'
-                          }`}
-                        >
-                          {value} Column{value > 1 ? 's' : ''}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="mb-2 block text-sm font-medium text-neutral-700">
-                      Desktop Grid
-                    </label>
-                    <div className="grid grid-cols-3 gap-2">
-                      {[2, 3, 4].map((value) => (
-                        <button
-                          key={value}
-                          type="button"
-                          onClick={() =>
-                            updateField(
-                              'defaultDesktopGrid',
-                              value as SiteSettings['defaultDesktopGrid'],
-                            )
-                          }
-                          className={` border px-3 py-2 text-sm font-medium transition-colors ${
-                            settings.defaultDesktopGrid === value
-                              ? 'border-neutral-900 bg-neutral-900 text-white'
-                              : 'border-neutral-200 bg-white text-neutral-700 hover:bg-neutral-50'
-                          }`}
-                        >
-                          {value} Columns
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-
-                  <div className="md:col-span-2">
-                    <ToggleRow
-                      title="Show promotion banner"
-                      description="Control the public promo strip globally."
-                      checked={settings.showPromoBanner}
-                      onChange={(checked) => updateBooleanField('showPromoBanner', checked)}
-                    />
-                  </div>
-                </div>
-              </SectionPanel>
-            </>
-          )}
-
-          {activeTab === 'system' && (
-            <>
-              <SectionPanel
-                title="Data Utilities"
-                description="These actions affect the local settings copy used by this admin page."
-              >
-                <div className="grid gap-3 md:grid-cols-3">
-                  <button
-                    type="button"
-                    onClick={exportSettings}
-                    className="flex items-center justify-center gap-2 border border-neutral-200 bg-white px-4 py-3 text-sm font-medium text-neutral-700 transition-colors hover:bg-neutral-50"
-                  >
-                    <Download className="h-4 w-4" />
-                    Export JSON
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => fileInputRef.current?.click()}
-                    className="flex items-center justify-center gap-2 border border-neutral-200 bg-white px-4 py-3 text-sm font-medium text-neutral-700 transition-colors hover:bg-neutral-50"
-                  >
-                    <Upload className="h-4 w-4" />
-                    Import JSON
-                  </button>
-                  <button
-                    type="button"
-                    onClick={resetToDefaults}
-                    className="flex items-center justify-center gap-2 border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium text-red-700 transition-colors hover:bg-red-100"
-                  >
-                    <RefreshCcw className="h-4 w-4" />
-                    Reset Defaults
-                  </button>
-                </div>
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  accept="application/json,.json"
-                  onChange={(event) => void importSettings(event)}
-                  className="hidden"
+          <SectionPanel
+            title="Theme appearance"
+            description="Shared visual tokens applied by the theme provider."
+            icon={Palette}
+          >
+            <div className="grid gap-4 md:grid-cols-2">
+              {themeColorOptions.map((option) => (
+                <ThemeColorControl
+                  key={option.key}
+                  option={option}
+                  value={settings[option.key]}
+                  onChange={updateColorField(option.key)}
+                  error={validationErrors[option.key]}
                 />
-                {importError && (
-                  <p className="mt-3 text-sm font-medium text-red-600">{importError}</p>
-                )}
-              </SectionPanel>
+              ))}
+            </div>
 
-              <SectionPanel title="System Snapshot">
-                <div className="grid gap-4 md:grid-cols-2">
-                  <div className=" border border-neutral-200 p-4">
-                    <p className="text-xs font-medium uppercase tracking-wide text-neutral-500">
-                      Save Mode
-                    </p>
-                    <p className="mt-1 text-sm font-semibold text-neutral-900">
-                      Browser local storage
-                    </p>
-                  </div>
-                  <div className=" border border-neutral-200 p-4">
-                    <p className="text-xs font-medium uppercase tracking-wide text-neutral-500">
-                      Last Updated
-                    </p>
-                    <p className="mt-1 text-sm font-semibold text-neutral-900">
-                      {formatDateTime(settings.updatedAt)}
-                    </p>
-                  </div>
-                  <div className=" border border-neutral-200 p-4">
-                    <p className="text-xs font-medium uppercase tracking-wide text-neutral-500">
-                      Settings Version
-                    </p>
-                    <p className="mt-1 text-sm font-semibold text-neutral-900">V1</p>
-                  </div>
-                  <div className=" border border-neutral-200 p-4">
-                    <p className="text-xs font-medium uppercase tracking-wide text-neutral-500">
-                      Public Status
-                    </p>
-                    <p className="mt-1 text-sm font-semibold capitalize text-neutral-900">
-                      {settings.status.replace('-', ' ')}
-                    </p>
-                  </div>
+            <div className="mt-5 border border-neutral-200 bg-neutral-50 p-4">
+              <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+                <div>
+                  <label
+                    htmlFor="theme-radius"
+                    className="block text-sm font-semibold text-neutral-700"
+                  >
+                    Border radius
+                  </label>
+                  <p className="mt-1 text-xs text-neutral-500">
+                    Keep this low for the current sharp Farsha admin style.
+                  </p>
                 </div>
-              </SectionPanel>
-            </>
-          )}
+                <div className="flex items-center gap-3 md:min-w-80">
+                  <input
+                    id="theme-radius"
+                    type="range"
+                    min="0"
+                    max="32"
+                    step="1"
+                    value={settings.borderRadius}
+                    onChange={updateBorderRadius}
+                    className="h-1 flex-1 appearance-none bg-neutral-200 accent-neutral-900"
+                  />
+                  <input
+                    type="number"
+                    min="0"
+                    max="32"
+                    value={settings.borderRadius}
+                    onChange={updateBorderRadius}
+                    className="w-20 border border-neutral-200 bg-white px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-neutral-900"
+                  />
+                  <span className="text-sm font-semibold text-neutral-600">px</span>
+                </div>
+              </div>
+              <FieldError>{validationErrors.borderRadius}</FieldError>
+            </div>
+          </SectionPanel>
         </div>
+
+        <aside className="space-y-5 xl:sticky xl:top-6 xl:self-start">
+          <CatalogCardPreview settings={settings} product={previewProduct} />
+
+          <section className="border border-neutral-200 bg-white p-4 shadow-sm">
+            <p className="font-mono text-[10px] font-bold uppercase tracking-widest text-neutral-400">
+              What is wired now
+            </p>
+            <ul className="mt-3 space-y-2 text-sm leading-relaxed text-neutral-600">
+              <li>Catalog card density, visible fields, and grid defaults are live.</li>
+              <li>Theme colors and radius are live through the theme provider.</li>
+              <li>Contact/status values are saved and used by admin readiness surfaces.</li>
+              <li>Logo, favicon, and promo-banner controls were removed because they are not wired.</li>
+            </ul>
+          </section>
+        </aside>
       </div>
     </div>
   );
