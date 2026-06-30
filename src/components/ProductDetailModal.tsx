@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { KebayaItem, mockCMS } from '@/data/mockData';
+import { matchesLandingCategory } from '@/lib/landing-categories';
 
 interface ProductDetailModalProps {
   product: KebayaItem | null;
@@ -91,6 +92,19 @@ export default function ProductDetailModal({ product, onClose }: ProductDetailMo
 
   const measurements = getMeasurements(product.size);
 
+  // Get matched event categories
+  const matchedCategories = (['wisuda', 'lamaran', 'kondangan', 'bridesmaid'] as const)
+    .filter((slug) => matchesLandingCategory(product, slug))
+    .map((slug) => {
+      const labels = {
+        wisuda: { label: 'Wisuda', emoji: '🎓' },
+        lamaran: { label: 'Lamaran', emoji: '💍' },
+        kondangan: { label: 'Kondangan', emoji: '✨' },
+        bridesmaid: { label: 'Bridesmaid', emoji: '🌸' },
+      };
+      return labels[slug];
+    });
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-black/60 backdrop-blur-xs transition-opacity duration-300">
       {/* Click outside to close */}
@@ -179,6 +193,15 @@ export default function ProductDetailModal({ product, onClose }: ProductDetailMo
                 <span className="theme-soft-surface theme-border border px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider font-mono text-[var(--theme-text)]">
                   Ukuran: Size {product.size}
                 </span>
+                {matchedCategories.map((cat, idx) => (
+                  <span
+                    key={idx}
+                    className="bg-[color-mix(in_srgb,var(--theme-accent)_10%,transparent)] border border-[color-mix(in_srgb,var(--theme-accent)_20%,transparent)] px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider font-mono text-[var(--theme-text)] flex items-center gap-1"
+                  >
+                    <span>{cat.emoji}</span>
+                    <span>{cat.label}</span>
+                  </span>
+                ))}
               </div>
 
               {/* Description */}
@@ -351,13 +374,13 @@ export default function ProductDetailModal({ product, onClose }: ProductDetailMo
                 href={getWhatsAppLink()}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="theme-primary-action text-sm font-semibold tracking-wider uppercase px-6 py-3.5 transition-all duration-300 flex items-center justify-center gap-2.5 shadow-sm hover:shadow-md cursor-pointer hover:bg-[var(--theme-accent)] hover:-translate-y-[1px]"
+                className="bg-[#25D366] text-white hover:bg-[#20BA5A] text-sm font-semibold tracking-wider uppercase px-6 py-3.5 transition-all duration-300 flex items-center justify-center gap-2.5 shadow-sm hover:shadow-md cursor-pointer hover:-translate-y-[1px]"
               >
                 {/* WhatsApp Simple SVG Icon */}
                 <svg className="w-5 h-5 fill-current" viewBox="0 0 24 24">
                   <path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946C.06 5.348 5.397.01 12.008.01c3.202.001 6.212 1.246 8.477 3.514 2.266 2.268 3.507 5.28 3.505 8.484-.004 6.657-5.34 11.997-11.953 11.997-2.005-.001-3.973-.502-5.724-1.455L0 24zm6.59-4.846c1.6.95 3.188 1.449 4.825 1.451 5.436 0 9.86-4.42 9.864-9.864.002-2.637-1.03-5.115-2.908-6.993-1.879-1.88-4.359-2.912-7-2.912-5.439 0-9.873 4.432-9.877 9.877-.001 1.769.479 3.498 1.39 5.031l-.963 3.518 3.6-.944z" />
                 </svg>
-                <span>Cek Ketersediaan</span>
+                <span>WA Admin</span>
               </a>
             </div>
           </div>

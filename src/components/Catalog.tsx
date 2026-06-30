@@ -106,7 +106,16 @@ export default function Catalog({ initialCategory = null }: CatalogProps) {
     models: [],
     statuses: [],
     maxPrice: maxPriceLimit,
+    categories: initialCategory ? [initialCategory] : [],
   });
+
+  // Keep categories filter in sync with URL search params changes
+  useEffect(() => {
+    setFilters((prev) => ({
+      ...prev,
+      categories: initialCategory ? [initialCategory] : [],
+    }));
+  }, [initialCategory]);
 
   // Track responsive screen size changes
   useEffect(() => {
@@ -128,13 +137,15 @@ export default function Catalog({ initialCategory = null }: CatalogProps) {
 
   // Filter logic
   const filteredProducts = useMemo(() => {
-    let visibleItems = catalogItems;
+    return catalogItems.filter((item) => {
+      // Category filter
+      if (filters.categories && filters.categories.length > 0) {
+        const matchesAnyCategory = filters.categories.some((cat) =>
+          matchesLandingCategory(item, cat)
+        );
+        if (!matchesAnyCategory) return false;
+      }
 
-    if (initialCategory) {
-      visibleItems = visibleItems.filter((item) => matchesLandingCategory(item, initialCategory));
-    }
-
-    return visibleItems.filter((item) => {
       // 1. Search text filter (case-insensitive on name & code)
       if (filters.search) {
         const query = filters.search.toLowerCase();
@@ -201,6 +212,7 @@ export default function Catalog({ initialCategory = null }: CatalogProps) {
       models: [],
       statuses: [],
       maxPrice: maxPriceLimit,
+      categories: [],
     });
   };
 

@@ -104,12 +104,12 @@ export default function Home() {
           </div>
         </section>
 
-        <section className="theme-surface theme-border border-t py-6 bg-[color-mix(in_srgb,var(--theme-surface)_90%,var(--theme-muted-strong)_10%)]/20">
+        <section className="bg-black/60 py-6 sm:py-7 border-y border-neutral-900/10">
           <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 flex flex-col items-center justify-center gap-1.5">
-            <span className="theme-muted font-mono text-[9px] font-bold uppercase tracking-widest">
+            <span className="text-neutral-400 font-mono text-[9px] font-bold uppercase tracking-widest">
               REMINDER
             </span>
-            <p className="font-serif italic text-base sm:text-lg text-[var(--theme-text)] opacity-95 text-center leading-relaxed">
+            <p className="font-serif italic text-base sm:text-lg text-white text-center leading-relaxed">
               "Rent the look, own the moment"
             </p>
           </div>

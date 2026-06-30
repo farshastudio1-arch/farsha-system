@@ -9,6 +9,7 @@ export interface FilterState {
   models: ('Modern' | 'Klasik' | 'Kartini' | 'Kutubaru')[];
   statuses: ('available' | 'rented' | 'maintenance' | 'archived')[];
   maxPrice: number;
+  categories: ('wisuda' | 'lamaran' | 'kondangan' | 'bridesmaid')[];
 }
 
 interface FiltersProps {
@@ -46,6 +47,15 @@ export default function Filters({
     'Klasik',
     'Kartini',
     'Kutubaru',
+  ];
+  const categoryOptions: {
+    value: 'wisuda' | 'lamaran' | 'kondangan' | 'bridesmaid';
+    label: string;
+  }[] = [
+    { value: 'wisuda', label: 'Wisuda' },
+    { value: 'lamaran', label: 'Lamaran' },
+    { value: 'kondangan', label: 'Kondangan' },
+    { value: 'bridesmaid', label: 'Bridesmaid' },
   ];
   const statusOptions: {
     value: 'available' | 'rented' | 'maintenance' | 'archived';
@@ -102,6 +112,13 @@ export default function Filters({
     onChange({ ...filters, models: nextModels });
   };
 
+  const handleCategoryToggle = (category: 'wisuda' | 'lamaran' | 'kondangan' | 'bridesmaid') => {
+    const nextCategories = filters.categories.includes(category)
+      ? filters.categories.filter((c) => c !== category)
+      : [...filters.categories, category];
+    onChange({ ...filters, categories: nextCategories });
+  };
+
   const handleStatusToggle = (status: 'available' | 'rented' | 'maintenance' | 'archived') => {
     const nextStatuses = filters.statuses.includes(status)
       ? filters.statuses.filter((s) => s !== status)
@@ -121,6 +138,7 @@ export default function Filters({
       models: [],
       statuses: [], // Empty means show all
       maxPrice: maxPriceLimit,
+      categories: [],
     });
   };
 
@@ -141,6 +159,7 @@ export default function Filters({
     filters.sizes.length +
     filters.models.length +
     filters.statuses.length +
+    (filters.categories?.length ?? 0) +
     (filters.maxPrice < maxPriceLimit ? 1 : 0);
   const totalActiveFilters = controlledTotalActiveFilters ?? baseTotalActiveFilters;
   const minPriceLimit = 150000;
@@ -207,6 +226,31 @@ export default function Filters({
                 }`}
               >
                 {model}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Category Filter */}
+      <div>
+        <span className="theme-muted block text-xs font-semibold uppercase tracking-wider font-mono mb-2.5">
+          Kategori Acara
+        </span>
+        <div className="flex flex-wrap gap-2">
+          {categoryOptions.map((opt) => {
+            const isSelected = filters.categories?.includes(opt.value) ?? false;
+            return (
+              <button
+                key={opt.value}
+                onClick={() => handleCategoryToggle(opt.value)}
+                className={`text-xs px-3.5 py-2.5 border transition-all ${
+                  isSelected
+                    ? 'theme-selected font-semibold'
+                    : 'theme-surface theme-border theme-muted-strong hover:border-[var(--theme-accent)] hover:text-[var(--theme-text)]'
+                }`}
+              >
+                {opt.label}
               </button>
             );
           })}
