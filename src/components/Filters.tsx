@@ -16,9 +16,11 @@ interface FiltersProps {
   onChange: (newFilters: FilterState) => void;
   availableColors: string[];
   maxPriceLimit: number;
+  totalActiveFilters?: number;
   hideMobileTrigger?: boolean;
   mobileOpen?: boolean;
   onMobileOpenChange?: (open: boolean) => void;
+  onReset?: () => void;
 }
 
 export default function Filters({
@@ -26,9 +28,11 @@ export default function Filters({
   onChange,
   availableColors,
   maxPriceLimit,
+  totalActiveFilters: controlledTotalActiveFilters,
   hideMobileTrigger = false,
   mobileOpen,
   onMobileOpenChange,
+  onReset,
 }: FiltersProps) {
   const [uncontrolledMobileOpen, setUncontrolledMobileOpen] = useState(false);
   const isOpenMobile = mobileOpen ?? uncontrolledMobileOpen;
@@ -87,7 +91,7 @@ export default function Filters({
     onChange({ ...filters, maxPrice: Number(e.target.value) });
   };
 
-  const handleReset = () => {
+  const resetBaseFilters = () => {
     onChange({
       search: '',
       colors: [],
@@ -98,6 +102,8 @@ export default function Filters({
     });
   };
 
+  const handleReset = onReset ?? resetBaseFilters;
+
   const formatPrice = (price: number) => {
     return new Intl.NumberFormat('id-ID', {
       style: 'currency',
@@ -107,13 +113,14 @@ export default function Filters({
     }).format(price);
   };
 
-  const totalActiveFilters =
+  const baseTotalActiveFilters =
     (filters.search ? 1 : 0) +
     filters.colors.length +
     filters.sizes.length +
     filters.models.length +
     filters.statuses.length +
     (filters.maxPrice < maxPriceLimit ? 1 : 0);
+  const totalActiveFilters = controlledTotalActiveFilters ?? baseTotalActiveFilters;
   const minPriceLimit = 150000;
   const priceSliderProgress =
     maxPriceLimit > minPriceLimit

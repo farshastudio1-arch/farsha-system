@@ -52,20 +52,20 @@ export default function ProductCard({
   };
 
   const statusInfo = getStatusDetails(product.status);
-  const isSquareTile = isMobile && layoutColumns === 3;
+  const isCompactPortraitTile = isMobile && layoutColumns === 3;
 
   // Layout-specific styling classes
   const isOneColumn = layoutColumns === 1;
   const isMobileTwoColumn = isMobile && layoutColumns === 2;
 
-  if (isSquareTile) {
+  if (isCompactPortraitTile) {
     return (
       <button
         type="button"
         data-farsha-card
         data-farsha-product={fallbackProductData}
         onClick={() => onOpenDetail(product)}
-        className="theme-soft-surface group relative aspect-square w-full overflow-hidden text-left"
+        className="theme-soft-surface group relative aspect-[4/5] w-full overflow-hidden text-left"
         aria-label={`Lihat detail ${product.name}`}
       >
         {/* eslint-disable-next-line @next/next/no-img-element */}

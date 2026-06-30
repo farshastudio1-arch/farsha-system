@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useMemo } from 'react';
+import { useRouter } from 'next/navigation';
 import { KebayaItem, mockCMS } from '@/data/mockData';
 import Filters, { FilterState } from './Filters';
 import ProductCard from './ProductCard';
@@ -8,11 +9,20 @@ import ProductDetailModal from './ProductDetailModal';
 import { useSavedCatalogItems } from '@/lib/catalog-storage';
 import { useSavedSiteSettings } from '@/lib/site-settings';
 import { readLocalStorageItem, writeLocalStorageItem } from '@/lib/browser-storage';
+import {
+  getLandingCategory,
+  LandingCategorySlug,
+  matchesLandingCategory,
+} from '@/lib/landing-categories';
 
 type MobileGridColumns = 1 | 2 | 3;
 type DesktopGridColumns = 2 | 3 | 4;
 
 const mobileGridStorageKey = 'farsha-mobile-grid-view-v1';
+
+interface CatalogProps {
+  initialCategory?: LandingCategorySlug | null;
+}
 
 function isMobileGridColumns(value: number): value is MobileGridColumns {
   return value === 1 || value === 2 || value === 3;
@@ -27,9 +37,11 @@ function readSavedMobileGrid(): MobileGridColumns | null {
   return isMobileGridColumns(savedValue) ? savedValue : null;
 }
 
-export default function Catalog() {
+export default function Catalog({ initialCategory = null }: CatalogProps) {
+  const router = useRouter();
   const catalogItems = useSavedCatalogItems();
   const siteSettings = useSavedSiteSettings();
+  const landingCategory = getLandingCategory(initialCategory);
 
   // Device detection state
   const [isMobile, setIsMobile] = useState(true);
@@ -101,7 +113,13 @@ export default function Catalog() {
 
   // Filter logic
   const filteredProducts = useMemo(() => {
-    return catalogItems.filter((item) => {
+    let visibleItems = catalogItems;
+
+    if (initialCategory) {
+      visibleItems = visibleItems.filter((item) => matchesLandingCategory(item, initialCategory));
+    }
+
+    return visibleItems.filter((item) => {
       // 1. Search text filter (case-insensitive on name & code)
       if (filters.search) {
         const query = filters.search.toLowerCase();
@@ -137,9 +155,9 @@ export default function Catalog() {
 
       return true;
     });
-  }, [catalogItems, filters]);
+  }, [catalogItems, filters, initialCategory]);
 
-  const handleResetFilters = () => {
+  const resetFilterState = () => {
     setFilters({
       search: '',
       colors: [],
@@ -148,6 +166,14 @@ export default function Catalog() {
       statuses: [],
       maxPrice: maxPriceLimit,
     });
+  };
+
+  const handleResetFilters = () => {
+    resetFilterState();
+
+    if (initialCategory) {
+      router.replace('/catalog');
+    }
   };
 
   // Switch column size handler
@@ -164,7 +190,8 @@ export default function Catalog() {
     filters.sizes.length +
     filters.models.length +
     filters.statuses.length +
-    (filters.maxPrice < maxPriceLimit ? 1 : 0);
+    (filters.maxPrice < maxPriceLimit ? 1 : 0) +
+    (landingCategory ? 1 : 0);
 
   const mobileViewOptions: MobileGridColumns[] = [1, 2, 3];
   const desktopViewOptions: DesktopGridColumns[] = [2, 3, 4];
@@ -192,7 +219,7 @@ export default function Catalog() {
     isMobile && layoutColumns === 3
       ? 'grid-cols-3 gap-1.5 sm:gap-2'
       : isMobile && layoutColumns === 2
-        ? 'grid-cols-2 gap-3'
+        ? 'grid-cols-2 gap-2'
       : layoutColumns === 1
         ? 'grid-cols-1 max-w-md sm:max-w-xl mx-auto gap-5 sm:gap-6'
         : layoutColumns === 2
@@ -206,18 +233,32 @@ export default function Catalog() {
       id="catalog-section"
       data-farsha-catalog
       data-farsha-phone={mockCMS.studioPhone}
-      className="theme-surface theme-border w-full py-16 sm:py-24 border-t"
+      className="theme-surface theme-border w-full border-t pt-8 pb-16 sm:pt-10 sm:pb-24"
     >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* CATALOG CONTENT CONTAINER HEADER */}
         <div className="theme-border flex flex-col md:flex-row md:items-end justify-between gap-6 mb-8 sm:mb-10 pb-6 border-b">
           <div>
             <span className="theme-muted-strong text-xs font-bold tracking-widest uppercase font-mono">
-              Galeri Etalase
+              KATALOG KAMI
             </span>
             <h2 className="font-serif text-[2rem] leading-none sm:text-4xl font-bold text-[var(--theme-text)] mt-1.5">
               Telusuri Koleksi Kebaya
             </h2>
+            {landingCategory && (
+              <div className="mt-4 flex flex-wrap items-center gap-3">
+                <span className="theme-selected px-3 py-2 font-mono text-[10px] font-semibold uppercase tracking-widest">
+                  {landingCategory.title}
+                </span>
+                <button
+                  type="button"
+                  onClick={handleResetFilters}
+                  className="theme-outline-action border px-3 py-2 font-mono text-[10px] font-semibold uppercase tracking-widest transition-colors"
+                >
+                  Hapus kategori
+                </button>
+              </div>
+            )}
           </div>
 
           <div className="flex lg:hidden items-center justify-between gap-3">
@@ -298,9 +339,11 @@ export default function Catalog() {
             onChange={setFilters}
             availableColors={availableColors}
             maxPriceLimit={maxPriceLimit}
+            totalActiveFilters={totalActiveFilters}
             hideMobileTrigger
             mobileOpen={mobileFiltersOpen}
             onMobileOpenChange={setMobileFiltersOpen}
+            onReset={handleResetFilters}
           />
 
           {/* Cards catalog list */}
@@ -325,8 +368,8 @@ export default function Catalog() {
                   Koleksi Tidak Ditemukan
                 </h4>
                 <p className="theme-muted-strong text-xs max-w-sm mb-6 leading-relaxed">
-                  Tidak ada kebaya yang sesuai dengan filter Anda. Silakan ubah pencarian atau
-                  bersihkan filter.
+                  Tidak ada koleksi yang sesuai dengan pilihan Anda. Silakan ubah pencarian atau
+                  bersihkan filter kategori.
                 </p>
                 <button
                   onClick={handleResetFilters}

@@ -265,3 +265,62 @@ select {
 .grid-cols-4 {
   grid-template-columns: repeat(4, minmax(0, 1fr));
 }
+
+@layer components {
+  .landing-hero-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 1.5rem;
+  }
+
+  .landing-category-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 1rem;
+  }
+
+  .landing-trust-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .landing-visit-badge {
+    animation: landing-visit-blink 1.8s ease-in-out infinite;
+  }
+
+  @keyframes landing-visit-blink {
+    0%,
+    100% {
+      background-color: rgb(236, 253, 245);
+      border-color: rgb(167, 243, 208);
+      color: rgb(4, 120, 87);
+    }
+
+    50% {
+      background-color: rgb(209, 250, 229);
+      border-color: rgb(52, 211, 153);
+      color: rgb(6, 95, 70);
+    }
+  }
+
+  @media (min-width: 640px) {
+    .landing-category-grid {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .landing-trust-grid {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+  }
+
+  @media (min-width: 1024px) {
+    .landing-hero-grid {
+      grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
+      align-items: end;
+    }
+
+    .landing-category-grid {
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+    }
+  }
+}
