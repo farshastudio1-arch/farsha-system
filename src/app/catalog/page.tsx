@@ -16,7 +16,7 @@ export default async function CatalogPage({ searchParams }: CatalogPageProps) {
 
   return (
     <div className="theme-surface min-h-screen flex flex-col font-sans antialiased">
-      <PublicHeader />
+      <PublicHeader variant="catalog" />
 
       <main className="flex-grow">
         <Catalog initialCategory={landingCategory?.slug ?? null} />

@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
+import { ArrowUpDown, CheckCircle2 } from 'lucide-react';
 import { KebayaItem, mockCMS } from '@/data/mockData';
 import Filters, { FilterState } from './Filters';
 import ProductCard from './ProductCard';
@@ -17,8 +18,21 @@ import {
 
 type MobileGridColumns = 1 | 2 | 3;
 type DesktopGridColumns = 2 | 3 | 4;
+type SortOption = 'default' | 'price-low' | 'price-high' | 'available-first';
 
 const mobileGridStorageKey = 'farsha-mobile-grid-view-v1';
+const statusSortOrder: Record<KebayaItem['status'], number> = {
+  available: 0,
+  rented: 1,
+  maintenance: 2,
+  archived: 3,
+};
+const sortOptions: Array<{ value: SortOption; label: string }> = [
+  { value: 'default', label: 'Default' },
+  { value: 'price-low', label: 'Harga terendah' },
+  { value: 'price-high', label: 'Harga tertinggi' },
+  { value: 'available-first', label: 'Tersedia dulu' },
+];
 
 interface CatalogProps {
   initialCategory?: LandingCategorySlug | null;
@@ -50,6 +64,7 @@ export default function Catalog({ initialCategory = null }: CatalogProps) {
     siteSettings.defaultMobileGrid,
   );
   const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
+  const [sortBy, setSortBy] = useState<SortOption>('default');
 
   // Modal State
   const [selectedProduct, setSelectedProduct] = useState<KebayaItem | null>(null);
@@ -157,6 +172,27 @@ export default function Catalog({ initialCategory = null }: CatalogProps) {
     });
   }, [catalogItems, filters, initialCategory]);
 
+  const sortedProducts = useMemo(() => {
+    const items = filteredProducts.map((item, index) => ({ item, index }));
+
+    if (sortBy === 'price-low') {
+      items.sort((a, b) => a.item.rentalPrice - b.item.rentalPrice || a.index - b.index);
+    }
+
+    if (sortBy === 'price-high') {
+      items.sort((a, b) => b.item.rentalPrice - a.item.rentalPrice || a.index - b.index);
+    }
+
+    if (sortBy === 'available-first') {
+      items.sort(
+        (a, b) =>
+          statusSortOrder[a.item.status] - statusSortOrder[b.item.status] || a.index - b.index,
+      );
+    }
+
+    return items.map(({ item }) => item);
+  }, [filteredProducts, sortBy]);
+
   const resetFilterState = () => {
     setFilters({
       search: '',
@@ -195,6 +231,26 @@ export default function Catalog({ initialCategory = null }: CatalogProps) {
 
   const mobileViewOptions: MobileGridColumns[] = [1, 2, 3];
   const desktopViewOptions: DesktopGridColumns[] = [2, 3, 4];
+  const sortControlId = 'catalog-sort';
+
+  const renderSortControl = (id: string) => (
+    <label className="theme-outline-action inline-flex h-11 items-center gap-2 border px-3 text-xs font-semibold uppercase tracking-wider transition-colors">
+      <ArrowUpDown className="h-4 w-4 shrink-0" aria-hidden="true" strokeWidth={1.8} />
+      <select
+        id={id}
+        value={sortBy}
+        onChange={(event) => setSortBy(event.target.value as SortOption)}
+        className="max-w-[8.5rem] appearance-none bg-transparent pr-1 text-xs font-semibold uppercase tracking-wider text-[var(--theme-text)] outline-none"
+        aria-label="Urutkan katalog"
+      >
+        {sortOptions.map((option) => (
+          <option key={option.value} value={option.value}>
+            {option.label}
+          </option>
+        ))}
+      </select>
+    </label>
+  );
 
   const renderGridIcon = (columns: MobileGridColumns | DesktopGridColumns) => (
     <span
@@ -259,9 +315,13 @@ export default function Catalog({ initialCategory = null }: CatalogProps) {
                 </button>
               </div>
             )}
+            <div className="mt-4 inline-flex items-center gap-2 border border-emerald-200 bg-emerald-50 px-3 py-2 text-[10px] font-semibold uppercase tracking-widest text-emerald-800">
+              <CheckCircle2 className="h-3.5 w-3.5" aria-hidden="true" />
+              <span>Availability synced and up to date</span>
+            </div>
           </div>
 
-          <div className="flex lg:hidden items-center justify-between gap-3">
+          <div className="flex flex-wrap lg:hidden items-center justify-between gap-3">
             <button
               type="button"
               data-farsha-filter-open
@@ -283,6 +343,8 @@ export default function Catalog({ initialCategory = null }: CatalogProps) {
                 </span>
               )}
             </button>
+
+            {renderSortControl(`${sortControlId}-mobile`)}
 
             <div className="theme-soft-surface theme-border flex border p-1">
               {mobileViewOptions.map((columns) => (
@@ -306,27 +368,31 @@ export default function Catalog({ initialCategory = null }: CatalogProps) {
           </div>
 
           {/* GRID VIEW SWITCHER */}
-          <div className="hidden lg:flex items-center gap-4.5 self-start md:self-end">
-            <span className="theme-muted text-xs uppercase tracking-wider font-mono font-semibold">
-              Tampilan Grid
-            </span>
-            <div className="theme-soft-surface theme-border flex p-1 border">
-              {/* Desktop column selection (2, 3, or 4) */}
-              {desktopViewOptions.map((columns) => (
-                <button
-                  key={columns}
-                  onClick={() => selectColumns(columns)}
-                  className={`flex items-center justify-center w-10 h-9 text-xs font-bold transition-all ${
-                    layoutColumns === columns
-                      ? 'theme-selected shadow-xs'
-                      : 'theme-muted-strong hover:bg-[var(--theme-surface)]'
-                  }`}
-                  aria-label={`Tampilan ${columns} Kolom`}
-                  aria-pressed={layoutColumns === columns}
-                >
-                  {renderGridIcon(columns)}
-                </button>
-              ))}
+          <div className="hidden lg:flex flex-wrap items-center gap-4 self-start md:self-end">
+            {renderSortControl(sortControlId)}
+
+            <div className="flex items-center gap-4">
+              <span className="theme-muted text-xs uppercase tracking-wider font-mono font-semibold">
+                Tampilan Grid
+              </span>
+              <div className="theme-soft-surface theme-border flex p-1 border">
+                {/* Desktop column selection (2, 3, or 4) */}
+                {desktopViewOptions.map((columns) => (
+                  <button
+                    key={columns}
+                    onClick={() => selectColumns(columns)}
+                    className={`flex items-center justify-center w-10 h-9 text-xs font-bold transition-all ${
+                      layoutColumns === columns
+                        ? 'theme-selected shadow-xs'
+                        : 'theme-muted-strong hover:bg-[var(--theme-surface)]'
+                    }`}
+                    aria-label={`Tampilan ${columns} Kolom`}
+                    aria-pressed={layoutColumns === columns}
+                  >
+                    {renderGridIcon(columns)}
+                  </button>
+                ))}
+              </div>
             </div>
           </div>
         </div>
@@ -348,7 +414,7 @@ export default function Catalog({ initialCategory = null }: CatalogProps) {
 
           {/* Cards catalog list */}
           <div className="flex-1 w-full">
-            {filteredProducts.length === 0 ? (
+            {sortedProducts.length === 0 ? (
               /* EMPTY FILTER RESULT STATE */
               <div className="theme-surface theme-border flex flex-col items-center justify-center text-center py-16 px-6 border border-dashed">
                 <svg
@@ -381,7 +447,7 @@ export default function Catalog({ initialCategory = null }: CatalogProps) {
             ) : (
               /* DYNAMIC GRID CONTAINER */
               <div className={`grid ${catalogGridClass}`} data-farsha-grid>
-                {filteredProducts.map((product) => (
+                {sortedProducts.map((product) => (
                   <ProductCard
                     key={product.id}
                     product={product}
@@ -395,9 +461,9 @@ export default function Catalog({ initialCategory = null }: CatalogProps) {
             )}
 
             {/* Catalog Info Count */}
-            {filteredProducts.length > 0 && (
+            {sortedProducts.length > 0 && (
               <p className="theme-muted text-right text-[11px] font-mono mt-5 uppercase tracking-wider">
-                Menampilkan {filteredProducts.length} dari {catalogItems.length} Koleksi
+                Menampilkan {sortedProducts.length} dari {catalogItems.length} Koleksi
               </p>
             )}
           </div>

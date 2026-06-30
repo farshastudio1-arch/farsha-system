@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 
 export interface FilterState {
   search: string;
@@ -37,6 +37,8 @@ export default function Filters({
   const [uncontrolledMobileOpen, setUncontrolledMobileOpen] = useState(false);
   const isOpenMobile = mobileOpen ?? uncontrolledMobileOpen;
   const setIsOpenMobile = onMobileOpenChange ?? setUncontrolledMobileOpen;
+  const desktopSearchInputRef = useRef<HTMLInputElement>(null);
+  const mobileSearchInputRef = useRef<HTMLInputElement>(null);
 
   const sizesOptions: ('S' | 'M' | 'L' | 'XL' | 'Custom')[] = ['S', 'M', 'L', 'XL', 'Custom'];
   const modelsOptions: ('Modern' | 'Klasik' | 'Kartini' | 'Kutubaru')[] = [
@@ -58,6 +60,26 @@ export default function Filters({
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     onChange({ ...filters, search: e.target.value });
   };
+
+  useEffect(() => {
+    const handleSearchRequest = () => {
+      const isMobileViewport = window.innerWidth < 1024;
+      setIsOpenMobile(isMobileViewport);
+      window.setTimeout(() => {
+        const searchInput = isMobileViewport
+          ? mobileSearchInputRef.current
+          : desktopSearchInputRef.current;
+
+        searchInput?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        searchInput?.focus();
+      }, 80);
+    };
+
+    window.addEventListener('farsha-catalog-search-request', handleSearchRequest);
+    return () => {
+      window.removeEventListener('farsha-catalog-search-request', handleSearchRequest);
+    };
+  }, [setIsOpenMobile]);
 
   const handleColorToggle = (color: string) => {
     const nextColors = filters.colors.includes(color)
@@ -128,20 +150,21 @@ export default function Filters({
       : 100;
 
   // Render the core filter controls inside a reusable component block
-  const renderFilterControls = () => (
+  const renderFilterControls = (surface: 'desktop' | 'mobile') => (
     <div className="space-y-6">
       {/* Search Input */}
       <div>
         <label
-          htmlFor="search"
+          htmlFor={`search-${surface}`}
           className="theme-muted block text-xs font-semibold uppercase tracking-wider font-mono mb-2.5"
         >
           Cari Kebaya / Kode
         </label>
         <div className="relative">
           <input
+            ref={surface === 'desktop' ? desktopSearchInputRef : mobileSearchInputRef}
             type="text"
-            id="search"
+            id={`search-${surface}`}
             value={filters.search}
             onChange={handleSearchChange}
             placeholder="Ketik nama atau kode..."
@@ -342,7 +365,7 @@ export default function Filters({
             </span>
           )}
         </div>
-        {renderFilterControls()}
+        {renderFilterControls('desktop')}
       </div>
 
       {/* MOBILE TRIGGER ACTION BUTTON */}
@@ -421,7 +444,7 @@ export default function Filters({
           </div>
 
           {/* Controls Area (Scrollable) */}
-          <div className="flex-1 overflow-y-auto p-6 pb-24">{renderFilterControls()}</div>
+          <div className="flex-1 overflow-y-auto p-6 pb-24">{renderFilterControls('mobile')}</div>
 
           {/* Footer mobile sticky actions */}
           <div className="theme-surface theme-border border-t p-4.5 sticky bottom-0 z-10 flex gap-3">
