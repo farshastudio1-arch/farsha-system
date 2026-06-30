@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import { useMemo } from 'react';
 import {
   ArrowUpRight,
   CheckCircle,
@@ -17,6 +18,7 @@ import { KebayaItem } from '@/data/mockData';
 import { landingCategories, matchesLandingCategory } from '@/lib/landing-categories';
 import { useSavedCatalogItems } from '@/lib/catalog-storage';
 import { useSavedSiteSettings } from '@/lib/site-settings';
+import { useSavedPosLedger, projectCatalogItems, getOverdueTransactions } from '@/lib/pos-ledger';
 
 type StatusTone = 'good' | 'warning' | 'neutral';
 
@@ -88,7 +90,7 @@ function countByStatus(items: KebayaItem[], status: KebayaItem['status']) {
   return items.filter((item) => item.status === status).length;
 }
 
-function getActionItems(items: KebayaItem[]) {
+function getActionItems(items: KebayaItem[], overdueTransactions: Array<{ itemId: string }>) {
   return items
     .flatMap((item) => {
       const actions: Array<{
@@ -115,6 +117,16 @@ function getActionItems(items: KebayaItem[]) {
           title: item.rentalEndDate ? 'Return scheduled' : 'Missing return date',
           detail: `Estimasi kembali: ${formatDate(item.rentalEndDate)}`,
           priority: item.rentalEndDate ? 'medium' : 'high',
+          item,
+        });
+      }
+
+      if (overdueTransactions.some((transaction) => transaction.itemId === item.id)) {
+        actions.push({
+          key: `${item.id}-overdue`,
+          title: 'Overdue rental',
+          detail: 'Ledger says the item is still open past due date.',
+          priority: 'high',
           item,
         });
       }
@@ -219,20 +231,23 @@ function SectionPanel({
 export default function AdminDashboard() {
   const catalogItems = useSavedCatalogItems();
   const settings = useSavedSiteSettings();
+  const ledger = useSavedPosLedger();
+  const projectedItems = useMemo(() => projectCatalogItems(catalogItems, ledger), [catalogItems, ledger]);
+  const overdueTransactions = useMemo(() => getOverdueTransactions(ledger), [ledger]);
 
-  const totalItems = catalogItems.length;
-  const availableItems = countByStatus(catalogItems, 'available');
-  const rentedItems = countByStatus(catalogItems, 'rented');
-  const maintenanceItems = countByStatus(catalogItems, 'maintenance');
-  const archivedItems = countByStatus(catalogItems, 'archived');
-  const visibleItems = catalogItems.filter((item) => item.status !== 'archived');
+  const totalItems = projectedItems.length;
+  const availableItems = countByStatus(projectedItems, 'available');
+  const rentedItems = countByStatus(projectedItems, 'rented');
+  const maintenanceItems = countByStatus(projectedItems, 'maintenance');
+  const archivedItems = countByStatus(projectedItems, 'archived');
+  const visibleItems = projectedItems.filter((item) => item.status !== 'archived');
   const readyRatio = totalItems > 0 ? Math.round((availableItems / totalItems) * 100) : 0;
   const whatsappReady = cleanPhone(settings.whatsappNumber).length >= 10;
-  const actionItems = getActionItems(catalogItems);
+  const actionItems = getActionItems(projectedItems, overdueTransactions);
   const priceValues = visibleItems.map((item) => item.rentalPrice).filter((price) => price > 0);
   const lowestPrice = priceValues.length > 0 ? Math.min(...priceValues) : 0;
   const highestPrice = priceValues.length > 0 ? Math.max(...priceValues) : 0;
-  const rentedSchedule = catalogItems
+  const rentedSchedule = projectedItems
     .filter((item) => item.status === 'rented')
     .sort((a, b) => {
       const aTime = a.rentalEndDate ? new Date(a.rentalEndDate).getTime() : Number.MAX_SAFE_INTEGER;
@@ -240,7 +255,7 @@ export default function AdminDashboard() {
       return aTime - bTime;
     })
     .slice(0, 5);
-  const maintenanceQueue = catalogItems.filter((item) => item.status === 'maintenance').slice(0, 5);
+  const maintenanceQueue = projectedItems.filter((item) => item.status === 'maintenance').slice(0, 5);
 
   const categoryCoverage = landingCategories.map((category) => {
     const matchedItems = visibleItems.filter((item) => matchesLandingCategory(item, category.slug));

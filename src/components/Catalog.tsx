@@ -9,6 +9,7 @@ import ProductCard from './ProductCard';
 import ProductDetailModal from './ProductDetailModal';
 import { useSavedCatalogItems } from '@/lib/catalog-storage';
 import { useSavedSiteSettings } from '@/lib/site-settings';
+import { useSavedPosLedger, projectCatalogItems } from '@/lib/pos-ledger';
 import { readLocalStorageItem, writeLocalStorageItem } from '@/lib/browser-storage';
 import {
   getLandingCategory,
@@ -54,8 +55,13 @@ function readSavedMobileGrid(): MobileGridColumns | null {
 export default function Catalog({ initialCategory = null }: CatalogProps) {
   const router = useRouter();
   const catalogItems = useSavedCatalogItems();
+  const ledger = useSavedPosLedger();
   const siteSettings = useSavedSiteSettings();
   const landingCategory = getLandingCategory(initialCategory);
+  const projectedCatalogItems = useMemo(
+    () => projectCatalogItems(catalogItems, ledger),
+    [catalogItems, ledger],
+  );
 
   // Device detection state
   const [isMobile, setIsMobile] = useState(true);
@@ -137,7 +143,7 @@ export default function Catalog({ initialCategory = null }: CatalogProps) {
 
   // Filter logic
   const filteredProducts = useMemo(() => {
-    return catalogItems.filter((item) => {
+    return projectedCatalogItems.filter((item) => {
       // Category filter
       if (filters.categories && filters.categories.length > 0) {
         const matchesAnyCategory = filters.categories.some((cat) =>
@@ -181,7 +187,7 @@ export default function Catalog({ initialCategory = null }: CatalogProps) {
 
       return true;
     });
-  }, [catalogItems, filters, initialCategory]);
+  }, [filters, projectedCatalogItems]);
 
   const sortedProducts = useMemo(() => {
     const items = filteredProducts.map((item, index) => ({ item, index }));
@@ -468,12 +474,12 @@ export default function Catalog({ initialCategory = null }: CatalogProps) {
               /* DYNAMIC GRID CONTAINER */
               <div className={`grid ${catalogGridClass}`} data-farsha-grid>
                 {sortedProducts.map((product) => (
-                  <ProductCard
-                    key={product.id}
-                    product={product}
-                    layoutColumns={layoutColumns}
-                    isMobile={isMobile}
-                    displaySettings={siteSettings}
+                    <ProductCard
+                      key={product.id}
+                      product={product}
+                      layoutColumns={layoutColumns}
+                      isMobile={isMobile}
+                      displaySettings={siteSettings}
                     onOpenDetail={setSelectedProduct}
                   />
                 ))}
@@ -483,7 +489,7 @@ export default function Catalog({ initialCategory = null }: CatalogProps) {
             {/* Catalog Info Count */}
             {sortedProducts.length > 0 && (
               <p className="theme-muted text-right text-[11px] font-mono mt-5 uppercase tracking-wider">
-                Menampilkan {sortedProducts.length} dari {catalogItems.length} Koleksi
+                Menampilkan {sortedProducts.length} dari {projectedCatalogItems.length} Koleksi
               </p>
             )}
           </div>

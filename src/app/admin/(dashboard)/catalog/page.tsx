@@ -20,6 +20,7 @@ import {
 import { KebayaCategory, KebayaItem, KebayaMeasurements } from '@/data/mockData';
 import { useSavedCatalogItems, writeSavedCatalogItems } from '@/lib/catalog-storage';
 import { landingCategories, matchesLandingCategory } from '@/lib/landing-categories';
+import { projectCatalogItems, useSavedPosLedger } from '@/lib/pos-ledger';
 
 type CatalogFormState = {
   name: string;
@@ -317,6 +318,8 @@ const selectCls =
 
 export default function CatalogManagement() {
   const catalogItems = useSavedCatalogItems();
+  const ledger = useSavedPosLedger();
+  const projectedItems = useMemo(() => projectCatalogItems(catalogItems, ledger), [catalogItems, ledger]);
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<KebayaItem['status'] | 'all'>('all');
   const [coverageFilter, setCoverageFilter] = useState<CoverageFilter>('all');
@@ -328,10 +331,10 @@ export default function CatalogManagement() {
   const [imgErrors, setImgErrors] = useState<Record<number, boolean>>({});
 
   const catalogSummary = useMemo(() => {
-    const visibleItems = catalogItems.filter((item) => item.status !== 'archived');
-    const availableItems = catalogItems.filter((item) => item.status === 'available');
-    const rentedItems = catalogItems.filter((item) => item.status === 'rented');
-    const maintenanceItems = catalogItems.filter((item) => item.status === 'maintenance');
+    const visibleItems = projectedItems.filter((item) => item.status !== 'archived');
+    const availableItems = projectedItems.filter((item) => item.status === 'available');
+    const rentedItems = projectedItems.filter((item) => item.status === 'rented');
+    const maintenanceItems = projectedItems.filter((item) => item.status === 'maintenance');
     const issueItems = catalogItems.filter((item) => getItemQualityIssues(item).length > 0);
 
     return {
@@ -341,12 +344,12 @@ export default function CatalogManagement() {
       maintenance: maintenanceItems.length,
       issues: issueItems.length,
     };
-  }, [catalogItems]);
+  }, [catalogItems, projectedItems]);
 
   const categoryCoverage = useMemo(
     () =>
       landingCategories.map((category) => {
-        const matches = catalogItems.filter(
+        const matches = projectedItems.filter(
           (item) => item.status !== 'archived' && matchesLandingCategory(item, category.slug),
         );
         const ready = matches.filter((item) => item.status === 'available');
@@ -357,13 +360,13 @@ export default function CatalogManagement() {
           readyCount: ready.length,
         };
       }),
-    [catalogItems],
+    [projectedItems],
   );
 
   const filteredItems = useMemo(() => {
     const query = searchQuery.trim().toLowerCase();
 
-    return catalogItems.filter((item) => {
+    return projectedItems.filter((item) => {
       const itemCategories = getItemCategories(item);
       const matchesQuery =
         !query ||
@@ -378,7 +381,7 @@ export default function CatalogManagement() {
 
       return matchesQuery && matchesStatus && matchesCoverage && matchesQuality;
     });
-  }, [catalogItems, coverageFilter, qualityFilter, searchQuery, statusFilter]);
+  }, [projectedItems, coverageFilter, qualityFilter, searchQuery, statusFilter]);
 
   const openCreateModal = () => {
     setEditingItem(null);
@@ -388,7 +391,12 @@ export default function CatalogManagement() {
     setIsModalOpen(true);
   };
 
-  const openEditModal = (item: KebayaItem) => {
+  const openEditModal = (itemId: string) => {
+    const item = catalogItems.find((entry) => entry.id === itemId);
+    if (!item) {
+      return;
+    }
+
     setEditingItem(item);
     setForm(itemToForm(item));
     setFormError('');
@@ -781,7 +789,7 @@ export default function CatalogManagement() {
                       <div className="flex items-center justify-end gap-2">
                         <button
                           type="button"
-                          onClick={() => openEditModal(item)}
+                        onClick={() => openEditModal(item.id)}
                           aria-label={`Edit ${item.name}`}
                           className="p-2 text-neutral-400 transition-colors hover:bg-neutral-100 hover:text-neutral-900"
                         >
@@ -876,7 +884,7 @@ export default function CatalogManagement() {
                 <div className="mt-4 grid grid-cols-2 gap-2">
                   <button
                     type="button"
-                    onClick={() => openEditModal(item)}
+                    onClick={() => openEditModal(item.id)}
                     className="inline-flex items-center justify-center gap-2 border border-neutral-200 bg-white px-3 py-2.5 text-sm font-semibold text-neutral-700 transition-colors hover:bg-neutral-50"
                   >
                     <Edit className="h-4 w-4" />

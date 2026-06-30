@@ -2,12 +2,12 @@
 
 import React, { useRef } from 'react';
 import { X, Printer, Store, MapPin, Phone } from 'lucide-react';
-import type { PosItem } from '@/app/pos/page';
+import type { PosTransaction } from '@/lib/pos-ledger';
 
 interface InvoiceModalProps {
   isOpen: boolean;
   onClose: () => void;
-  item: PosItem | null;
+  item: PosTransaction | null;
 }
 
 export default function InvoiceModal({ isOpen, onClose, item }: InvoiceModalProps) {
@@ -22,7 +22,7 @@ export default function InvoiceModal({ isOpen, onClose, item }: InvoiceModalProp
   };
 
   // Generate a mock invoice number based on the item id and current date
-  const invoiceNumber = `INV-${new Date().getFullYear()}${String(new Date().getMonth() + 1).padStart(2, '0')}-${item.code.replace('KB-', '')}`;
+  const invoiceNumber = item.transactionNumber;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm print:bg-white print:p-0">
@@ -102,7 +102,7 @@ export default function InvoiceModal({ isOpen, onClose, item }: InvoiceModalProp
                 Status:
               </p>
               <span className="inline-flex items-center px-2.5 py-1 text-xs font-medium bg-blue-50 text-blue-700 border border-blue-200">
-                DISEWA
+                {item.status.toUpperCase()}
               </span>
             </div>
           </div>
@@ -126,12 +126,12 @@ export default function InvoiceModal({ isOpen, onClose, item }: InvoiceModalProp
               <tbody className="divide-y divide-gray-200 bg-white">
                 <tr>
                   <td className="py-4">
-                    <p className="font-semibold text-gray-900">{item.name}</p>
-                    <p className="text-gray-500 text-xs font-mono mt-1">{item.code}</p>
+                    <p className="font-semibold text-gray-900">{item.itemName}</p>
+                    <p className="text-gray-500 text-xs font-mono mt-1">{item.itemCode}</p>
                   </td>
                   <td className="py-4 text-center text-gray-900">
-                    {item.rental_end_date
-                      ? new Date(item.rental_end_date).toLocaleDateString('id-ID', {
+                    {item.dueDate
+                      ? new Date(item.dueDate).toLocaleDateString('id-ID', {
                           weekday: 'short',
                           year: 'numeric',
                           month: 'short',
@@ -141,7 +141,7 @@ export default function InvoiceModal({ isOpen, onClose, item }: InvoiceModalProp
                   </td>
                   <td className="py-4 text-right font-medium text-gray-900">
                     {new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR' }).format(
-                      item.price,
+                      item.itemPrice,
                     )}
                   </td>
                 </tr>
@@ -156,7 +156,7 @@ export default function InvoiceModal({ isOpen, onClose, item }: InvoiceModalProp
                 <span className="text-gray-500">Biaya Sewa</span>
                 <span className="font-medium text-gray-900">
                   {new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR' }).format(
-                    item.price,
+                    item.itemPrice,
                   )}
                 </span>
               </div>
@@ -164,7 +164,7 @@ export default function InvoiceModal({ isOpen, onClose, item }: InvoiceModalProp
                 <span className="text-gray-500">Deposit Keamanan</span>
                 <span className="font-medium text-gray-900">
                   {new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR' }).format(
-                    item.depositAmount || 0,
+                    item.depositReceived || 0,
                   )}
                 </span>
               </div>
@@ -172,7 +172,7 @@ export default function InvoiceModal({ isOpen, onClose, item }: InvoiceModalProp
                 <span className="font-bold text-gray-900">Total Dibayar</span>
                 <span className="text-xl font-bold text-indigo-600">
                   {new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR' }).format(
-                    item.price + (item.depositAmount || 0),
+                    item.itemPrice + (item.depositReceived || 0),
                   )}
                 </span>
               </div>

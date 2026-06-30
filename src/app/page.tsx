@@ -42,7 +42,7 @@ export default function Home() {
                   Farsha Studio / Paccerakkang
                 </span>
                 <h1 className="mt-3 max-w-xl font-serif text-4xl font-semibold leading-tight tracking-tight text-[var(--theme-text)] sm:text-5xl">
-                  Your next "wow" moment is just a rental away.
+                  Your next &quot;wow&quot; moment is just a rental away.
                 </h1>
                 <p className="theme-muted-strong mt-4 max-w-md text-sm leading-relaxed sm:text-base">
                   Sewa kebaya dan dress premium untuk momen sekali pakai, tanpa harus beli
@@ -104,13 +104,15 @@ export default function Home() {
           </div>
         </section>
 
-        <section className="bg-black/60 py-6 sm:py-7 border-y border-neutral-900/10">
-          <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 flex flex-col items-center justify-center gap-1.5">
-            <span className="text-neutral-400 font-mono text-[9px] font-bold uppercase tracking-widest">
-              REMINDER
+        <section className="landing-reminder-strip border-y border-neutral-900/10 py-6 sm:py-7">
+          <div className="relative z-10 mx-auto flex max-w-7xl flex-col items-center justify-center gap-1.5 px-4 sm:px-6 lg:px-8">
+            <span className="landing-reminder-label text-neutral-500 font-mono text-[9px] font-bold uppercase tracking-widest">
+              <span aria-hidden="true">✨</span>
+              <span>REMINDER</span>
+              <span aria-hidden="true">✨</span>
             </span>
-            <p className="font-serif italic text-base sm:text-lg text-white text-center leading-relaxed">
-              "Rent the look, own the moment"
+            <p className="landing-reminder-quote font-serif italic text-base sm:text-lg text-neutral-950 text-center leading-relaxed">
+              &quot;Rent the look, own the moment&quot;
             </p>
           </div>
         </section>

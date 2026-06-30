@@ -284,6 +284,70 @@ select {
     grid-template-columns: minmax(0, 1fr);
   }
 
+  .landing-reminder-strip {
+    position: relative;
+    isolation: isolate;
+    overflow: hidden;
+    background:
+      radial-gradient(circle at 50% 0%, rgb(255 255 255 / 0.98), transparent 42%),
+      linear-gradient(180deg, rgb(250, 250, 248), rgb(238, 237, 232) 54%, rgb(249, 249, 247));
+  }
+
+  .landing-reminder-strip::before,
+  .landing-reminder-strip::after {
+    content: '';
+    position: absolute;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .landing-reminder-strip::before {
+    inset: -120% -20%;
+    background-image:
+      radial-gradient(ellipse at 24% 48%, rgb(255 255 255 / 0.9), transparent 32%),
+      radial-gradient(ellipse at 72% 44%, rgb(224 223 218 / 0.68), transparent 38%),
+      radial-gradient(ellipse at 50% 72%, rgb(255 255 255 / 0.72), transparent 34%);
+    filter: blur(18px);
+    opacity: 0.8;
+    animation: landing-reminder-bloom 14s ease-in-out infinite alternate;
+  }
+
+  .landing-reminder-strip::after {
+    inset: -20% -45%;
+    background:
+      linear-gradient(
+        100deg,
+        transparent 18%,
+        rgb(255 255 255 / 0.58) 42%,
+        rgb(255 255 255 / 0.28) 50%,
+        transparent 72%
+      );
+    transform: translateX(-18%);
+    opacity: 0.72;
+    animation: landing-reminder-sheen 8s ease-in-out infinite;
+  }
+
+  .landing-reminder-label {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    animation: landing-reminder-label-fade 4.8s ease-in-out infinite;
+  }
+
+  .landing-reminder-label [aria-hidden='true'] {
+    color: rgb(120 120 116 / 0.82);
+    font-family: var(--font-sans);
+    font-size: 0.72rem;
+    line-height: 1;
+    transform-origin: center;
+    animation: landing-reminder-sparkle 4.8s ease-in-out infinite;
+  }
+
+  .landing-reminder-quote {
+    animation: landing-reminder-quote-float 6.4s ease-in-out infinite;
+    text-shadow: 0 10px 28px rgb(17 17 17 / 0.08);
+  }
+
   .landing-visit-badge {
     animation: landing-visit-blink 1.8s ease-in-out infinite;
   }
@@ -338,6 +402,85 @@ select {
       background-color: rgb(255, 237, 213);
       border-color: rgb(253, 186, 116);
       color: rgb(124, 45, 18);
+    }
+  }
+
+  @keyframes landing-reminder-bloom {
+    from {
+      transform: translate3d(-1%, -1%, 0) scale(1);
+    }
+
+    to {
+      transform: translate3d(1.5%, 1%, 0) scale(1.04);
+    }
+  }
+
+  @keyframes landing-reminder-sheen {
+    0%,
+    12% {
+      transform: translateX(-18%);
+      opacity: 0.5;
+    }
+
+    48% {
+      transform: translateX(18%);
+      opacity: 0.84;
+    }
+
+    100% {
+      transform: translateX(18%);
+      opacity: 0.5;
+    }
+  }
+
+  @keyframes landing-reminder-label-fade {
+    0%,
+    100% {
+      opacity: 0.58;
+      transform: translateY(1px);
+    }
+
+    42%,
+    62% {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  @keyframes landing-reminder-sparkle {
+    0%,
+    100% {
+      opacity: 0.38;
+      transform: scale(0.86) rotate(0deg);
+    }
+
+    48% {
+      opacity: 0.94;
+      transform: scale(1) rotate(18deg);
+    }
+  }
+
+  @keyframes landing-reminder-quote-float {
+    0%,
+    100% {
+      opacity: 0.86;
+      transform: translateY(2px);
+    }
+
+    45%,
+    65% {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .landing-reminder-strip::before,
+    .landing-reminder-strip::after,
+    .landing-reminder-label,
+    .landing-reminder-label [aria-hidden='true'],
+    .landing-reminder-quote {
+      animation: none;
     }
   }
 
