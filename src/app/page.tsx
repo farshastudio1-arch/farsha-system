@@ -1,10 +1,17 @@
 import Link from 'next/link';
+import { Compass } from 'lucide-react';
 
 import PublicFooter from '@/components/PublicFooter';
 import PublicHeader from '@/components/PublicHeader';
+import StoreStatusBadge from '@/components/StoreStatusBadge';
 import { landingCategories } from '@/lib/landing-categories';
+import { mockSiteSettings } from '@/data/mockData';
 
 export default function Home() {
+  const cleanWhatsapp = mockSiteSettings.whatsappNumber.replace(/[^0-9]/g, '');
+  const whatsappLink = `https://wa.me/${cleanWhatsapp}?text=Halo%20Admin%20Farsha%20Studio,%20saya%20tertarik%20tanya%20sewa%20kebaya.`;
+  const tiktokLink = mockSiteSettings.tiktokUrl || 'https://tiktok.com';
+
   const heroImageUrl =
     'https://images.unsplash.com/photo-1441986300917-64674bd600d8?w=1600&auto=format&fit=crop&q=80';
   const trustPoints = [
@@ -35,18 +42,43 @@ export default function Home() {
                   Farsha Studio / Paccerakkang
                 </span>
                 <h1 className="mt-3 max-w-xl font-serif text-4xl font-semibold leading-tight tracking-tight text-[var(--theme-text)] sm:text-5xl">
-                  Choose the mood. Find the look.
+                  Your next "wow" moment is just a rental away.
                 </h1>
                 <p className="theme-muted-strong mt-4 max-w-md text-sm leading-relaxed sm:text-base">
                   Sewa kebaya dan dress premium untuk momen sekali pakai, tanpa harus beli
                   mahal-mahal.
                 </p>
-                <Link
-                  href="/catalog"
-                  className="theme-primary-action mt-6 inline-flex px-6 py-3.5 text-xs font-semibold uppercase tracking-widest transition-all"
-                >
-                  LIHAT KOLEKSI
-                </Link>
+                <div className="mt-6 flex flex-col gap-2.5 w-full sm:max-w-[280px]">
+                  <Link
+                    href="/catalog"
+                    className="theme-primary-action flex items-center justify-center gap-3 px-6 py-4 text-xs font-semibold uppercase tracking-widest transition-all w-full text-center"
+                  >
+                    <Compass className="w-4 h-4 shrink-0" />
+                    LIHAT KATALOG
+                  </Link>
+                  <a
+                    href={whatsappLink}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center justify-center gap-3 px-6 py-4 text-xs font-semibold uppercase tracking-widest transition-all w-full text-center bg-[#25D366] text-white hover:bg-[#20BA5A] shadow-xs"
+                  >
+                    <svg className="w-4.5 h-4.5 fill-current shrink-0" viewBox="0 0 24 24">
+                      <path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946C.06 5.348 5.397.01 12.008.01c3.202.001 6.212 1.246 8.477 3.514 2.266 2.268 3.507 5.28 3.505 8.484-.004 6.657-5.34 11.997-11.953 11.997-2.005-.001-3.973-.502-5.724-1.455L0 24zm6.59-4.846c1.6.95 3.188 1.449 4.825 1.451 5.436 0 9.86-4.42 9.864-9.864.002-2.637-1.03-5.115-2.908-6.993-1.879-1.88-4.359-2.912-7-2.912-5.439 0-9.873 4.432-9.877 9.877-.001 1.769.479 3.498 1.39 5.031l-.963 3.518 3.6-.944z" />
+                    </svg>
+                    Hubungi WhatsApp
+                  </a>
+                  <a
+                    href={tiktokLink}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center justify-center gap-3 px-6 py-4 text-xs font-semibold uppercase tracking-widest transition-all w-full text-center bg-[var(--theme-surface)] border theme-border text-[var(--theme-text)] hover:bg-[var(--theme-soft-surface)] shadow-xs"
+                  >
+                    <svg className="w-4 h-4 fill-current shrink-0" viewBox="0 0 24 24">
+                      <path d="M12.53.02C13.84 0 15.14.01 16.44 0c.08 1.53.63 3.09 1.75 4.17 1.12 1.11 2.7 1.62 4.24 1.79v4.03c-1.44-.17-2.86-.74-3.99-1.72-.08 1.56-.01 3.12-.01 4.69 0 2.29-.46 4.64-1.92 6.42-1.75 2.23-4.56 3.4-7.3 3.42-3.13.03-6.27-1.57-7.79-4.34-1.7-3.07-1.39-7.28 1.05-9.97 1.79-2.03 4.54-3.07 7.21-2.73v4.05c-1.36-.27-2.86.15-3.76 1.25-.97 1.15-1.07 2.9-.31 4.19.8 1.37 2.44 2.14 4.01 1.88 1.58-.23 2.87-1.56 3.11-3.14.15-2.51.04-5.03.07-7.54.02-3.62.01-7.23.01-10.85z" />
+                    </svg>
+                    Tiktok Studio
+                  </a>
+                </div>
               </div>
 
               <div>
@@ -61,16 +93,25 @@ export default function Home() {
                     />
                   </div>
                   <div className="theme-surface theme-border flex flex-col justify-between border-l px-3 py-3">
-                    <span className="landing-visit-badge border border-emerald-200 bg-emerald-50 px-2.5 py-2 text-left font-mono text-[10px] font-semibold uppercase tracking-widest text-emerald-700 shadow-sm">
-                      visit langsung
-                    </span>
                     <p className="theme-muted font-mono text-[10px] uppercase leading-relaxed tracking-widest">
                       walk in studio / Makassar
                     </p>
+                    <StoreStatusBadge />
                   </div>
                 </div>
               </div>
             </div>
+          </div>
+        </section>
+
+        <section className="theme-surface theme-border border-t py-6 bg-[color-mix(in_srgb,var(--theme-surface)_90%,var(--theme-muted-strong)_10%)]/20">
+          <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 flex flex-col items-center justify-center gap-1.5">
+            <span className="theme-muted font-mono text-[9px] font-bold uppercase tracking-widest">
+              REMINDER
+            </span>
+            <p className="font-serif italic text-base sm:text-lg text-[var(--theme-text)] opacity-95 text-center leading-relaxed">
+              "Rent the look, own the moment"
+            </p>
           </div>
         </section>
 
@@ -163,7 +204,7 @@ export default function Home() {
               href="/catalog"
               className="theme-primary-action mt-6 px-7 py-3.5 text-xs font-semibold uppercase tracking-widest transition-all"
             >
-              LIHAT KOLEKSI
+              LIHAT KATALOG
             </Link>
           </div>
         </section>

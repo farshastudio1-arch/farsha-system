@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import { Lora, Manrope } from 'next/font/google';
 import ThemeProvider from '@/components/ThemeProvider';
+import BackToTop from '@/components/BackToTop';
 import './globals.css';
 
 const lora = Lora({
@@ -31,6 +32,7 @@ export default function RootLayout({
       <body className="min-h-full flex flex-col bg-[var(--theme-background)] text-[var(--theme-text)] font-sans">
         <ThemeProvider />
         {children}
+        <BackToTop />
         <script src="/farsha-catalog-fallback.js" defer />
       </body>
     </html>

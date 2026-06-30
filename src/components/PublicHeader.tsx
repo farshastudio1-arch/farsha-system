@@ -10,8 +10,8 @@ export default function PublicHeader({ variant = 'default' }: PublicHeaderProps)
 
   return (
     <header className="theme-surface theme-border sticky top-0 z-40 border-b bg-[color-mix(in_srgb,var(--theme-surface)_88%,transparent)] backdrop-blur-md transition-all duration-300">
-      <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
-        <Link href="/" className="flex flex-col" aria-label="Farsha Studio beranda">
+      <div className="relative mx-auto flex h-16 max-w-7xl items-center justify-center px-4 sm:px-6 lg:px-8">
+        <Link href="/" className="flex flex-col items-center text-center" aria-label="Farsha Studio beranda">
           <span className="font-serif text-lg font-bold uppercase tracking-widest text-[var(--theme-text)] sm:text-xl">
             FARSHA
           </span>
@@ -20,15 +20,10 @@ export default function PublicHeader({ variant = 'default' }: PublicHeaderProps)
           </span>
         </Link>
 
-        {isCatalog ? (
-          <PublicHeaderSearchButton />
-        ) : (
-          <Link
-            href="/catalog"
-            className="theme-primary-action flex items-center px-4 py-3 text-[10px] font-semibold uppercase tracking-widest transition-all duration-300 shadow-xs sm:px-4.5 sm:text-xs"
-          >
-            LIHAT KOLEKSI
-          </Link>
+        {isCatalog && (
+          <div className="absolute right-4 sm:right-6 lg:right-8">
+            <PublicHeaderSearchButton />
+          </div>
         )}
       </div>
     </header>

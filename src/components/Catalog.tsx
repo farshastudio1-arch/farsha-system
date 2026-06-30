@@ -233,14 +233,26 @@ export default function Catalog({ initialCategory = null }: CatalogProps) {
   const desktopViewOptions: DesktopGridColumns[] = [2, 3, 4];
   const sortControlId = 'catalog-sort';
 
-  const renderSortControl = (id: string) => (
-    <label className="theme-outline-action inline-flex h-11 items-center gap-2 border px-3 text-xs font-semibold uppercase tracking-wider transition-colors">
-      <ArrowUpDown className="h-4 w-4 shrink-0" aria-hidden="true" strokeWidth={1.8} />
+  const renderSortControl = (id: string, compact = false) => (
+    <label
+      className={`theme-outline-action inline-flex items-center border font-semibold uppercase transition-colors ${
+        compact
+          ? 'h-10 min-w-0 gap-1.5 px-2 text-[10px] tracking-wider'
+          : 'h-11 gap-2 px-3 text-xs tracking-wider'
+      }`}
+    >
+      <ArrowUpDown
+        className={`${compact ? 'h-3.5 w-3.5' : 'h-4 w-4'} shrink-0`}
+        aria-hidden="true"
+        strokeWidth={1.8}
+      />
       <select
         id={id}
         value={sortBy}
         onChange={(event) => setSortBy(event.target.value as SortOption)}
-        className="max-w-[8.5rem] appearance-none bg-transparent pr-1 text-xs font-semibold uppercase tracking-wider text-[var(--theme-text)] outline-none"
+        className={`min-w-0 appearance-none bg-transparent font-semibold uppercase tracking-wider text-[var(--theme-text)] outline-none ${
+          compact ? 'max-w-[4.9rem] text-[10px]' : 'max-w-[8.5rem] pr-1 text-xs'
+        }`}
         aria-label="Urutkan katalog"
       >
         {sortOptions.map((option) => (
@@ -277,7 +289,7 @@ export default function Catalog({ initialCategory = null }: CatalogProps) {
       : isMobile && layoutColumns === 2
         ? 'grid-cols-2 gap-2'
       : layoutColumns === 1
-        ? 'grid-cols-1 max-w-md sm:max-w-xl mx-auto gap-5 sm:gap-6'
+        ? 'grid-cols-1 max-w-xl sm:max-w-3xl mx-auto gap-5 sm:gap-6'
         : layoutColumns === 2
           ? 'grid-cols-2 gap-5 sm:gap-6'
           : layoutColumns === 3
@@ -289,18 +301,15 @@ export default function Catalog({ initialCategory = null }: CatalogProps) {
       id="catalog-section"
       data-farsha-catalog
       data-farsha-phone={mockCMS.studioPhone}
-      className="theme-surface theme-border w-full border-t pt-8 pb-16 sm:pt-10 sm:pb-24"
+      className="theme-surface theme-border w-full border-t pt-5 pb-16 sm:pt-8 sm:pb-24"
     >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* CATALOG CONTENT CONTAINER HEADER */}
-        <div className="theme-border flex flex-col md:flex-row md:items-end justify-between gap-6 mb-8 sm:mb-10 pb-6 border-b">
+        <div className="theme-border flex flex-col md:flex-row md:items-end justify-between gap-4 md:gap-6 mb-5 sm:mb-8 pb-4 border-b">
           <div>
-            <span className="theme-muted-strong text-xs font-bold tracking-widest uppercase font-mono">
+            <span className="block theme-muted-strong text-xs font-bold tracking-widest uppercase font-mono">
               KATALOG KAMI
             </span>
-            <h2 className="font-serif text-[2rem] leading-none sm:text-4xl font-bold text-[var(--theme-text)] mt-1.5">
-              Telusuri Koleksi Kebaya
-            </h2>
             {landingCategory && (
               <div className="mt-4 flex flex-wrap items-center gap-3">
                 <span className="theme-selected px-3 py-2 font-mono text-[10px] font-semibold uppercase tracking-widest">
@@ -315,45 +324,47 @@ export default function Catalog({ initialCategory = null }: CatalogProps) {
                 </button>
               </div>
             )}
-            <div className="mt-4 inline-flex items-center gap-2 border border-emerald-200 bg-emerald-50 px-3 py-2 text-[10px] font-semibold uppercase tracking-widest text-emerald-800">
+            <div className="mt-2 inline-flex items-center gap-2 border border-emerald-200 bg-emerald-50 px-3 py-2 text-[10px] font-semibold uppercase tracking-widest text-emerald-800">
               <CheckCircle2 className="h-3.5 w-3.5" aria-hidden="true" />
               <span>Availability synced and up to date</span>
             </div>
           </div>
 
-          <div className="flex flex-wrap lg:hidden items-center justify-between gap-3">
-            <button
-              type="button"
-              data-farsha-filter-open
-              onClick={() => setMobileFiltersOpen(true)}
-              className="theme-outline-action inline-flex h-11 items-center justify-center gap-2 border px-4 text-xs font-semibold uppercase tracking-wider transition-colors"
-            >
-              <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth="2"
-                  d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4"
-                />
-              </svg>
-              <span>Filter</span>
-              {totalActiveFilters > 0 && (
-                <span className="theme-primary-action flex h-5 min-w-5 items-center justify-center px-1.5 text-[10px]">
-                  {totalActiveFilters}
-                </span>
-              )}
-            </button>
+          <div className="flex flex-nowrap lg:hidden items-center justify-between gap-2">
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                data-farsha-filter-open
+                onClick={() => setMobileFiltersOpen(true)}
+                className="theme-outline-action inline-flex h-10 shrink-0 items-center justify-center gap-1.5 border px-2.5 text-[10px] font-semibold uppercase tracking-wider transition-colors"
+              >
+                <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth="2"
+                    d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4"
+                  />
+                </svg>
+                <span>Filter</span>
+                {totalActiveFilters > 0 && (
+                  <span className="theme-primary-action flex h-4.5 min-w-4.5 items-center justify-center px-1 text-[9px]">
+                    {totalActiveFilters}
+                  </span>
+                )}
+              </button>
 
-            {renderSortControl(`${sortControlId}-mobile`)}
+              {renderSortControl(`${sortControlId}-mobile`, true)}
+            </div>
 
-            <div className="theme-soft-surface theme-border flex border p-1">
+            <div className="theme-soft-surface theme-border flex shrink-0 border p-0.5">
               {mobileViewOptions.map((columns) => (
                 <button
                   key={columns}
                   type="button"
                   data-farsha-grid-option={columns}
                   onClick={() => selectColumns(columns)}
-                  className={`flex h-9 w-10 items-center justify-center text-xs font-semibold transition-all ${
+                  className={`flex h-8 w-8 items-center justify-center text-[10px] font-semibold transition-all ${
                     layoutColumns === columns
                       ? 'theme-selected shadow-xs'
                       : 'theme-muted-strong hover:bg-[var(--theme-surface)] hover:text-[var(--theme-text)]'
@@ -372,9 +383,6 @@ export default function Catalog({ initialCategory = null }: CatalogProps) {
             {renderSortControl(sortControlId)}
 
             <div className="flex items-center gap-4">
-              <span className="theme-muted text-xs uppercase tracking-wider font-mono font-semibold">
-                Tampilan Grid
-              </span>
               <div className="theme-soft-surface theme-border flex p-1 border">
                 {/* Desktop column selection (2, 3, or 4) */}
                 {desktopViewOptions.map((columns) => (

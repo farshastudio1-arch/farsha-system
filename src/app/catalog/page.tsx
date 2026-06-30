@@ -22,7 +22,9 @@ export default async function CatalogPage({ searchParams }: CatalogPageProps) {
         <Catalog initialCategory={landingCategory?.slug ?? null} />
       </main>
 
-      <PublicFooter />
+      <div className="hidden lg:block">
+        <PublicFooter />
+      </div>
     </div>
   );
 }
