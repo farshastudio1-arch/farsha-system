@@ -181,12 +181,12 @@ export default function ProductDetailModal({ product, onClose }: ProductDetailMo
           {/* LEFT PANEL: Media Gallery */}
           <div className="theme-soft-surface theme-border w-full md:w-1/2 shrink-0 flex flex-col p-3 sm:p-4 md:p-6 relative justify-center border-b md:border-b-0 md:border-r">
             {/* Main Visual */}
-            <div className="theme-soft-surface relative h-[clamp(190px,34dvh,360px)] md:h-auto md:aspect-[3/4] w-full overflow-hidden shadow-xs">
+            <div className="theme-soft-surface relative aspect-[4/5] w-full overflow-hidden shadow-xs">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src={product.imageUrls[activeImgIndex]}
                 alt={product.name}
-                className="w-full h-full object-contain md:object-cover"
+                className="w-full h-full object-cover"
               />
             </div>
 
@@ -236,10 +236,10 @@ export default function ProductDetailModal({ product, onClose }: ProductDetailMo
               {/* Sizing & Kategori Badges (Competitor Layout element) */}
               <div className="flex flex-wrap gap-2 mb-5">
                 <span className="theme-soft-surface theme-border border px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider font-mono text-[var(--theme-text)]">
-                  Kategori: {product.model}
+                  {product.model}
                 </span>
                 <span className="theme-soft-surface theme-border border px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider font-mono text-[var(--theme-text)]">
-                  Ukuran: Size {product.size}
+                  Size {product.size}
                 </span>
                 {matchedCategories.map((cat, idx) => (
                   <span
@@ -318,6 +318,10 @@ export default function ProductDetailModal({ product, onClose }: ProductDetailMo
                   Ketentuan Sewa
                 </h4>
                 <ul className="space-y-2.5 text-xs theme-muted-strong leading-relaxed">
+                  <li className="flex items-start gap-2">
+                    <span className="text-emerald-600 font-bold shrink-0">✓</span>
+                    <span><strong>Datang langsung:</strong> Kamu bisa datang langsung ke store kami tanpa appointment.</span>
+                  </li>
                   <li className="flex items-start gap-2">
                     <span className="text-emerald-600 font-bold shrink-0">✓</span>
                     <span><strong>Uang Jaminan:</strong> Rp 100.000 (titipan aman saat pelunasan, dikembalikan 100% setelah kebaya kembali).</span>
@@ -420,12 +424,16 @@ export default function ProductDetailModal({ product, onClose }: ProductDetailMo
             <div className="sticky bottom-0 z-10 theme-border bg-[var(--theme-surface)] py-4 px-5 sm:px-6 md:px-8 border-t flex flex-row items-center justify-between gap-4 shrink-0">
               <div className="flex flex-col">
                 <span className="theme-muted text-[10px] uppercase tracking-wider font-mono">
-                  Tarif Sewa Studio
+                  Harga Sewa
                 </span>
-                <span className="text-2xl font-semibold font-mono text-[var(--theme-text)]">
-                  {formatPrice(product.rentalPrice)}{' '}
-                  <span className="theme-muted-strong text-xs font-normal">/3 hari</span>
-                </span>
+                <div className="flex items-baseline gap-1.5 flex-wrap">
+                  <span className="text-2xl font-semibold font-mono text-[var(--theme-text)]">
+                    {formatPrice(product.rentalPrice)}
+                  </span>
+                  <span className="theme-muted-strong text-xs font-mono font-normal">
+                    /3 hari
+                  </span>
+                </div>
               </div>
 
               {/* WA Deep Link Action */}

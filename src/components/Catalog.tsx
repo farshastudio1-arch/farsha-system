@@ -294,7 +294,7 @@ export default function Catalog({ initialCategory = null }: CatalogProps) {
 
   const catalogGridClass =
     isMobile && layoutColumns === 3
-      ? 'grid-cols-3 gap-1.5 sm:gap-2'
+      ? 'grid-cols-3 gap-1 sm:gap-1.5'
       : isMobile && layoutColumns === 2
         ? 'grid-cols-2 gap-2'
       : layoutColumns === 1
@@ -302,7 +302,7 @@ export default function Catalog({ initialCategory = null }: CatalogProps) {
         : layoutColumns === 2
           ? 'grid-cols-2 gap-5 sm:gap-6'
           : layoutColumns === 3
-            ? 'grid-cols-3 gap-5 sm:gap-6'
+            ? 'grid-cols-3 gap-3 sm:gap-4'
             : 'grid-cols-4 gap-5 sm:gap-6';
 
   return (

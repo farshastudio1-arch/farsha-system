@@ -80,7 +80,7 @@ export default function ProductCard({
         />
         {displaySettings.showAvailabilityBadges && (
           <span
-            className={`mobile-availability-dot absolute right-1.5 top-1.5 h-2.5 w-2.5 border border-[var(--theme-surface)] shadow-sm ${
+            className={`mobile-availability-dot absolute left-1.5 top-1.5 h-2.5 w-2.5 border border-[var(--theme-surface)] shadow-sm ${
               product.status === 'available'
                 ? 'bg-emerald-500'
                 : product.status === 'rented'
