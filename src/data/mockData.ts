@@ -18,7 +18,7 @@ export interface KebayaItem {
   size: 'S' | 'M' | 'L' | 'XL' | 'Custom';
   model: 'Modern' | 'Klasik' | 'Kartini' | 'Kutubaru';
   rentalPrice: number;
-  status: 'available' | 'rented' | 'maintenance' | 'archived';
+  status: 'available' | 'rented' | 'maintenance';
   rentalEndDate: string | null;
   imageUrls: string[];
   description: string;
@@ -49,7 +49,7 @@ export interface SiteSettings {
   tiktokUrl: string;
   mapsUrl: string;
   currency: 'IDR';
-  defaultProductStatus: 'available' | 'rented' | 'maintenance' | 'archived';
+  defaultProductStatus: 'available' | 'rented' | 'maintenance';
   defaultSort: 'newest' | 'price-low' | 'price-high' | 'featured';
   catalogCardMode: 'minimal' | 'standard' | 'detailed';
   showPrices: boolean;
@@ -193,7 +193,7 @@ export const mockKebayas: KebayaItem[] = [
     size: 'M',
     model: 'Kutubaru',
     rentalPrice: 200000,
-    status: 'maintenance',
+    status: 'available',
     rentalEndDate: null,
     imageUrls: [
       'https://images.unsplash.com/photo-1617627143750-d86bc21e42bb?w=800&auto=format&fit=crop&q=80',
@@ -301,7 +301,7 @@ export const mockKebayas: KebayaItem[] = [
     size: 'M',
     model: 'Kartini',
     rentalPrice: 210000,
-    status: 'archived',
+    status: 'available',
     rentalEndDate: null,
     imageUrls: [
       'https://images.unsplash.com/photo-1549064482-6779ba3292fe?w=800&auto=format&fit=crop&q=80',

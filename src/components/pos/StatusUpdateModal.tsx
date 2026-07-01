@@ -1,9 +1,9 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { X, Calendar as CalendarIcon, CheckCircle2, User, Phone, Wallet } from 'lucide-react';
 
-export type ItemStatus = 'available' | 'rented' | 'maintenance' | 'archived';
+export type ItemStatus = 'available' | 'rented' | 'maintenance';
 
 interface StatusUpdateModalProps {
   isOpen: boolean;
@@ -34,21 +34,11 @@ export default function StatusUpdateModal({
   item,
   onUpdate,
 }: StatusUpdateModalProps) {
-  const [status, setStatus] = useState<ItemStatus>('available');
-  const [endDate, setEndDate] = useState<string>('');
-  const [customerName, setCustomerName] = useState<string>('');
-  const [customerPhone, setCustomerPhone] = useState<string>('');
-  const [depositAmount, setDepositAmount] = useState<number>(0);
-
-  useEffect(() => {
-    if (item) {
-      setStatus(item.status);
-      setEndDate(item.rental_end_date || '');
-      setCustomerName(item.customerName || '');
-      setCustomerPhone(item.customerPhone || '');
-      setDepositAmount(item.depositAmount || 0);
-    }
-  }, [item]);
+  const [status, setStatus] = useState<ItemStatus>(item?.status ?? 'available');
+  const [endDate, setEndDate] = useState<string>(item?.rental_end_date || '');
+  const [customerName, setCustomerName] = useState<string>(item?.customerName || '');
+  const [customerPhone, setCustomerPhone] = useState<string>(item?.customerPhone || '');
+  const [depositAmount, setDepositAmount] = useState<number>(item?.depositAmount || 0);
 
   if (!isOpen || !item) return null;
 
@@ -87,7 +77,7 @@ export default function StatusUpdateModal({
           <div className="space-y-3">
             <label className="text-sm font-medium text-gray-700">New Status</label>
             <div className="grid grid-cols-2 gap-3">
-              {(['available', 'rented', 'maintenance', 'archived'] as ItemStatus[]).map((s) => (
+              {(['available', 'rented', 'maintenance'] as ItemStatus[]).map((s) => (
                 <label
                   key={s}
                   className={`

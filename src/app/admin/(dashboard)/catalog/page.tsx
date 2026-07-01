@@ -3,7 +3,6 @@
 import { FormEvent, useMemo, useState } from 'react';
 import {
   AlertTriangle,
-  Archive,
   CheckCircle,
   Clock,
   Edit,
@@ -26,13 +25,11 @@ type CatalogFormState = {
   name: string;
   code: string;
   rentalPrice: string;
-  status: KebayaItem['status'];
   model: KebayaItem['model'];
   size: KebayaItem['size'];
   color: string;
   imageUrls: string[];
   description: string;
-  rentalEndDate: string;
   categories: KebayaCategory[];
   measurements: KebayaMeasurements;
 };
@@ -46,13 +43,11 @@ const emptyForm: CatalogFormState = {
   name: '',
   code: '',
   rentalPrice: '',
-  status: 'available',
   model: 'Modern',
   size: 'M',
   color: '',
   imageUrls: [''],
   description: '',
-  rentalEndDate: '',
   categories: [],
   measurements: {
     bust: '',
@@ -74,17 +69,9 @@ const categoryOptions: { value: KebayaCategory; label: string; emoji: string }[]
 
 const statusOptions: { value: KebayaItem['status'] | 'all'; label: string }[] = [
   { value: 'all', label: 'All Status' },
-  { value: 'available', label: 'Available' },
-  { value: 'rented', label: 'Rented' },
-  { value: 'maintenance', label: 'Maintenance' },
-  { value: 'archived', label: 'Archived' },
-];
-
-const itemStatusOptions: { value: KebayaItem['status']; label: string }[] = [
-  { value: 'available', label: 'Available' },
-  { value: 'rented', label: 'Rented' },
-  { value: 'maintenance', label: 'Maintenance' },
-  { value: 'archived', label: 'Archived' },
+  { value: 'available', label: 'AVAILABLE' },
+  { value: 'rented', label: 'RENTED' },
+  { value: 'maintenance', label: 'DICUCI' },
 ];
 
 const modelOptions: KebayaItem['model'][] = ['Modern', 'Klasik', 'Kartini', 'Kutubaru'];
@@ -100,15 +87,13 @@ const rentalCategoryOptions = [
 const statusStyles: Record<KebayaItem['status'], string> = {
   available: 'border-emerald-200 bg-emerald-50 text-emerald-700',
   rented: 'border-amber-200 bg-amber-50 text-amber-700',
-  maintenance: 'border-red-200 bg-red-50 text-red-700',
-  archived: 'border-neutral-200 bg-neutral-100 text-neutral-600',
+  maintenance: 'border-rose-200 bg-rose-50 text-rose-700',
 };
 
 const statusIcons: Record<KebayaItem['status'], typeof CheckCircle> = {
   available: CheckCircle,
   rented: Clock,
   maintenance: Wrench,
-  archived: Archive,
 };
 
 function formatPrice(price: number) {
@@ -144,10 +129,9 @@ function formatDate(value: string | null) {
 
 function statusLabel(status: KebayaItem['status']) {
   const labels: Record<KebayaItem['status'], string> = {
-    available: 'Available',
-    rented: 'Rented',
-    maintenance: 'Maintenance',
-    archived: 'Archived',
+    available: 'AVAILABLE',
+    rented: 'RENTED',
+    maintenance: 'DICUCI',
   };
 
   return labels[status];
@@ -162,13 +146,11 @@ function itemToForm(item: KebayaItem): CatalogFormState {
     name: item.name,
     code: item.code,
     rentalPrice: String(item.rentalPrice),
-    status: item.status,
     model: item.model,
     size: item.size,
     color: item.color,
     imageUrls: item.imageUrls.length > 0 ? [...item.imageUrls] : [''],
     description: item.description,
-    rentalEndDate: item.rentalEndDate ?? '',
     categories: item.categories ?? [],
     measurements: {
       bust: item.measurements?.bust ?? '',
@@ -202,8 +184,8 @@ function createItemFromForm(form: CatalogFormState, id: string): KebayaItem {
     size: form.size,
     model: form.model,
     rentalPrice: parsePrice(form.rentalPrice),
-    status: form.status,
-    rentalEndDate: form.status === 'rented' && form.rentalEndDate ? form.rentalEndDate : null,
+    status: 'available',
+    rentalEndDate: null,
     imageUrls: validUrls.length > 0 ? validUrls : [defaultImageUrl],
     description: form.description.trim(),
     categories: form.categories.length > 0 ? form.categories : undefined,
@@ -231,10 +213,6 @@ function getItemQualityIssues(item: KebayaItem) {
 
   if (!item.description.trim()) {
     issues.push('Missing description');
-  }
-
-  if (item.status === 'rented' && !item.rentalEndDate) {
-    issues.push('Missing return date');
   }
 
   if (item.rentalPrice <= 0) {
@@ -331,14 +309,13 @@ export default function CatalogManagement() {
   const [imgErrors, setImgErrors] = useState<Record<number, boolean>>({});
 
   const catalogSummary = useMemo(() => {
-    const visibleItems = projectedItems.filter((item) => item.status !== 'archived');
     const availableItems = projectedItems.filter((item) => item.status === 'available');
     const rentedItems = projectedItems.filter((item) => item.status === 'rented');
     const maintenanceItems = projectedItems.filter((item) => item.status === 'maintenance');
     const issueItems = catalogItems.filter((item) => getItemQualityIssues(item).length > 0);
 
     return {
-      visible: visibleItems.length,
+      total: projectedItems.length,
       available: availableItems.length,
       rented: rentedItems.length,
       maintenance: maintenanceItems.length,
@@ -350,7 +327,7 @@ export default function CatalogManagement() {
     () =>
       landingCategories.map((category) => {
         const matches = projectedItems.filter(
-          (item) => item.status !== 'archived' && matchesLandingCategory(item, category.slug),
+          (item) => matchesLandingCategory(item, category.slug),
         );
         const ready = matches.filter((item) => item.status === 'available');
 
@@ -490,11 +467,6 @@ export default function CatalogManagement() {
       return;
     }
 
-    if (form.status === 'rented' && !form.rentalEndDate) {
-      setFormError('Return date is required when an item is rented.');
-      return;
-    }
-
     const nextItem = createItemFromForm(form, editingItem?.id ?? `catalog-${Date.now()}`);
     const nextItems = editingItem
       ? catalogItems.map((item) => (item.id === editingItem.id ? nextItem : item))
@@ -516,6 +488,9 @@ export default function CatalogManagement() {
   };
 
   const coverUrl = form.imageUrls.find((url) => url.trim()) ?? '';
+  const editingProjectedItem = editingItem
+    ? projectedItems.find((item) => item.id === editingItem.id) ?? null
+    : null;
 
   return (
     <div className="mx-auto flex w-full max-w-7xl flex-col gap-5 px-4 py-5 sm:px-6 sm:py-6 lg:px-8 lg:py-8">
@@ -528,8 +503,8 @@ export default function CatalogManagement() {
             Public collection inventory
           </h1>
           <p className="mt-2 max-w-2xl text-sm leading-relaxed text-neutral-500 sm:text-base">
-            Manage the item data customers rely on: availability, photos, occasion coverage,
-            pricing, and return dates.
+            Manage item identity, pricing, photos, and occasion coverage. Rental availability comes
+            from POS transactions.
           </p>
         </div>
 
@@ -546,12 +521,12 @@ export default function CatalogManagement() {
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
         <div className="border border-neutral-200 bg-white p-4 shadow-sm">
           <p className="text-xs font-semibold uppercase tracking-widest text-neutral-500">
-            Visible catalog
+            Catalog items
           </p>
           <p className="mt-3 text-3xl font-semibold tracking-tight text-neutral-950">
-            {catalogSummary.visible}
+            {catalogSummary.total}
           </p>
-          <p className="mt-2 text-sm text-neutral-500">Non-archived customer-facing items</p>
+          <p className="mt-2 text-sm text-neutral-500">Customer-facing item records</p>
         </div>
         <div className="border border-emerald-200 bg-emerald-50 p-4 shadow-sm">
           <p className="text-xs font-semibold uppercase tracking-widest text-emerald-700">
@@ -757,6 +732,7 @@ export default function CatalogManagement() {
                     </td>
                     <td className="px-5 py-4 font-semibold text-neutral-950">
                       {formatPrice(item.rentalPrice)}
+                      <span className="ml-1 text-[10px] font-normal text-neutral-400">/3 hari</span>
                     </td>
                     <td className="px-5 py-4">
                       <StatusBadge status={item.status} />
@@ -844,7 +820,7 @@ export default function CatalogManagement() {
                       <div className="border border-neutral-200 bg-neutral-50 p-2">
                         <span className="block text-neutral-400">Price</span>
                         <span className="mt-0.5 block font-semibold text-neutral-800">
-                          {formatPrice(item.rentalPrice)}
+                          {formatPrice(item.rentalPrice)} <span className="text-[10px] font-normal text-neutral-500">/3 hari</span>
                         </span>
                       </div>
                     </div>
@@ -1094,13 +1070,54 @@ export default function CatalogManagement() {
                               />
                             </FieldLabel>
                           </div>
+                          <div className="md:col-span-2">
+                            <span className="mb-1 block text-sm font-medium text-neutral-700">
+                              Landing categories
+                            </span>
+                            <div className="flex flex-wrap gap-2">
+                              {categoryOptions.map((category) => {
+                                const checked = form.categories.includes(category.value);
+
+                                return (
+                                  <label
+                                    key={category.value}
+                                    className={`flex cursor-pointer select-none items-center gap-2 border px-3 py-2 text-sm transition-colors ${
+                                      checked
+                                        ? 'border-neutral-900 bg-neutral-900 text-white'
+                                        : 'border-neutral-200 bg-neutral-50 text-neutral-700 hover:border-neutral-400'
+                                    }`}
+                                  >
+                                    <input
+                                      type="checkbox"
+                                      className="sr-only"
+                                      checked={checked}
+                                      onChange={() => {
+                                        const next = checked
+                                          ? form.categories.filter((item) => item !== category.value)
+                                          : [...form.categories, category.value];
+                                        updateFormField('categories', next);
+                                      }}
+                                    />
+                                    <span>{category.emoji}</span>
+                                    <span className="font-medium">{category.label}</span>
+                                  </label>
+                                );
+                              })}
+                            </div>
+                            <p className="mt-2 text-xs text-neutral-400">
+                              Leave empty to use automatic matching from model, color, and description.
+                            </p>
+                          </div>
                         </div>
                       </section>
 
                       <section className="border border-neutral-200 bg-white p-4">
-                        <SectionLabel>2. Rental status</SectionLabel>
-                        <div className="grid gap-4 md:grid-cols-3">
-                          <FieldLabel label="Rental price">
+                        <SectionLabel>2. Pricing</SectionLabel>
+                        <p className="mb-4 text-sm text-neutral-500">
+                          Admin controls the rental price here.
+                        </p>
+                        <div className="grid gap-4 md:grid-cols-2">
+                          <FieldLabel label="Rental price (3-day base)">
                             <div className="relative">
                               <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm text-neutral-400">
                                 Rp
@@ -1116,24 +1133,9 @@ export default function CatalogManagement() {
                                 className={`${inputCls} pl-9`}
                               />
                             </div>
-                          </FieldLabel>
-                          <FieldLabel label="Status">
-                            <select
-                              value={form.status}
-                              onChange={(event) =>
-                                updateFormField(
-                                  'status',
-                                  event.target.value as KebayaItem['status'],
-                                )
-                              }
-                              className={selectCls}
-                            >
-                              {itemStatusOptions.map((option) => (
-                                <option key={option.value} value={option.value}>
-                                  {option.label}
-                                </option>
-                              ))}
-                            </select>
+                            <p className="mt-1 text-[10px] text-neutral-400">
+                              Tarif dasar untuk durasi sewa standar 3 hari.
+                            </p>
                           </FieldLabel>
                           <FieldLabel label="Kategori sewa">
                             <input
@@ -1147,20 +1149,6 @@ export default function CatalogManagement() {
                               className={inputCls}
                             />
                           </FieldLabel>
-                          {form.status === 'rented' && (
-                            <div className="md:col-span-3">
-                              <FieldLabel label="Return date">
-                                <input
-                                  type="date"
-                                  value={form.rentalEndDate}
-                                  onChange={(event) =>
-                                    updateFormField('rentalEndDate', event.target.value)
-                                  }
-                                  className={inputCls}
-                                />
-                              </FieldLabel>
-                            </div>
-                          )}
                         </div>
                         <datalist id="rental-category-options">
                           {rentalCategoryOptions.map((option) => (
@@ -1254,44 +1242,7 @@ export default function CatalogManagement() {
                       </section>
 
                       <section className="border border-neutral-200 bg-white p-4">
-                        <SectionLabel>4. Landing categories</SectionLabel>
-                        <div className="flex flex-wrap gap-2">
-                          {categoryOptions.map((category) => {
-                            const checked = form.categories.includes(category.value);
-
-                            return (
-                              <label
-                                key={category.value}
-                                className={`flex cursor-pointer select-none items-center gap-2 border px-3 py-2 text-sm transition-colors ${
-                                  checked
-                                    ? 'border-neutral-900 bg-neutral-900 text-white'
-                                    : 'border-neutral-200 bg-neutral-50 text-neutral-700 hover:border-neutral-400'
-                                }`}
-                              >
-                                <input
-                                  type="checkbox"
-                                  className="sr-only"
-                                  checked={checked}
-                                  onChange={() => {
-                                    const next = checked
-                                      ? form.categories.filter((item) => item !== category.value)
-                                      : [...form.categories, category.value];
-                                    updateFormField('categories', next);
-                                  }}
-                                />
-                                <span>{category.emoji}</span>
-                                <span className="font-medium">{category.label}</span>
-                              </label>
-                            );
-                          })}
-                        </div>
-                        <p className="mt-2 text-xs text-neutral-400">
-                          Leave empty to use automatic matching from model, color, and description.
-                        </p>
-                      </section>
-
-                      <section className="border border-neutral-200 bg-white p-4">
-                        <SectionLabel>5. Product story</SectionLabel>
+                        <SectionLabel>4. Product story</SectionLabel>
                         <textarea
                           rows={4}
                           value={form.description}
@@ -1314,7 +1265,7 @@ export default function CatalogManagement() {
                           </p>
                         </div>
                         <div className="flex flex-wrap gap-1.5">
-                          <StatusBadge status={form.status} />
+                          <StatusBadge status={editingProjectedItem?.status ?? 'available'} />
                           <span className="border border-neutral-200 bg-white px-2 py-1 text-xs font-semibold text-neutral-600">
                             Size {form.size}
                           </span>

@@ -19,7 +19,10 @@ export default async function CatalogPage({ searchParams }: CatalogPageProps) {
       <PublicHeader variant="catalog" />
 
       <main className="flex-grow">
-        <Catalog initialCategory={landingCategory?.slug ?? null} />
+        <Catalog
+          key={landingCategory?.slug ?? 'all'}
+          initialCategory={landingCategory?.slug ?? null}
+        />
       </main>
 
       <div className="hidden lg:block">

@@ -50,10 +50,9 @@ function formatDate(value: string | null) {
 
 function statusLabel(status: KebayaItem['status']) {
   const labels: Record<KebayaItem['status'], string> = {
-    available: 'Available',
-    rented: 'Rented',
-    maintenance: 'Maintenance',
-    archived: 'Archived',
+    available: 'AVAILABLE',
+    rented: 'RENTED',
+    maintenance: 'DICUCI',
   };
 
   return labels[status];
@@ -63,8 +62,7 @@ function statusClass(status: KebayaItem['status']) {
   const classes: Record<KebayaItem['status'], string> = {
     available: 'border-emerald-200 bg-emerald-50 text-emerald-700',
     rented: 'border-amber-200 bg-amber-50 text-amber-700',
-    maintenance: 'border-red-200 bg-red-50 text-red-700',
-    archived: 'border-neutral-200 bg-neutral-100 text-neutral-600',
+    maintenance: 'border-rose-200 bg-rose-50 text-rose-700',
   };
 
   return classes[status];
@@ -151,16 +149,6 @@ function getActionItems(items: KebayaItem[], overdueTransactions: Array<{ itemId
         });
       }
 
-      if (item.status === 'archived') {
-        actions.push({
-          key: `${item.id}-archived`,
-          title: 'Archived item',
-          detail: 'Archived items stay in admin data but should not drive customer expectations.',
-          priority: 'low',
-          item,
-        });
-      }
-
       return actions;
     })
     .sort((a, b) => {
@@ -239,12 +227,10 @@ export default function AdminDashboard() {
   const availableItems = countByStatus(projectedItems, 'available');
   const rentedItems = countByStatus(projectedItems, 'rented');
   const maintenanceItems = countByStatus(projectedItems, 'maintenance');
-  const archivedItems = countByStatus(projectedItems, 'archived');
-  const visibleItems = projectedItems.filter((item) => item.status !== 'archived');
   const readyRatio = totalItems > 0 ? Math.round((availableItems / totalItems) * 100) : 0;
   const whatsappReady = cleanPhone(settings.whatsappNumber).length >= 10;
   const actionItems = getActionItems(projectedItems, overdueTransactions);
-  const priceValues = visibleItems.map((item) => item.rentalPrice).filter((price) => price > 0);
+  const priceValues = projectedItems.map((item) => item.rentalPrice).filter((price) => price > 0);
   const lowestPrice = priceValues.length > 0 ? Math.min(...priceValues) : 0;
   const highestPrice = priceValues.length > 0 ? Math.max(...priceValues) : 0;
   const rentedSchedule = projectedItems
@@ -258,7 +244,7 @@ export default function AdminDashboard() {
   const maintenanceQueue = projectedItems.filter((item) => item.status === 'maintenance').slice(0, 5);
 
   const categoryCoverage = landingCategories.map((category) => {
-    const matchedItems = visibleItems.filter((item) => matchesLandingCategory(item, category.slug));
+    const matchedItems = projectedItems.filter((item) => matchesLandingCategory(item, category.slug));
     const readyItems = matchedItems.filter((item) => item.status === 'available');
 
     return {
@@ -272,9 +258,9 @@ export default function AdminDashboard() {
   const readinessItems = [
     {
       label: 'Public catalog items',
-      value: `${visibleItems.length} visible`,
-      detail: archivedItems > 0 ? `${archivedItems} archived in admin` : 'No archived items',
-      tone: visibleItems.length > 0 ? ('good' as const) : ('warning' as const),
+      value: `${totalItems} items`,
+      detail: 'Catalog identity records managed in admin.',
+      tone: totalItems > 0 ? ('good' as const) : ('warning' as const),
       icon: Eye,
     },
     {
@@ -327,11 +313,11 @@ export default function AdminDashboard() {
         </div>
       </div>
 
-      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
+      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         <OverviewCard
           title="Total items"
           value={totalItems}
-          description={`${visibleItems.length} public-facing, ${archivedItems} archived`}
+          description="Catalog identity records"
           icon={ShoppingBag}
         />
         <OverviewCard
@@ -354,12 +340,6 @@ export default function AdminDashboard() {
           description="Cleaning or repair items needing follow-up"
           icon={Wrench}
           tone={maintenanceItems > 0 ? 'warning' : 'good'}
-        />
-        <OverviewCard
-          title="Archived"
-          value={archivedItems}
-          description="Hidden from customer expectations"
-          icon={PackageCheck}
         />
       </div>
 
@@ -451,7 +431,7 @@ export default function AdminDashboard() {
                   : 'No public prices'}
               </p>
               <p className="mt-1 text-xs leading-relaxed text-neutral-500">
-                Based on visible, non-archived catalog items.
+                Based on catalog item prices.
               </p>
             </div>
           </div>
@@ -508,7 +488,7 @@ export default function AdminDashboard() {
                 <div>
                   <p className="text-sm font-semibold">Catalog looks ready</p>
                   <p className="mt-1 text-sm leading-relaxed">
-                    No maintenance, rented-date, image, archived, or description issues were found.
+                    No maintenance, rented-date, image, or description issues were found.
                   </p>
                 </div>
               </div>

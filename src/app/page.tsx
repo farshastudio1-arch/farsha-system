@@ -161,10 +161,10 @@ export default function Home() {
                     />
                   </div>
                   <div className="flex flex-1 flex-col p-4">
-                    <h3 className="font-serif text-2xl font-semibold leading-tight text-[var(--theme-text)]">
+                    <h3 className="font-serif text-lg font-semibold leading-tight text-[var(--theme-text)] sm:text-xl">
                       {category.title}
                     </h3>
-                    <p className="theme-muted-strong mt-3 text-sm leading-relaxed">
+                    <p className="theme-muted-strong mt-2 mb-5 text-sm leading-relaxed">
                       {category.descriptor}
                     </p>
                     <span className="theme-border mt-auto inline-flex border-t pt-4 font-mono text-[10px] font-semibold uppercase tracking-widest text-[var(--theme-text)]">

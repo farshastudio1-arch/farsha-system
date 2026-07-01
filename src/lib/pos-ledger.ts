@@ -11,6 +11,7 @@ import {
 
 export type PosTransactionKind = 'rental' | 'sale';
 export type PosTransactionStatus = 'open' | 'closed' | 'void';
+export type PosMaintenanceStatus = 'open' | 'closed';
 export type PosLedgerAction =
   | 'create'
   | 'update'
@@ -19,7 +20,11 @@ export type PosLedgerAction =
   | 'refund'
   | 'penalty'
   | 'adjustment'
-  | 'print';
+  | 'print'
+  | 'maintenance_open'
+  | 'maintenance_close'
+  | 'void';
+export type PosPaymentMethod = 'cash' | 'transfer' | 'qris' | 'card' | 'other';
 
 export interface PosTransaction {
   id: string;
@@ -39,6 +44,7 @@ export interface PosTransaction {
   refundedAmount: number;
   penaltyAmount: number;
   adjustmentAmount: number;
+  paymentMethod: PosPaymentMethod;
   notes: string;
   revision: number;
   createdAt: string;
@@ -64,6 +70,8 @@ export interface PosReceipt {
   refundedAmount: number;
   penaltyAmount: number;
   adjustmentAmount: number;
+  eventAmount: number;
+  paymentMethod: PosPaymentMethod;
   totalCollected: number;
   balanceDue: number;
   createdAt: string;
@@ -77,19 +85,38 @@ export interface PosAuditEntry {
   transactionNumber: string;
   action: PosLedgerAction;
   summary: string;
+  reason: string;
   before: PosTransaction | null;
   after: PosTransaction | null;
   createdAt: string;
+}
+
+export interface PosMaintenanceHold {
+  id: string;
+  maintenanceNumber: string;
+  itemId: string;
+  itemCode: string;
+  itemName: string;
+  sourceTransactionId: string;
+  transactionNumber: string;
+  status: PosMaintenanceStatus;
+  openedAt: string;
+  closedAt: string | null;
+  openedNote: string;
+  closedNote: string;
+  revision: number;
 }
 
 export interface PosLedgerState {
   transactions: PosTransaction[];
   receipts: PosReceipt[];
   history: PosAuditEntry[];
+  maintenanceHolds: PosMaintenanceHold[];
   counters: {
     transaction: number;
     receipt: number;
     history: number;
+    maintenance: number;
   };
 }
 
@@ -101,6 +128,9 @@ export interface AvailabilityProjection {
   dueDate: string | null;
   openTransactionId: string | null;
   openTransactionNumber: string | null;
+  openMaintenanceId: string | null;
+  openMaintenanceNumber: string | null;
+  maintenanceOpenedAt: string | null;
   customerName: string | null;
   customerPhone: string | null;
   source: 'master' | 'ledger';
@@ -117,7 +147,9 @@ export interface CreateRentalInput {
   startDate: string;
   dueDate: string;
   depositReceived: number;
+  paymentMethod?: PosPaymentMethod;
   notes?: string;
+  itemPrice?: number;
 }
 
 export interface UpdateTransactionInput {
@@ -125,11 +157,13 @@ export interface UpdateTransactionInput {
   customerPhone: string;
   dueDate: string | null;
   notes?: string;
+  reason: string;
 }
 
 export interface FinancialEventInput {
   amount: number;
   note?: string;
+  paymentMethod?: PosPaymentMethod;
 }
 
 export interface CloseTransactionInput {
@@ -138,6 +172,15 @@ export interface CloseTransactionInput {
   penaltyAmount?: number;
   adjustmentAmount?: number;
   note?: string;
+  paymentMethod?: PosPaymentMethod;
+}
+
+export interface CompleteMaintenanceInput {
+  note?: string;
+}
+
+export interface VoidTransactionInput {
+  reason: string;
 }
 
 const storageKey = 'farsha-pos-ledger-v1';
@@ -173,6 +216,11 @@ function normalizeNumber(value: unknown, fallback = 0) {
   return Number.isFinite(parsed) && parsed >= 0 ? parsed : fallback;
 }
 
+function normalizeSignedNumber(value: unknown, fallback = 0) {
+  const parsed = typeof value === 'number' ? value : Number(value);
+  return Number.isFinite(parsed) ? parsed : fallback;
+}
+
 function normalizeText(value: unknown, fallback = '') {
   return typeof value === 'string' ? value.trim() : fallback;
 }
@@ -181,8 +229,21 @@ function normalizeTransactionStatus(value: unknown): PosTransactionStatus {
   return value === 'open' || value === 'closed' || value === 'void' ? value : 'open';
 }
 
+function normalizeMaintenanceStatus(value: unknown): PosMaintenanceStatus {
+  return value === 'closed' ? 'closed' : 'open';
+}
+
 function normalizeTransactionKind(value: unknown): PosTransactionKind {
   return value === 'sale' ? 'sale' : 'rental';
+}
+
+function normalizePaymentMethod(value: unknown): PosPaymentMethod {
+  return value === 'transfer' ||
+    value === 'qris' ||
+    value === 'card' ||
+    value === 'other'
+    ? value
+    : 'cash';
 }
 
 function normalizeTransaction(value: Partial<PosTransaction>, ordinal: number): PosTransaction | null {
@@ -213,7 +274,8 @@ function normalizeTransaction(value: Partial<PosTransaction>, ordinal: number): 
     depositReceived: normalizeNumber(value.depositReceived),
     refundedAmount: normalizeNumber(value.refundedAmount),
     penaltyAmount: normalizeNumber(value.penaltyAmount),
-    adjustmentAmount: normalizeNumber(value.adjustmentAmount, 0),
+    adjustmentAmount: normalizeSignedNumber(value.adjustmentAmount, 0),
+    paymentMethod: normalizePaymentMethod(value.paymentMethod),
     notes: normalizeText(value.notes),
     revision: Number.isFinite(value.revision) ? Number(value.revision) : 1,
     createdAt,
@@ -233,12 +295,18 @@ function normalizeReceipt(value: Partial<PosReceipt>, ordinal: number): PosRecei
 
   const createdAt = normalizeText(value.createdAt, nowIso());
 
+  const action = normalizeReceiptAction(value.action);
+  const inferredEventAmount =
+    value.eventAmount === undefined
+      ? inferReceiptEventAmount(action, value)
+      : normalizeSignedNumber(value.eventAmount);
+
   return {
     id: normalizeText(value.id, createId('rcp', ordinal)),
     receiptNumber: normalizeText(value.receiptNumber, formatReference('RCP', ordinal)),
     transactionId,
     transactionNumber,
-    action: normalizeReceiptAction(value.action),
+    action,
     title: normalizeText(value.title, 'Receipt'),
     itemId: normalizeText(value.itemId),
     itemCode,
@@ -251,7 +319,9 @@ function normalizeReceipt(value: Partial<PosReceipt>, ordinal: number): PosRecei
     depositReceived: normalizeNumber(value.depositReceived),
     refundedAmount: normalizeNumber(value.refundedAmount),
     penaltyAmount: normalizeNumber(value.penaltyAmount),
-    adjustmentAmount: normalizeNumber(value.adjustmentAmount, 0),
+    adjustmentAmount: normalizeSignedNumber(value.adjustmentAmount, 0),
+    eventAmount: inferredEventAmount,
+    paymentMethod: normalizePaymentMethod(value.paymentMethod),
     totalCollected: normalizeNumber(value.totalCollected),
     balanceDue: normalizeNumber(value.balanceDue),
     createdAt,
@@ -267,9 +337,39 @@ function normalizeReceiptAction(value: unknown): PosLedgerAction {
     value === 'refund' ||
     value === 'penalty' ||
     value === 'adjustment' ||
-    value === 'print'
+    value === 'print' ||
+    value === 'maintenance_open' ||
+    value === 'maintenance_close' ||
+    value === 'void'
     ? value
     : 'create';
+}
+
+function inferReceiptEventAmount(
+  action: PosLedgerAction,
+  value: Partial<PosReceipt>,
+) {
+  if (action === 'refund') {
+    return -normalizeNumber(value.refundedAmount);
+  }
+
+  if (action === 'deposit') {
+    return normalizeNumber(value.depositReceived);
+  }
+
+  if (action === 'penalty') {
+    return normalizeNumber(value.penaltyAmount);
+  }
+
+  if (action === 'adjustment') {
+    return normalizeSignedNumber(value.adjustmentAmount);
+  }
+
+  if (action === 'create') {
+    return normalizeNumber(value.totalCollected);
+  }
+
+  return 0;
 }
 
 function normalizeAuditEntry(value: Partial<PosAuditEntry>, ordinal: number): PosAuditEntry | null {
@@ -288,9 +388,43 @@ function normalizeAuditEntry(value: Partial<PosAuditEntry>, ordinal: number): Po
     transactionNumber,
     action: normalizeReceiptAction(value.action),
     summary: normalizeText(value.summary, 'Transaction updated'),
+    reason: normalizeText(value.reason),
     before: value.before ? normalizeTransaction(value.before, ordinal) : null,
     after: value.after ? normalizeTransaction(value.after, ordinal) : null,
     createdAt,
+  };
+}
+
+function normalizeMaintenanceHold(
+  value: Partial<PosMaintenanceHold>,
+  ordinal: number,
+): PosMaintenanceHold | null {
+  const itemId = normalizeText(value.itemId);
+  const itemCode = normalizeText(value.itemCode);
+  const itemName = normalizeText(value.itemName);
+  const sourceTransactionId = normalizeText(value.sourceTransactionId);
+  const transactionNumber = normalizeText(value.transactionNumber);
+
+  if (!itemId || !itemCode || !itemName || !sourceTransactionId || !transactionNumber) {
+    return null;
+  }
+
+  const openedAt = normalizeText(value.openedAt, nowIso());
+
+  return {
+    id: normalizeText(value.id, createId('mnt', ordinal)),
+    maintenanceNumber: normalizeText(value.maintenanceNumber, formatReference('MNT', ordinal)),
+    itemId,
+    itemCode,
+    itemName,
+    sourceTransactionId,
+    transactionNumber,
+    status: normalizeMaintenanceStatus(value.status),
+    openedAt,
+    closedAt: typeof value.closedAt === 'string' ? value.closedAt : null,
+    openedNote: normalizeText(value.openedNote),
+    closedNote: normalizeText(value.closedNote),
+    revision: Number.isFinite(value.revision) ? Number(value.revision) : 1,
   };
 }
 
@@ -323,6 +457,7 @@ function createLegacySeedLedger(): PosLedgerState {
         refundedAmount: 0,
         penaltyAmount: 0,
         adjustmentAmount: 0,
+        paymentMethod: 'cash',
         notes: 'Seeded from legacy item status.',
         revision: 1,
         createdAt: nowIso(),
@@ -357,6 +492,8 @@ function createLegacySeedLedger(): PosLedgerState {
           refundedAmount: 0,
           penaltyAmount: 0,
           adjustmentAmount: 0,
+          eventAmount: item.rentalPrice,
+          paymentMethod: 'cash',
           totalCollected: item.rentalPrice,
           balanceDue: item.rentalPrice,
           createdAt: nowIso(),
@@ -375,6 +512,7 @@ function createLegacySeedLedger(): PosLedgerState {
           transactionNumber: transaction.transactionNumber,
           action: 'create',
           summary: 'Seeded from legacy item status',
+          reason: 'Imported from legacy catalog rental status.',
           before: null,
           after: transaction,
           createdAt: nowIso(),
@@ -388,10 +526,12 @@ function createLegacySeedLedger(): PosLedgerState {
     transactions,
     receipts,
     history,
+    maintenanceHolds: [],
     counters: {
       transaction: transactions.length,
       receipt: receipts.length,
       history: history.length,
+      maintenance: 0,
     },
   };
 }
@@ -407,6 +547,7 @@ function normalizeLedger(value: unknown): PosLedgerState {
     transactions?: Partial<PosTransaction>[];
     receipts?: Partial<PosReceipt>[];
     history?: Partial<PosAuditEntry>[];
+    maintenanceHolds?: Partial<PosMaintenanceHold>[];
   };
 
   const transactions = Array.isArray(raw.transactions)
@@ -427,7 +568,18 @@ function normalizeLedger(value: unknown): PosLedgerState {
         .filter((entry): entry is PosAuditEntry => Boolean(entry))
     : [];
 
-  if (transactions.length === 0 && receipts.length === 0 && history.length === 0) {
+  const maintenanceHolds = Array.isArray(raw.maintenanceHolds)
+    ? raw.maintenanceHolds
+        .map((entry, index) => normalizeMaintenanceHold(entry, index + 1))
+        .filter((entry): entry is PosMaintenanceHold => Boolean(entry))
+    : [];
+
+  if (
+    transactions.length === 0 &&
+    receipts.length === 0 &&
+    history.length === 0 &&
+    maintenanceHolds.length === 0
+  ) {
     return createLegacySeedLedger();
   }
 
@@ -435,10 +587,12 @@ function normalizeLedger(value: unknown): PosLedgerState {
     transactions,
     receipts,
     history,
+    maintenanceHolds,
     counters: {
       transaction: normalizeNumber(raw.counters?.transaction, transactions.length),
       receipt: normalizeNumber(raw.counters?.receipt, receipts.length),
       history: normalizeNumber(raw.counters?.history, history.length),
+      maintenance: normalizeNumber(raw.counters?.maintenance, maintenanceHolds.length),
     },
   };
 }
@@ -517,6 +671,10 @@ function makeReceipt(
   title: string,
   note: string,
   receiptOrdinal: number,
+  options: {
+    eventAmount?: number;
+    paymentMethod?: PosPaymentMethod;
+  } = {},
 ): PosReceipt {
   return {
     id: createId('rcp', receiptOrdinal),
@@ -537,6 +695,8 @@ function makeReceipt(
     refundedAmount: transaction.refundedAmount,
     penaltyAmount: transaction.penaltyAmount,
     adjustmentAmount: transaction.adjustmentAmount,
+    eventAmount: options.eventAmount ?? 0,
+    paymentMethod: options.paymentMethod ?? transaction.paymentMethod,
     totalCollected: getTransactionCollected(transaction),
     balanceDue: getTransactionBalance(transaction),
     createdAt: nowIso(),
@@ -551,6 +711,7 @@ function makeHistoryEntry(
   summary: string,
   before: PosTransaction | null,
   historyOrdinal: number,
+  reason = '',
 ): PosAuditEntry {
   return {
     id: createId('hst', historyOrdinal),
@@ -558,6 +719,7 @@ function makeHistoryEntry(
     transactionNumber: transaction.transactionNumber,
     action,
     summary,
+    reason: reason.trim(),
     before,
     after: transaction,
     createdAt: nowIso(),
@@ -580,10 +742,15 @@ function replaceTransaction(
   ledger: PosLedgerState,
   transactionId: string,
   updater: (current: PosTransaction) => PosTransaction,
-  action: PosLedgerAction,
-  summary: string,
-  note = '',
-  createReceipt = true,
+  options: {
+    action: PosLedgerAction;
+    summary: string;
+    note?: string;
+    reason?: string;
+    createReceipt?: boolean;
+    receiptEventAmount?: number;
+    paymentMethod?: PosPaymentMethod;
+  },
 ) {
   const nextTransactions = ledger.transactions.map((transaction) => {
     if (transaction.id !== transactionId) {
@@ -609,14 +776,25 @@ function replaceTransaction(
   const nextHistoryOrdinal = ledger.counters.history + 1;
   const historyEntry = makeHistoryEntry(
     updatedTransaction,
-    action,
-    summary,
+    options.action,
+    options.summary,
     findTransaction(ledger, transactionId),
     nextHistoryOrdinal,
+    options.reason ?? options.note ?? '',
   );
-  const receipt = createReceipt
-    ? makeReceipt(updatedTransaction, action, summary, note, ledger.counters.receipt + 1)
-    : null;
+  const receipt = options.createReceipt === false
+    ? null
+    : makeReceipt(
+        updatedTransaction,
+        options.action,
+        options.summary,
+        options.note ?? options.reason ?? '',
+        ledger.counters.receipt + 1,
+        {
+          eventAmount: options.receiptEventAmount ?? 0,
+          paymentMethod: options.paymentMethod,
+        },
+      );
 
   return {
     ...ledger,
@@ -627,6 +805,7 @@ function replaceTransaction(
       transaction: ledger.counters.transaction,
       receipt: receipt ? ledger.counters.receipt + 1 : ledger.counters.receipt,
       history: nextHistoryOrdinal,
+      maintenance: ledger.counters.maintenance,
     },
   };
 }
@@ -643,7 +822,7 @@ export function createRentalTransaction(input: CreateRentalInput) {
       itemId: input.item.id,
       itemCode: input.item.code,
       itemName: input.item.name,
-      itemPrice: input.item.rentalPrice,
+      itemPrice: input.itemPrice !== undefined ? input.itemPrice : input.item.rentalPrice,
       customerName: input.customerName.trim() || 'Pelanggan Umum',
       customerPhone: input.customerPhone.trim(),
       startDate: input.startDate,
@@ -653,6 +832,7 @@ export function createRentalTransaction(input: CreateRentalInput) {
       refundedAmount: 0,
       penaltyAmount: 0,
       adjustmentAmount: 0,
+      paymentMethod: input.paymentMethod ?? 'cash',
       notes: input.notes?.trim() ?? '',
       revision: 1,
       createdAt,
@@ -665,6 +845,10 @@ export function createRentalTransaction(input: CreateRentalInput) {
       'Rental created',
       input.notes?.trim() ?? '',
       ledger.counters.receipt + 1,
+      {
+        eventAmount: transaction.itemPrice + Math.max(input.depositReceived, 0),
+        paymentMethod: input.paymentMethod ?? 'cash',
+      },
     );
     const historyEntry = makeHistoryEntry(
       transaction,
@@ -672,6 +856,7 @@ export function createRentalTransaction(input: CreateRentalInput) {
       'Rental created',
       null,
       ledger.counters.history + 1,
+      input.notes?.trim() ?? '',
     );
 
     return {
@@ -683,6 +868,7 @@ export function createRentalTransaction(input: CreateRentalInput) {
         transaction: nextOrdinal,
         receipt: ledger.counters.receipt + 1,
         history: ledger.counters.history + 1,
+        maintenance: ledger.counters.maintenance,
       },
     };
   });
@@ -700,10 +886,13 @@ export function updateTransactionDetails(transactionId: string, input: UpdateTra
         dueDate: input.dueDate,
         notes: input.notes?.trim() ?? transaction.notes,
       }),
-      'update',
-      'Transaction edited',
-      input.notes?.trim() ?? '',
-      false,
+      {
+        action: 'update',
+        summary: 'Transaction edited',
+        note: input.reason.trim(),
+        reason: input.reason,
+        receiptEventAmount: 0,
+      },
     ),
   );
 }
@@ -716,10 +905,15 @@ export function addTransactionDeposit(transactionId: string, input: FinancialEve
       (transaction) => ({
         ...transaction,
         depositReceived: transaction.depositReceived + Math.max(input.amount, 0),
+        paymentMethod: input.paymentMethod ?? transaction.paymentMethod,
       }),
-      'deposit',
-      'Deposit recorded',
-      input.note?.trim() ?? '',
+      {
+        action: 'deposit',
+        summary: 'Deposit recorded',
+        note: input.note?.trim() ?? '',
+        receiptEventAmount: Math.max(input.amount, 0),
+        paymentMethod: input.paymentMethod,
+      },
     ),
   );
 }
@@ -732,10 +926,15 @@ export function addTransactionRefund(transactionId: string, input: FinancialEven
       (transaction) => ({
         ...transaction,
         refundedAmount: transaction.refundedAmount + Math.max(input.amount, 0),
+        paymentMethod: input.paymentMethod ?? transaction.paymentMethod,
       }),
-      'refund',
-      'Refund recorded',
-      input.note?.trim() ?? '',
+      {
+        action: 'refund',
+        summary: 'Refund recorded',
+        note: input.note?.trim() ?? '',
+        receiptEventAmount: -Math.max(input.amount, 0),
+        paymentMethod: input.paymentMethod,
+      },
     ),
   );
 }
@@ -748,10 +947,15 @@ export function addTransactionPenalty(transactionId: string, input: FinancialEve
       (transaction) => ({
         ...transaction,
         penaltyAmount: transaction.penaltyAmount + Math.max(input.amount, 0),
+        paymentMethod: input.paymentMethod ?? transaction.paymentMethod,
       }),
-      'penalty',
-      'Penalty recorded',
-      input.note?.trim() ?? '',
+      {
+        action: 'penalty',
+        summary: 'Penalty recorded',
+        note: input.note?.trim() ?? '',
+        receiptEventAmount: Math.max(input.amount, 0),
+        paymentMethod: input.paymentMethod,
+      },
     ),
   );
 }
@@ -764,34 +968,184 @@ export function addTransactionAdjustment(transactionId: string, input: Financial
       (transaction) => ({
         ...transaction,
         adjustmentAmount: transaction.adjustmentAmount + input.amount,
+        paymentMethod: input.paymentMethod ?? transaction.paymentMethod,
       }),
-      'adjustment',
-      'Adjustment recorded',
-      input.note?.trim() ?? '',
+      {
+        action: 'adjustment',
+        summary: 'Adjustment recorded',
+        note: input.note?.trim() ?? '',
+        receiptEventAmount: input.amount,
+        paymentMethod: input.paymentMethod,
+      },
     ),
   );
 }
 
 export function closeRentalTransaction(transactionId: string, input: CloseTransactionInput) {
+  return mutateLedger((ledger) => {
+    const before = findTransaction(ledger, transactionId);
+
+    if (!before || before.status !== 'open') {
+      return ledger;
+    }
+
+    const note = input.note?.trim() ?? '';
+    const updatedTransaction: PosTransaction = {
+      ...before,
+      status: 'closed',
+      closedAt: input.returnDate,
+      dueDate: before.dueDate ?? input.returnDate,
+      refundedAmount: before.refundedAmount + Math.max(input.refundedAmount ?? 0, 0),
+      penaltyAmount: before.penaltyAmount + Math.max(input.penaltyAmount ?? 0, 0),
+      adjustmentAmount: before.adjustmentAmount + (input.adjustmentAmount ?? 0),
+      paymentMethod: input.paymentMethod ?? before.paymentMethod,
+      notes: note || before.notes,
+      revision: before.revision + 1,
+      updatedAt: nowIso(),
+    };
+    const nextTransactions = ledger.transactions.map((transaction) =>
+      transaction.id === transactionId ? updatedTransaction : transaction,
+    );
+    const closeReceipt = makeReceipt(
+      updatedTransaction,
+      'close',
+      'Rental finished',
+      note,
+      ledger.counters.receipt + 1,
+      {
+        eventAmount:
+          Math.max(input.penaltyAmount ?? 0, 0) +
+          (input.adjustmentAmount ?? 0) -
+          Math.max(input.refundedAmount ?? 0, 0),
+        paymentMethod: input.paymentMethod,
+      },
+    );
+    const closeHistory = makeHistoryEntry(
+      updatedTransaction,
+      'close',
+      'Rental finished',
+      before,
+      ledger.counters.history + 1,
+      note,
+    );
+    const hasOpenMaintenanceHold = ledger.maintenanceHolds.some(
+      (hold) => hold.itemId === updatedTransaction.itemId && hold.status === 'open',
+    );
+    const maintenanceOrdinal = ledger.counters.maintenance + 1;
+    const maintenanceHold: PosMaintenanceHold | null = hasOpenMaintenanceHold
+      ? null
+      : {
+          id: createId('mnt', maintenanceOrdinal),
+          maintenanceNumber: formatReference('MNT', maintenanceOrdinal),
+          itemId: updatedTransaction.itemId,
+          itemCode: updatedTransaction.itemCode,
+          itemName: updatedTransaction.itemName,
+          sourceTransactionId: updatedTransaction.id,
+          transactionNumber: updatedTransaction.transactionNumber,
+          status: 'open',
+          openedAt: nowIso(),
+          closedAt: null,
+          openedNote: note || 'Returned item waiting for cleaning.',
+          closedNote: '',
+          revision: 1,
+        };
+    const maintenanceHistory = maintenanceHold
+      ? makeHistoryEntry(
+          updatedTransaction,
+          'maintenance_open',
+          'Maintenance opened after return',
+          updatedTransaction,
+          ledger.counters.history + 2,
+          maintenanceHold.openedNote,
+        )
+      : null;
+
+    return {
+      ...ledger,
+      transactions: nextTransactions,
+      receipts: [...ledger.receipts, closeReceipt],
+      history: maintenanceHistory
+        ? [...ledger.history, closeHistory, maintenanceHistory]
+        : [...ledger.history, closeHistory],
+      maintenanceHolds: maintenanceHold
+        ? [maintenanceHold, ...ledger.maintenanceHolds]
+        : ledger.maintenanceHolds,
+      counters: {
+        transaction: ledger.counters.transaction,
+        receipt: ledger.counters.receipt + 1,
+        history: ledger.counters.history + (maintenanceHistory ? 2 : 1),
+        maintenance: maintenanceHold ? maintenanceOrdinal : ledger.counters.maintenance,
+      },
+    };
+  });
+}
+
+export function completeMaintenanceHold(maintenanceId: string, input: CompleteMaintenanceInput) {
+  return mutateLedger((ledger) => {
+    const currentHold = ledger.maintenanceHolds.find((hold) => hold.id === maintenanceId);
+
+    if (!currentHold || currentHold.status !== 'open') {
+      return ledger;
+    }
+
+    const note = input.note?.trim() ?? '';
+    const closedHold: PosMaintenanceHold = {
+      ...currentHold,
+      status: 'closed',
+      closedAt: nowIso(),
+      closedNote: note,
+      revision: currentHold.revision + 1,
+    };
+    const nextMaintenanceHolds = ledger.maintenanceHolds.map((hold) =>
+      hold.id === maintenanceId ? closedHold : hold,
+    );
+    const sourceTransaction = findTransaction(ledger, currentHold.sourceTransactionId);
+    const historyEntry = sourceTransaction
+      ? makeHistoryEntry(
+          sourceTransaction,
+          'maintenance_close',
+          'Maintenance completed',
+          sourceTransaction,
+          ledger.counters.history + 1,
+          note,
+        )
+      : null;
+
+    return {
+      ...ledger,
+      maintenanceHolds: nextMaintenanceHolds,
+      history: historyEntry ? [...ledger.history, historyEntry] : ledger.history,
+      counters: {
+        ...ledger.counters,
+        history: historyEntry ? ledger.counters.history + 1 : ledger.counters.history,
+      },
+    };
+  });
+}
+
+export function voidTransaction(transactionId: string, input: VoidTransactionInput) {
+  const reason = input.reason.trim() || 'Voided from POS';
+
   return mutateLedger((ledger) =>
     replaceTransaction(
       ledger,
       transactionId,
       (transaction) => ({
         ...transaction,
-        status: 'closed',
-        closedAt: input.returnDate,
-        dueDate: transaction.dueDate ?? input.returnDate,
-        refundedAmount:
-          transaction.refundedAmount + Math.max(input.refundedAmount ?? 0, 0),
-        penaltyAmount:
-          transaction.penaltyAmount + Math.max(input.penaltyAmount ?? 0, 0),
-        adjustmentAmount: transaction.adjustmentAmount + (input.adjustmentAmount ?? 0),
-        notes: input.note?.trim() || transaction.notes,
+        status: 'void',
+        closedAt: transaction.closedAt ?? nowIso().slice(0, 10),
+        notes: transaction.notes
+          ? `${transaction.notes}\nVoid reason: ${reason}`
+          : `Void reason: ${reason}`,
       }),
-      'close',
-      'Rental closed',
-      input.note?.trim() ?? '',
+      {
+        action: 'void',
+        summary: 'Transaction voided',
+        note: reason,
+        reason,
+        receiptEventAmount: 0,
+        paymentMethod: findTransaction(ledger, transactionId)?.paymentMethod,
+      },
     ),
   );
 }
@@ -841,6 +1195,10 @@ export function getClosedTransactions(ledger: PosLedgerState) {
   return ledger.transactions.filter((transaction) => transaction.status === 'closed');
 }
 
+export function getReportableTransactions(ledger: PosLedgerState) {
+  return ledger.transactions.filter((transaction) => transaction.status !== 'void');
+}
+
 export function getOverdueTransactions(ledger: PosLedgerState) {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
@@ -855,10 +1213,40 @@ export function getOverdueTransactions(ledger: PosLedgerState) {
   });
 }
 
+export function getOpenMaintenanceHolds(ledger: PosLedgerState) {
+  return ledger.maintenanceHolds.filter((hold) => hold.status === 'open');
+}
+
 export function getLedgerMetrics(ledger: PosLedgerState) {
   const activeTransactions = getActiveTransactions(ledger);
   const overdueTransactions = getOverdueTransactions(ledger);
-  const grossRevenue = ledger.transactions.reduce(
+  const openMaintenanceHolds = getOpenMaintenanceHolds(ledger);
+  const reportableTransactions = getReportableTransactions(ledger);
+  const voidedTransactions = ledger.transactions.filter(
+    (transaction) => transaction.status === 'void',
+  );
+  const paymentByMethod: Record<PosPaymentMethod, number> = {
+    cash: 0,
+    transfer: 0,
+    qris: 0,
+    card: 0,
+    other: 0,
+  };
+
+  ledger.receipts.forEach((receipt) => {
+    paymentByMethod[receipt.paymentMethod] += receipt.eventAmount;
+  });
+
+  const paymentNet = Object.values(paymentByMethod).reduce((sum, amount) => sum + amount, 0);
+  const paymentIn = ledger.receipts.reduce(
+    (sum, receipt) => sum + Math.max(receipt.eventAmount, 0),
+    0,
+  );
+  const paymentOut = ledger.receipts.reduce(
+    (sum, receipt) => sum + Math.max(-receipt.eventAmount, 0),
+    0,
+  );
+  const grossRevenue = reportableTransactions.reduce(
     (sum, transaction) => sum + transaction.itemPrice + transaction.penaltyAmount + transaction.adjustmentAmount,
     0,
   );
@@ -866,18 +1254,27 @@ export function getLedgerMetrics(ledger: PosLedgerState) {
     (sum, transaction) => sum + Math.max(transaction.depositReceived - transaction.refundedAmount, 0),
     0,
   );
-  const refunds = ledger.transactions.reduce((sum, transaction) => sum + transaction.refundedAmount, 0);
-  const penalties = ledger.transactions.reduce((sum, transaction) => sum + transaction.penaltyAmount, 0);
+  const refunds = reportableTransactions.reduce((sum, transaction) => sum + transaction.refundedAmount, 0);
+  const penalties = reportableTransactions.reduce((sum, transaction) => sum + transaction.penaltyAmount, 0);
 
   return {
     grossRevenue,
     depositHeld,
     refunds,
     penalties,
+    paymentByMethod,
+    paymentNet,
+    paymentIn,
+    paymentOut,
     activeCount: activeTransactions.length,
     overdueCount: overdueTransactions.length,
     closedCount: getClosedTransactions(ledger).length,
-    totalCount: ledger.transactions.length,
+    maintenanceCount: openMaintenanceHolds.length,
+    voidCount: voidedTransactions.length,
+    totalCount: reportableTransactions.length,
+    auditCount: ledger.history.length,
+    receiptCount: ledger.receipts.length,
+    ledgerCount: ledger.transactions.length,
   };
 }
 
@@ -896,12 +1293,16 @@ export function deriveAvailabilityProjection(
     );
 
     const openTransaction = openTransactions[0] ?? null;
+    const openMaintenance = ledger.maintenanceHolds.find(
+      (hold) => hold.itemId === item.id && hold.status === 'open',
+    ) ?? null;
     const masterStatus = item.status;
-    const lockedStatus = masterStatus === 'maintenance' || masterStatus === 'archived';
-    const effectiveStatus =
-      lockedStatus || openTransaction ? (lockedStatus ? masterStatus : 'rented') : masterStatus;
-    const dueDate =
-      openTransaction?.dueDate ?? (masterStatus === 'rented' ? item.rentalEndDate ?? null : null);
+    const effectiveStatus = openTransaction
+      ? 'rented'
+      : openMaintenance
+        ? 'maintenance'
+        : masterStatus;
+    const dueDate = openTransaction?.dueDate ?? null;
     const isOverdue =
       Boolean(openTransaction?.dueDate) &&
       (() => {
@@ -919,9 +1320,12 @@ export function deriveAvailabilityProjection(
       dueDate,
       openTransactionId: openTransaction?.id ?? null,
       openTransactionNumber: openTransaction?.transactionNumber ?? null,
+      openMaintenanceId: openMaintenance?.id ?? null,
+      openMaintenanceNumber: openMaintenance?.maintenanceNumber ?? null,
+      maintenanceOpenedAt: openMaintenance?.openedAt ?? null,
       customerName: openTransaction?.customerName ?? null,
       customerPhone: openTransaction?.customerPhone ?? null,
-      source: openTransaction ? 'ledger' : 'master',
+      source: openTransaction || openMaintenance ? 'ledger' : 'master',
       isOverdue,
       activeDeposit: openTransaction
         ? Math.max(openTransaction.depositReceived - openTransaction.refundedAmount, 0)
@@ -945,7 +1349,7 @@ export function applyAvailabilityProjection(
   return {
     ...item,
     status: projection.effectiveStatus,
-    rentalEndDate: projection.dueDate ?? item.rentalEndDate,
+    rentalEndDate: projection.dueDate,
   };
 }
 

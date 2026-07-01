@@ -41,13 +41,13 @@ export default function ProductCard({
   const getStatusDetails = (status: string) => {
     switch (status) {
       case 'available':
-        return { text: 'Tersedia', class: 'bg-emerald-50 text-emerald-800 border-emerald-200' };
+        return { text: 'AVAILABLE', class: 'bg-emerald-50 text-emerald-800 border-emerald-200' };
       case 'rented':
-        return { text: 'Disewa', class: 'bg-amber-50 text-amber-800 border-amber-200' };
+        return { text: 'RENTED', class: 'bg-amber-50 text-amber-800 border-amber-200' };
       case 'maintenance':
-        return { text: 'Perbaikan', class: 'bg-rose-50 text-rose-800 border-rose-200' };
+        return { text: 'DICUCI', class: 'bg-rose-50 text-rose-800 border-rose-200' };
       default:
-        return { text: 'Arsip', class: 'bg-slate-100 text-slate-700 border-slate-300' };
+        return { text: 'ARSIP', class: 'bg-slate-100 text-slate-700 border-slate-300' };
     }
   };
 
@@ -241,7 +241,7 @@ export default function ProductCard({
                   className={`text-[var(--theme-text)] font-semibold font-mono ${isOneColumn ? 'text-base sm:text-lg' : 'text-xs sm:text-sm'}`}
                 >
                   {formatPrice(product.rentalPrice)}{' '}
-                  <span className="theme-muted-strong text-[9px] font-normal">/hari</span>
+                  <span className="theme-muted-strong text-[9px] font-normal">/3 hari</span>
                 </span>
               </div>
             )}

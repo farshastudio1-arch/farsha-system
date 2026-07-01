@@ -26,7 +26,6 @@ const statusSortOrder: Record<KebayaItem['status'], number> = {
   available: 0,
   rented: 1,
   maintenance: 2,
-  archived: 3,
 };
 const sortOptions: Array<{ value: SortOption; label: string }> = [
   { value: 'default', label: 'Default' },
@@ -114,15 +113,7 @@ export default function Catalog({ initialCategory = null }: CatalogProps) {
     maxPrice: maxPriceLimit,
     categories: initialCategory ? [initialCategory] : [],
   });
-
-  // Keep categories filter in sync with URL search params changes
-  useEffect(() => {
-    setFilters((prev) => ({
-      ...prev,
-      categories: initialCategory ? [initialCategory] : [],
-    }));
-  }, [initialCategory]);
-
+  
   // Track responsive screen size changes
   useEffect(() => {
     const handleResize = () => {

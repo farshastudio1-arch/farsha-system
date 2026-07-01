@@ -30,7 +30,6 @@ const validStatuses = new Set<KebayaItem['status']>([
   'available',
   'rented',
   'maintenance',
-  'archived',
 ]);
 
 function normalizeText(value: unknown, fallback = '') {
@@ -74,6 +73,11 @@ function normalizeCategories(value: unknown): KebayaItem['categories'] | undefin
   return categories.length > 0 ? categories : undefined;
 }
 
+function normalizeCatalogMasterStatus(value: unknown): KebayaItem['status'] {
+  void value;
+  return 'available';
+}
+
 function normalizeCatalogItem(value: Partial<KebayaItem>, index: number): KebayaItem | null {
   const name = normalizeText(value.name);
   const code = normalizeText(value.code);
@@ -99,9 +103,9 @@ function normalizeCatalogItem(value: Partial<KebayaItem>, index: number): Kebaya
       : 'Modern',
     rentalPrice: normalizeNumber(value.rentalPrice, 0),
     status: validStatuses.has(value.status as KebayaItem['status'])
-      ? (value.status as KebayaItem['status'])
+      ? normalizeCatalogMasterStatus(value.status)
       : 'available',
-    rentalEndDate: typeof value.rentalEndDate === 'string' ? value.rentalEndDate : null,
+    rentalEndDate: null,
     imageUrls: imageUrls.length > 0 ? imageUrls : [defaultImageUrl],
     description: normalizeText(value.description),
     categories: normalizeCategories(value.categories),

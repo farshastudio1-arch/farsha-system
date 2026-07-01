@@ -33,13 +33,13 @@ export default async function PosLayout({ children }: { children: React.ReactNod
                   href="/pos"
                   className="text-sm font-medium text-gray-700 hover:text-indigo-600 transition-colors"
                 >
-                  Katalog
+                  Transaction
                 </Link>
                 <Link
-                  href="/pos/reports"
+                  href="/pos/dashboard"
                   className="text-sm font-medium text-gray-700 hover:text-indigo-600 transition-colors"
                 >
-                  Laporan
+                  Dashboard
                 </Link>
               </nav>
             </div>

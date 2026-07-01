@@ -7,7 +7,7 @@ export interface FilterState {
   colors: string[];
   sizes: ('S' | 'M' | 'L' | 'XL' | 'Custom')[];
   models: ('Modern' | 'Klasik' | 'Kartini' | 'Kutubaru')[];
-  statuses: ('available' | 'rented' | 'maintenance' | 'archived')[];
+  statuses: ('available' | 'rented' | 'maintenance')[];
   maxPrice: number;
   categories: ('wisuda' | 'lamaran' | 'kondangan' | 'bridesmaid')[];
 }
@@ -58,13 +58,12 @@ export default function Filters({
     { value: 'bridesmaid', label: 'Bridesmaid' },
   ];
   const statusOptions: {
-    value: 'available' | 'rented' | 'maintenance' | 'archived';
+    value: 'available' | 'rented' | 'maintenance';
     label: string;
   }[] = [
-    { value: 'available', label: 'Tersedia' },
-    { value: 'rented', label: 'Disewa' },
-    { value: 'maintenance', label: 'Perbaikan' },
-    { value: 'archived', label: 'Arsip' },
+    { value: 'available', label: 'AVAILABLE' },
+    { value: 'rented', label: 'RENTED' },
+    { value: 'maintenance', label: 'DICUCI' },
   ];
 
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -119,7 +118,7 @@ export default function Filters({
     onChange({ ...filters, categories: nextCategories });
   };
 
-  const handleStatusToggle = (status: 'available' | 'rented' | 'maintenance' | 'archived') => {
+  const handleStatusToggle = (status: 'available' | 'rented' | 'maintenance') => {
     const nextStatuses = filters.statuses.includes(status)
       ? filters.statuses.filter((s) => s !== status)
       : [...filters.statuses, status];

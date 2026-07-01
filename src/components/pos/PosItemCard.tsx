@@ -4,7 +4,6 @@ import {
   AlertCircle,
   CheckCircle2,
   Clock,
-  Archive,
   User,
   Wallet,
   AlertTriangle,
@@ -26,8 +25,8 @@ interface PosItemCardProps {
     customerPhone?: string;
     depositAmount?: number;
   };
-  onUpdateClick: (item: any) => void;
-  onInvoiceClick?: (item: any) => void;
+  onUpdateClick: (item: PosItemCardProps['item']) => void;
+  onInvoiceClick?: (item: PosItemCardProps['item']) => void;
 }
 
 export default function PosItemCard({ item, onUpdateClick, onInvoiceClick }: PosItemCardProps) {
@@ -35,30 +34,23 @@ export default function PosItemCard({ item, onUpdateClick, onInvoiceClick }: Pos
     switch (status) {
       case 'available':
         return (
-          <span className="inline-flex items-center px-2.5 py-0.5 text-xs font-medium bg-green-100 text-green-800">
+          <span className="inline-flex items-center px-2.5 py-0.5 text-xs font-semibold border border-emerald-200 bg-emerald-50 text-emerald-700">
             <CheckCircle2 className="w-3.5 h-3.5 mr-1" />
-            Available
+            AVAILABLE
           </span>
         );
       case 'rented':
         return (
-          <span className="inline-flex items-center px-2.5 py-0.5 text-xs font-medium bg-blue-100 text-blue-800">
+          <span className="inline-flex items-center px-2.5 py-0.5 text-xs font-semibold border border-amber-200 bg-amber-50 text-amber-700">
             <Clock className="w-3.5 h-3.5 mr-1" />
-            Rented
+            RENTED
           </span>
         );
       case 'maintenance':
         return (
-          <span className="inline-flex items-center px-2.5 py-0.5 text-xs font-medium bg-orange-100 text-orange-800">
+          <span className="inline-flex items-center px-2.5 py-0.5 text-xs font-semibold border border-rose-200 bg-rose-50 text-rose-700">
             <AlertCircle className="w-3.5 h-3.5 mr-1" />
-            Maintenance
-          </span>
-        );
-      case 'archived':
-        return (
-          <span className="inline-flex items-center px-2.5 py-0.5 text-xs font-medium bg-gray-100 text-gray-800">
-            <Archive className="w-3.5 h-3.5 mr-1" />
-            Archived
+            DICUCI
           </span>
         );
     }
@@ -78,6 +70,7 @@ export default function PosItemCard({ item, onUpdateClick, onInvoiceClick }: Pos
     >
       {/* Item Image */}
       <div className="h-48 sm:h-auto sm:w-48 bg-gray-100 relative shrink-0">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src={item.imageUrl} alt={item.name} className="w-full h-full object-cover" />
         {isOverdue && (
           <div className="absolute top-2 left-2 bg-red-600 text-white text-xs font-bold px-2 py-1 shadow-sm flex items-center">

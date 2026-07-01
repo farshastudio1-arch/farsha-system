@@ -101,7 +101,7 @@ const catalogCardToggleOptions: Array<{
   {
     key: 'showAvailabilityBadges',
     title: 'Availability badge',
-    description: 'Shows available, rented, maintenance, or archived status.',
+    description: 'Shows available, rented, or maintenance status.',
   },
   {
     key: 'showPrices',
@@ -193,13 +193,13 @@ function formatPrice(price: number) {
 function getStatusDetails(status: KebayaItem['status']) {
   switch (status) {
     case 'available':
-      return { text: 'Tersedia', className: 'bg-emerald-50 text-emerald-800 border-emerald-200' };
+      return { text: 'AVAILABLE', className: 'bg-emerald-50 text-emerald-700 border-emerald-200' };
     case 'rented':
-      return { text: 'Disewa', className: 'bg-amber-50 text-amber-800 border-amber-200' };
+      return { text: 'RENTED', className: 'bg-amber-50 text-amber-700 border-amber-200' };
     case 'maintenance':
-      return { text: 'Perbaikan', className: 'bg-rose-50 text-rose-800 border-rose-200' };
+      return { text: 'DICUCI', className: 'bg-rose-50 text-rose-700 border-rose-200' };
     default:
-      return { text: 'Arsip', className: 'bg-slate-100 text-slate-700 border-slate-300' };
+      return { text: 'ARSIP', className: 'bg-slate-100 text-slate-700 border-slate-300' };
   }
 }
 
