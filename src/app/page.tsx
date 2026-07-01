@@ -39,7 +39,7 @@ export default function Home() {
             <div className="landing-hero-grid">
               <div className="theme-border border-b pb-6 lg:border-b-0 lg:border-r lg:pb-0 lg:pr-8">
                 <span className="theme-muted-strong font-mono text-xs font-bold uppercase tracking-widest">
-                  Farsha Studio / Paccerakkang
+                  Sewa Kebaya & Dress / Makassar
                 </span>
                 <h1 className="mt-3 max-w-xl font-serif text-4xl font-semibold leading-tight tracking-tight text-[var(--theme-text)] sm:text-5xl">
                   Your next &quot;wow&quot; moment is just a rental away.

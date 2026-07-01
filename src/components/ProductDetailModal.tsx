@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { KebayaItem, mockCMS } from '@/data/mockData';
 import { matchesLandingCategory } from '@/lib/landing-categories';
 
@@ -15,6 +15,8 @@ export default function ProductDetailModal({ product, onClose }: ProductDetailMo
     index: number;
   } | null>(null);
 
+  const mobileCarouselRef = useRef<HTMLDivElement>(null);
+
   // Lock body scroll when modal is open
   useEffect(() => {
     if (product) {
@@ -27,11 +29,35 @@ export default function ProductDetailModal({ product, onClose }: ProductDetailMo
     };
   }, [product]);
 
+  const selectedImageIndex =
+    activeImageSelection && activeImageSelection.productId === product?.id
+      ? activeImageSelection.index
+      : 0;
+  const activeImgIndex = product ? Math.min(selectedImageIndex, product.imageUrls.length - 1) : 0;
+
+  // Sync mobile carousel scroll when activeImgIndex changes
+  useEffect(() => {
+    if (mobileCarouselRef.current && product) {
+      const container = mobileCarouselRef.current;
+      const targetScrollLeft = activeImgIndex * container.clientWidth;
+      if (Math.abs(container.scrollLeft - targetScrollLeft) > 5) {
+        container.scrollTo({
+          left: targetScrollLeft,
+          behavior: 'smooth',
+        });
+      }
+    }
+  }, [activeImgIndex, product]);
+
   if (!product) return null;
 
-  const selectedImageIndex =
-    activeImageSelection?.productId === product.id ? activeImageSelection.index : 0;
-  const activeImgIndex = Math.min(selectedImageIndex, product.imageUrls.length - 1);
+  const handleMobileScroll = (e: React.UIEvent<HTMLDivElement>) => {
+    const container = e.currentTarget;
+    const index = Math.round(container.scrollLeft / container.clientWidth);
+    if (index !== activeImgIndex && product) {
+      setActiveImageSelection({ productId: product.id, index });
+    }
+  };
 
   const formatPrice = (price: number) => {
     return new Intl.NumberFormat('id-ID', {
@@ -180,8 +206,8 @@ export default function ProductDetailModal({ product, onClose }: ProductDetailMo
         <div className="flex-1 overflow-y-auto flex flex-col md:flex-row min-h-0 no-scrollbar">
           {/* LEFT PANEL: Media Gallery */}
           <div className="theme-soft-surface theme-border w-full md:w-1/2 shrink-0 flex flex-col p-3 sm:p-4 md:p-6 relative justify-center border-b md:border-b-0 md:border-r">
-            {/* Main Visual */}
-            <div className="theme-soft-surface relative aspect-[4/5] w-full overflow-hidden shadow-xs">
+            {/* Desktop Visual */}
+            <div className="hidden md:block theme-soft-surface relative aspect-[4/5] w-full overflow-hidden shadow-xs">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src={product.imageUrls[activeImgIndex]}
@@ -190,9 +216,66 @@ export default function ProductDetailModal({ product, onClose }: ProductDetailMo
               />
             </div>
 
+            {/* Mobile Swipable Visual */}
+            <div className="block md:hidden relative w-full aspect-[4/5] overflow-hidden shadow-xs">
+              {/* Mobile Photo Count Badge */}
+              {product.imageUrls.length > 1 && (
+                <div className="absolute top-3 left-3 bg-[color-mix(in_srgb,var(--theme-text)_75%,transparent)] text-[var(--theme-surface)] text-[10px] font-mono font-bold px-2.5 py-1 z-10 pointer-events-none shadow-sm rounded-sm">
+                  {activeImgIndex + 1}/{product.imageUrls.length}
+                </div>
+              )}
+              <div
+                ref={mobileCarouselRef}
+                onScroll={handleMobileScroll}
+                className="flex w-full h-full overflow-x-auto scroll-snap-x snap-mandatory no-scrollbar"
+                style={{ WebkitOverflowScrolling: 'touch' }}
+              >
+                {product.imageUrls.map((url, index) => (
+                  <div
+                    key={index}
+                    className="w-full h-full shrink-0 scroll-snap-align-center relative"
+                  >
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={url}
+                      alt={`${product.name} - Foto ${index + 1}`}
+                      className="w-full h-full object-cover"
+                      loading={index === 0 ? 'eager' : 'lazy'}
+                    />
+                  </div>
+                ))}
+              </div>
+
+              {/* Mobile Carousel Dot Indicators */}
+              {product.imageUrls.length > 1 && (
+                <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex items-center gap-1.5 bg-[color-mix(in_srgb,var(--theme-text)_60%,transparent)] backdrop-blur-xs px-2.5 py-1 rounded-full z-10">
+                  {product.imageUrls.map((_, index) => (
+                    <button
+                      key={index}
+                      onClick={() => {
+                        if (mobileCarouselRef.current) {
+                          mobileCarouselRef.current.scrollTo({
+                            left: index * mobileCarouselRef.current.clientWidth,
+                            behavior: 'smooth',
+                          });
+                          setActiveImageSelection({ productId: product.id, index });
+                        }
+                      }}
+                      className={`w-1.5 h-1.5 rounded-full transition-all duration-300 ${
+                        activeImgIndex === index
+                          ? 'bg-[var(--theme-surface)] w-3'
+                          : 'bg-[color-mix(in_srgb,var(--theme-surface)_40%,transparent)] hover:bg-[color-mix(in_srgb,var(--theme-surface)_70%,transparent)]'
+                      }`}
+                      aria-label={`Lihat foto ${index + 1}`}
+                    />
+                  ))}
+                </div>
+              )}
+            </div>
+
             {/* Thumbnails Row */}
             {product.imageUrls.length > 1 && (
-              <div className="flex gap-2 sm:gap-2.5 mt-3 md:mt-4 overflow-x-auto py-0.5 md:py-1 no-scrollbar justify-center">
+              <div className="hidden md:flex gap-2 sm:gap-2.5 mt-3 md:mt-4 overflow-x-auto py-0.5 md:py-1 no-scrollbar justify-center">
                 {product.imageUrls.map((url, index) => (
                   <button
                     key={index}
