@@ -2,12 +2,12 @@
 
 import { useEffect, useSyncExternalStore } from 'react';
 
-import { KebayaItem, mockKebayas } from '@/data/mockData';
+import { KebayaItem } from '@/data/mockData';
 import { normalizeCatalogItems } from '@/lib/catalog-normalization';
 
 const catalogChangeEvent = 'farsha-catalog-items-cache-change';
 
-let cachedCatalogItems: KebayaItem[] = mockKebayas;
+let cachedCatalogItems: KebayaItem[] = [];
 
 function notifyCatalogSubscribers() {
   if (typeof window === 'undefined') {
@@ -52,7 +52,7 @@ export function useSavedCatalogItems(initialItems?: KebayaItem[]) {
   return useSyncExternalStore(
     subscribeToSavedCatalogItems,
     readSavedCatalogItems,
-    () => initialItems ?? mockKebayas,
+    () => initialItems ?? [],
   );
 }
 

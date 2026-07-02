@@ -1,4 +1,4 @@
-import { KebayaItem, KebayaMeasurements, mockKebayas } from '@/data/mockData';
+import { KebayaItem, KebayaMeasurements } from '@/data/mockData';
 
 const defaultImageUrl =
   'https://images.unsplash.com/photo-1595777457583-95e059d581b8?w=800&auto=format&fit=crop&q=80';
@@ -95,7 +95,7 @@ export function normalizeCatalogItem(value: Partial<KebayaItem>, index: number):
 
 export function normalizeCatalogItems(value: unknown): KebayaItem[] {
   if (!Array.isArray(value)) {
-    return mockKebayas;
+    return [];
   }
 
   return value

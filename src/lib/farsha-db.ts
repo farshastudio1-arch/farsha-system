@@ -176,7 +176,7 @@ export async function listCatalogItems(options: { fallbackToMock?: boolean } = {
       .map((row, index) => catalogRowToItem(row, index))
       .filter((item): item is KebayaItem => Boolean(item));
 
-    return items.length > 0 || !fallbackToMock ? items : mockKebayas;
+    return items;
   } catch (error) {
     if (!fallbackToMock) {
       throw error;
