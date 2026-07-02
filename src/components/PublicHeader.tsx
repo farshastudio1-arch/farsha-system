@@ -14,7 +14,7 @@ export default function PublicHeader({ variant = 'default' }: PublicHeaderProps)
         }`}>
         <Link href="/" className={`flex flex-col ${isCatalog ? 'items-start text-left' : 'items-center text-center'}`} aria-label="Farsha Studio beranda">
           <span className="font-serif text-lg font-bold uppercase tracking-widest text-[var(--theme-text)] sm:text-xl">
-            FARSHAS
+            FARSHA
           </span>
           <span className="theme-muted text-[9px] tracking-[0.25em] font-mono uppercase -mt-1 pl-[2px] font-bold">
             STUDIO

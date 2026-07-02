@@ -27,6 +27,9 @@ type ActionResult<T> =
       error: string;
     };
 
+const catalogSchemaError =
+  'Catalog database schema is outdated. Apply D1 migration 0002_catalog_cms_settings.sql, then try again.';
+
 async function ensureAdmin() {
   const session = await auth();
 
@@ -50,14 +53,27 @@ async function deleteStoredCatalogImages(urls: string[]) {
   await Promise.allSettled(urls.map((url) => deleteCatalogImageByUrl(url)));
 }
 
+function getActionErrorMessage(error: unknown, fallback: string) {
+  const message = error instanceof Error ? error.message : '';
+
+  if (
+    message.includes('no such column: categories') ||
+    message.includes('no such column: measurements')
+  ) {
+    return catalogSchemaError;
+  }
+
+  return message || fallback;
+}
+
 export async function fetchAdminCatalogItemsAction(): Promise<ActionResult<KebayaItem[]>> {
   try {
     await ensureAdmin();
-    return { ok: true, data: await listCatalogItems() };
+    return { ok: true, data: await listCatalogItems({ fallbackToMock: false }) };
   } catch (error) {
     return {
       ok: false,
-      error: error instanceof Error ? error.message : 'Failed to load catalog items.',
+      error: getActionErrorMessage(error, 'Failed to load catalog items.'),
     };
   }
 }
@@ -86,7 +102,7 @@ export async function saveCatalogItemAction(item: KebayaItem): Promise<ActionRes
   } catch (error) {
     return {
       ok: false,
-      error: error instanceof Error ? error.message : 'Failed to save catalog item.',
+      error: getActionErrorMessage(error, 'Failed to save catalog item.'),
     };
   }
 }
@@ -103,7 +119,7 @@ export async function deleteCatalogItemAction(itemId: string): Promise<ActionRes
   } catch (error) {
     return {
       ok: false,
-      error: error instanceof Error ? error.message : 'Failed to delete catalog item.',
+      error: getActionErrorMessage(error, 'Failed to delete catalog item.'),
     };
   }
 }
@@ -115,7 +131,7 @@ export async function fetchSiteSettingsAction(): Promise<ActionResult<SiteSettin
   } catch (error) {
     return {
       ok: false,
-      error: error instanceof Error ? error.message : 'Failed to load site settings.',
+      error: getActionErrorMessage(error, 'Failed to load site settings.'),
     };
   }
 }
@@ -132,7 +148,7 @@ export async function saveSiteSettingsAction(
   } catch (error) {
     return {
       ok: false,
-      error: error instanceof Error ? error.message : 'Failed to save site settings.',
+      error: getActionErrorMessage(error, 'Failed to save site settings.'),
     };
   }
 }
@@ -144,7 +160,7 @@ export async function fetchCmsContentAction(): Promise<ActionResult<CMSContent>>
   } catch (error) {
     return {
       ok: false,
-      error: error instanceof Error ? error.message : 'Failed to load CMS content.',
+      error: getActionErrorMessage(error, 'Failed to load CMS content.'),
     };
   }
 }
@@ -159,7 +175,7 @@ export async function saveCmsContentAction(content: CMSContent): Promise<ActionR
   } catch (error) {
     return {
       ok: false,
-      error: error instanceof Error ? error.message : 'Failed to save CMS content.',
+      error: getActionErrorMessage(error, 'Failed to save CMS content.'),
     };
   }
 }

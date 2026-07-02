@@ -157,7 +157,9 @@ function settingsRowToSettings(row: SettingsRow): SiteSettings {
   });
 }
 
-export async function listCatalogItems(): Promise<KebayaItem[]> {
+export async function listCatalogItems(options: { fallbackToMock?: boolean } = {}): Promise<KebayaItem[]> {
+  const { fallbackToMock = true } = options;
+
   try {
     const db = await getD1Database();
     const result = await db
@@ -174,8 +176,12 @@ export async function listCatalogItems(): Promise<KebayaItem[]> {
       .map((row, index) => catalogRowToItem(row, index))
       .filter((item): item is KebayaItem => Boolean(item));
 
-    return items.length > 0 ? items : mockKebayas;
-  } catch {
+    return items.length > 0 || !fallbackToMock ? items : mockKebayas;
+  } catch (error) {
+    if (!fallbackToMock) {
+      throw error;
+    }
+
     return mockKebayas;
   }
 }
