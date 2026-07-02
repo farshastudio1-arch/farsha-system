@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 
 import TermsTabs from '@/components/TermsTabs';
-import { mockCMS } from '@/data/mockData';
+import { getCmsContent, getSiteSettings } from '@/lib/farsha-db';
 
 export const metadata: Metadata = {
   title: 'Terms and Conditions | Farsha Studio',
@@ -10,7 +10,9 @@ export const metadata: Metadata = {
     'Bilingual terms and conditions for Farsha Studio covering bookings, rentals, and payments.',
 };
 
-export default function TermsPage() {
+export default async function TermsPage() {
+  const [cmsContent, siteSettings] = await Promise.all([getCmsContent(), getSiteSettings()]);
+
   return (
     <main className="theme-surface min-h-screen font-sans">
       <header className="theme-surface theme-border border-b">
@@ -39,8 +41,8 @@ export default function TermsPage() {
 
       <footer className="theme-soft-surface theme-border border-t">
         <div className="theme-muted mx-auto flex max-w-5xl flex-col gap-3 px-4 py-8 text-xs sm:flex-row sm:items-center sm:justify-between sm:px-6 lg:px-8">
-          <p>© {new Date().getFullYear()} Farsha Studio. All rights reserved.</p>
-          <p>{mockCMS.studioPhone}</p>
+          <p>© {new Date().getFullYear()} {siteSettings.studioName}. All rights reserved.</p>
+          <p>{cmsContent.studioPhone}</p>
         </div>
       </footer>
     </main>

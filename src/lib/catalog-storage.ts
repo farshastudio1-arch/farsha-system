@@ -1,163 +1,33 @@
 'use client';
 
-import { useSyncExternalStore } from 'react';
+import { useEffect, useSyncExternalStore } from 'react';
 
-import { KebayaItem, KebayaMeasurements, mockKebayas } from '@/data/mockData';
-import {
-  dispatchBrowserEvent,
-  readLocalStorageItem,
-  writeLocalStorageItem,
-} from '@/lib/browser-storage';
+import { KebayaItem, mockKebayas } from '@/data/mockData';
+import { normalizeCatalogItems } from '@/lib/catalog-normalization';
 
-const catalogStorageKey = 'farsha-catalog-items-v1';
-const catalogChangeEvent = 'farsha-catalog-items-storage-change';
+const catalogChangeEvent = 'farsha-catalog-items-cache-change';
 
-const defaultImageUrl =
-  'https://images.unsplash.com/photo-1595777457583-95e059d581b8?w=800&auto=format&fit=crop&q=80';
-
-let cachedStoredValue: string | null | undefined;
 let cachedCatalogItems: KebayaItem[] = mockKebayas;
 
-const validSizes = new Set<KebayaItem['size']>(['S', 'M', 'L', 'XL', 'Custom']);
-const validModels = new Set<KebayaItem['model']>(['Modern', 'Klasik', 'Kartini', 'Kutubaru']);
-const validCategories = new Set<NonNullable<KebayaItem['categories']>[number]>([
-  'wisuda',
-  'lamaran',
-  'kondangan',
-  'bridesmaid',
-]);
-const validStatuses = new Set<KebayaItem['status']>([
-  'available',
-  'rented',
-  'maintenance',
-]);
-
-function normalizeText(value: unknown, fallback = '') {
-  return typeof value === 'string' ? value.trim() : fallback;
-}
-
-function normalizeNumber(value: unknown, fallback: number) {
-  const numberValue = typeof value === 'number' ? value : Number(value);
-  return Number.isFinite(numberValue) && numberValue >= 0 ? numberValue : fallback;
-}
-
-function normalizeMeasurements(value: unknown): Partial<KebayaMeasurements> | undefined {
-  if (!value || typeof value !== 'object') {
-    return undefined;
+function notifyCatalogSubscribers() {
+  if (typeof window === 'undefined') {
+    return;
   }
 
-  const measurements = value as Partial<KebayaMeasurements>;
-  const normalized = {
-    bust: normalizeText(measurements.bust),
-    waist: normalizeText(measurements.waist),
-    length: normalizeText(measurements.length),
-    sleeveLength: normalizeText(measurements.sleeveLength),
-    armhole: normalizeText(measurements.armhole),
-    otherDetails: normalizeText(measurements.otherDetails),
-    rentalCategory: normalizeText(measurements.rentalCategory),
-  };
-
-  return Object.values(normalized).some(Boolean) ? normalized : undefined;
+  window.dispatchEvent(new Event(catalogChangeEvent));
 }
 
-function normalizeCategories(value: unknown): KebayaItem['categories'] | undefined {
-  if (!Array.isArray(value)) {
-    return undefined;
-  }
-
-  const categories = value.filter(
-    (category): category is NonNullable<KebayaItem['categories']>[number] =>
-      validCategories.has(category as NonNullable<KebayaItem['categories']>[number]),
-  );
-
-  return categories.length > 0 ? categories : undefined;
-}
-
-function normalizeCatalogMasterStatus(value: unknown): KebayaItem['status'] {
-  void value;
-  return 'available';
-}
-
-function normalizeCatalogItem(value: Partial<KebayaItem>, index: number): KebayaItem | null {
-  const name = normalizeText(value.name);
-  const code = normalizeText(value.code);
-
-  if (!name || !code) {
-    return null;
-  }
-
-  const imageUrls = Array.isArray(value.imageUrls)
-    ? value.imageUrls.map((url) => normalizeText(url)).filter(Boolean)
-    : [];
-
-  return {
-    id: normalizeText(value.id, `catalog-${index + 1}`),
-    code,
-    name,
-    color: normalizeText(value.color, 'Neutral'),
-    size: validSizes.has(value.size as KebayaItem['size'])
-      ? (value.size as KebayaItem['size'])
-      : 'M',
-    model: validModels.has(value.model as KebayaItem['model'])
-      ? (value.model as KebayaItem['model'])
-      : 'Modern',
-    rentalPrice: normalizeNumber(value.rentalPrice, 0),
-    status: validStatuses.has(value.status as KebayaItem['status'])
-      ? normalizeCatalogMasterStatus(value.status)
-      : 'available',
-    rentalEndDate: null,
-    imageUrls: imageUrls.length > 0 ? imageUrls : [defaultImageUrl],
-    description: normalizeText(value.description),
-    categories: normalizeCategories(value.categories),
-    measurements: normalizeMeasurements(value.measurements),
-  };
-}
-
-export function normalizeCatalogItems(value: unknown): KebayaItem[] {
-  if (!Array.isArray(value)) {
-    return mockKebayas;
-  }
-
-  return value
-    .map((item, index) => normalizeCatalogItem(item as Partial<KebayaItem>, index))
-    .filter((item): item is KebayaItem => Boolean(item));
+export function seedSavedCatalogItems(items: KebayaItem[]) {
+  cachedCatalogItems = normalizeCatalogItems(items);
+  notifyCatalogSubscribers();
 }
 
 export function readSavedCatalogItems() {
-  if (typeof window === 'undefined') {
-    return mockKebayas;
-  }
-
-  const storedValue = readLocalStorageItem(catalogStorageKey);
-
-  if (storedValue === cachedStoredValue) {
-    return cachedCatalogItems;
-  }
-
-  cachedStoredValue = storedValue;
-
-  if (!storedValue) {
-    cachedCatalogItems = mockKebayas;
-    return cachedCatalogItems;
-  }
-
-  try {
-    cachedCatalogItems = normalizeCatalogItems(JSON.parse(storedValue));
-  } catch {
-    cachedCatalogItems = mockKebayas;
-  }
-
   return cachedCatalogItems;
 }
 
 export function writeSavedCatalogItems(nextItems: KebayaItem[]) {
-  const normalizedItems = normalizeCatalogItems(nextItems);
-  const serializedItems = JSON.stringify(normalizedItems);
-
-  writeLocalStorageItem(catalogStorageKey, serializedItems);
-  cachedStoredValue = serializedItems;
-  cachedCatalogItems = normalizedItems;
-  dispatchBrowserEvent(catalogChangeEvent);
+  seedSavedCatalogItems(nextItems);
 }
 
 function subscribeToSavedCatalogItems(onStoreChange: () => void) {
@@ -165,19 +35,25 @@ function subscribeToSavedCatalogItems(onStoreChange: () => void) {
     return () => {};
   }
 
-  window.addEventListener('storage', onStoreChange);
   window.addEventListener(catalogChangeEvent, onStoreChange);
 
   return () => {
-    window.removeEventListener('storage', onStoreChange);
     window.removeEventListener(catalogChangeEvent, onStoreChange);
   };
 }
 
-export function useSavedCatalogItems() {
+export function useSavedCatalogItems(initialItems?: KebayaItem[]) {
+  useEffect(() => {
+    if (initialItems) {
+      seedSavedCatalogItems(initialItems);
+    }
+  }, [initialItems]);
+
   return useSyncExternalStore(
     subscribeToSavedCatalogItems,
     readSavedCatalogItems,
-    () => mockKebayas,
+    () => initialItems ?? mockKebayas,
   );
 }
+
+export { normalizeCatalogItems };

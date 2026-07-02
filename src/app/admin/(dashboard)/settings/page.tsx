@@ -1,6 +1,6 @@
 'use client';
 
-import { ChangeEvent, useMemo, useState } from 'react';
+import { ChangeEvent, useEffect, useMemo, useState } from 'react';
 import {
   AlertTriangle,
   Check,
@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 
 import { KebayaItem, mockKebayas, SiteSettings } from '@/data/mockData';
+import { fetchSiteSettingsAction, saveSiteSettingsAction } from '@/lib/farsha-actions';
 import {
   applyCatalogCardMode,
   useSavedSiteSettings,
@@ -487,8 +488,39 @@ export default function SettingsPage() {
   const savedSettings = useSavedSiteSettings();
   const [settingsDraft, setSettingsDraft] = useState<SiteSettings | null>(null);
   const [saveState, setSaveState] = useState<'idle' | 'saved' | 'error'>('idle');
+  const [isLoadingSettings, setIsLoadingSettings] = useState(true);
+  const [isSavingSettings, setIsSavingSettings] = useState(false);
+  const [settingsError, setSettingsError] = useState('');
   const settings = settingsDraft ?? savedSettings;
   const previewProduct = mockKebayas[0];
+
+  useEffect(() => {
+    let active = true;
+
+    async function loadSettings() {
+      setIsLoadingSettings(true);
+      const result = await fetchSiteSettingsAction();
+
+      if (!active) {
+        return;
+      }
+
+      if (result.ok) {
+        writeSavedSiteSettings(result.data);
+        setSettingsError('');
+      } else {
+        setSettingsError(result.error);
+      }
+
+      setIsLoadingSettings(false);
+    }
+
+    loadSettings();
+
+    return () => {
+      active = false;
+    };
+  }, []);
 
   const validationErrors = useMemo(() => getValidationErrors(settings), [settings]);
   const hasErrors = Object.keys(validationErrors).length > 0;
@@ -533,9 +565,13 @@ export default function SettingsPage() {
     updateField('borderRadius', Number(event.target.value));
   };
 
-  const saveSettings = () => {
+  const saveSettings = async () => {
     if (hasErrors) {
       setSaveState('error');
+      return;
+    }
+
+    if (isSavingSettings) {
       return;
     }
 
@@ -546,9 +582,20 @@ export default function SettingsPage() {
       updatedAt: new Date().toISOString(),
     };
 
-    writeSavedSiteSettings(nextSettings);
-    setSettingsDraft(null);
-    setSaveState('saved');
+    setIsSavingSettings(true);
+    const result = await saveSiteSettingsAction(nextSettings);
+
+    if (result.ok) {
+      writeSavedSiteSettings(result.data);
+      setSettingsDraft(null);
+      setSaveState('saved');
+      setSettingsError('');
+    } else {
+      setSaveState('error');
+      setSettingsError(result.error);
+    }
+
+    setIsSavingSettings(false);
   };
 
   const discardChanges = () => {
@@ -576,19 +623,20 @@ export default function SettingsPage() {
           {saveState === 'saved' && (
             <span className="inline-flex items-center justify-center gap-1.5 border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm font-semibold text-emerald-700">
               <Check className="h-4 w-4" />
-              Saved locally
+              Saved to database
             </span>
           )}
           {saveState === 'error' && (
             <span className="inline-flex items-center justify-center gap-1.5 border border-red-200 bg-red-50 px-3 py-2 text-sm font-semibold text-red-700">
               <AlertTriangle className="h-4 w-4" />
-              Review fields
+              {settingsError || 'Review fields'}
             </span>
           )}
           {hasChanges && (
             <button
               type="button"
               onClick={discardChanges}
+              disabled={isSavingSettings}
               className="border border-neutral-200 bg-white px-4 py-2.5 text-sm font-semibold text-neutral-700 transition-colors hover:bg-neutral-50"
             >
               Discard
@@ -597,14 +645,26 @@ export default function SettingsPage() {
           <button
             type="button"
             onClick={saveSettings}
-            disabled={!hasChanges || hasErrors}
+            disabled={!hasChanges || hasErrors || isSavingSettings}
             className="inline-flex items-center justify-center gap-2 bg-neutral-900 px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-neutral-800 disabled:cursor-not-allowed disabled:opacity-45"
           >
             <Save className="h-4 w-4" />
-            Save changes
+            {isSavingSettings ? 'Saving to database...' : 'Save changes'}
           </button>
         </div>
       </div>
+
+      {(isLoadingSettings || settingsError) && (
+        <div
+          className={`border px-4 py-3 text-sm font-semibold ${
+            settingsError
+              ? 'border-red-200 bg-red-50 text-red-700'
+              : 'border-neutral-200 bg-neutral-50 text-neutral-600'
+          }`}
+        >
+          {settingsError || 'Loading settings from database...'}
+        </div>
+      )}
 
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         <div className={`border p-4 shadow-sm ${publicStatusTone}`}>

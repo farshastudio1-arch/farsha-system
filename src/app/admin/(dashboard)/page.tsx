@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   ArrowUpRight,
   CheckCircle,
@@ -15,9 +15,10 @@ import {
 } from 'lucide-react';
 
 import { KebayaItem } from '@/data/mockData';
+import { fetchAdminCatalogItemsAction, fetchSiteSettingsAction } from '@/lib/farsha-actions';
 import { landingCategories, matchesLandingCategory } from '@/lib/landing-categories';
-import { useSavedCatalogItems } from '@/lib/catalog-storage';
-import { useSavedSiteSettings } from '@/lib/site-settings';
+import { useSavedCatalogItems, writeSavedCatalogItems } from '@/lib/catalog-storage';
+import { useSavedSiteSettings, writeSavedSiteSettings } from '@/lib/site-settings';
 import { useSavedPosLedger, projectCatalogItems, getOverdueTransactions } from '@/lib/pos-ledger';
 
 type StatusTone = 'good' | 'warning' | 'neutral';
@@ -220,8 +221,48 @@ export default function AdminDashboard() {
   const catalogItems = useSavedCatalogItems();
   const settings = useSavedSiteSettings();
   const ledger = useSavedPosLedger();
+  const [isLoadingDatabase, setIsLoadingDatabase] = useState(true);
+  const [databaseError, setDatabaseError] = useState('');
   const projectedItems = useMemo(() => projectCatalogItems(catalogItems, ledger), [catalogItems, ledger]);
   const overdueTransactions = useMemo(() => getOverdueTransactions(ledger), [ledger]);
+
+  useEffect(() => {
+    let active = true;
+
+    async function loadDashboardData() {
+      setIsLoadingDatabase(true);
+      const [catalogResult, settingsResult] = await Promise.all([
+        fetchAdminCatalogItemsAction(),
+        fetchSiteSettingsAction(),
+      ]);
+
+      if (!active) {
+        return;
+      }
+
+      if (catalogResult.ok) {
+        writeSavedCatalogItems(catalogResult.data);
+      }
+
+      if (settingsResult.ok) {
+        writeSavedSiteSettings(settingsResult.data);
+      }
+
+      const errors = [
+        catalogResult.ok ? '' : catalogResult.error,
+        settingsResult.ok ? '' : settingsResult.error,
+      ].filter(Boolean);
+
+      setDatabaseError(errors.join(' '));
+      setIsLoadingDatabase(false);
+    }
+
+    loadDashboardData();
+
+    return () => {
+      active = false;
+    };
+  }, []);
 
   const totalItems = projectedItems.length;
   const availableItems = countByStatus(projectedItems, 'available');
@@ -312,6 +353,18 @@ export default function AdminDashboard() {
           </Link>
         </div>
       </div>
+
+      {(isLoadingDatabase || databaseError) && (
+        <div
+          className={`border px-4 py-3 text-sm font-semibold ${
+            databaseError
+              ? 'border-red-200 bg-red-50 text-red-700'
+              : 'border-neutral-200 bg-neutral-50 text-neutral-600'
+          }`}
+        >
+          {databaseError || 'Loading admin overview from database...'}
+        </div>
+      )}
 
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         <OverviewCard

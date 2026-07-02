@@ -1,6 +1,6 @@
 'use client';
 
-import { FormEvent, useMemo, useState } from 'react';
+import { ChangeEvent, FormEvent, useEffect, useMemo, useState } from 'react';
 import {
   AlertTriangle,
   CheckCircle,
@@ -17,6 +17,11 @@ import {
 } from 'lucide-react';
 
 import { KebayaCategory, KebayaItem, KebayaMeasurements } from '@/data/mockData';
+import {
+  deleteCatalogItemAction,
+  fetchAdminCatalogItemsAction,
+  saveCatalogItemAction,
+} from '@/lib/farsha-actions';
 import { useSavedCatalogItems, writeSavedCatalogItems } from '@/lib/catalog-storage';
 import { landingCategories, matchesLandingCategory } from '@/lib/landing-categories';
 import { projectCatalogItems, useSavedPosLedger } from '@/lib/pos-ledger';
@@ -38,6 +43,25 @@ type CoverageFilter = 'all' | KebayaCategory;
 
 const defaultImageUrl =
   'https://images.unsplash.com/photo-1595777457583-95e059d581b8?w=800&auto=format&fit=crop&q=80';
+const maxImageSlots = 8;
+const maxUploadBytes = 5 * 1024 * 1024;
+const acceptedUploadTypes = ['image/jpeg', 'image/png', 'image/webp'];
+const acceptedUploadInput = acceptedUploadTypes.join(',');
+
+type CatalogImageUploadResponse =
+  | {
+      ok: true;
+      data: {
+        key: string;
+        url: string;
+        contentType: string;
+        size: number;
+      };
+    }
+  | {
+      ok: false;
+      error: string;
+    };
 
 const emptyForm: CatalogFormState = {
   name: '',
@@ -253,6 +277,26 @@ function FieldLabel({ label, children }: { label: string; children: React.ReactN
   );
 }
 
+async function deleteUploadedCatalogImage(url: string) {
+  const trimmed = url.trim();
+
+  if (!trimmed) {
+    return;
+  }
+
+  try {
+    await fetch('/api/admin/catalog-images', {
+      method: 'DELETE',
+      headers: {
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({ url: trimmed }),
+    });
+  } catch {
+    // Cleanup is best-effort; saving catalog data should not be blocked by this.
+  }
+}
+
 function StatusBadge({ status }: { status: KebayaItem['status'] }) {
   const Icon = statusIcons[status];
 
@@ -298,15 +342,49 @@ export default function CatalogManagement() {
   const catalogItems = useSavedCatalogItems();
   const ledger = useSavedPosLedger();
   const projectedItems = useMemo(() => projectCatalogItems(catalogItems, ledger), [catalogItems, ledger]);
+  const [isLoadingCatalog, setIsLoadingCatalog] = useState(true);
+  const [catalogError, setCatalogError] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<KebayaItem['status'] | 'all'>('all');
   const [coverageFilter, setCoverageFilter] = useState<CoverageFilter>('all');
   const [qualityFilter, setQualityFilter] = useState<'all' | 'issues'>('all');
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
   const [editingItem, setEditingItem] = useState<KebayaItem | null>(null);
   const [form, setForm] = useState<CatalogFormState>(emptyForm);
   const [formError, setFormError] = useState('');
   const [imgErrors, setImgErrors] = useState<Record<number, boolean>>({});
+  const [isUploadingImage, setIsUploadingImage] = useState(false);
+  const [uploadError, setUploadError] = useState('');
+  const [pendingUploadedImageUrls, setPendingUploadedImageUrls] = useState<string[]>([]);
+
+  useEffect(() => {
+    let active = true;
+
+    async function loadCatalogItems() {
+      setIsLoadingCatalog(true);
+      const result = await fetchAdminCatalogItemsAction();
+
+      if (!active) {
+        return;
+      }
+
+      if (result.ok) {
+        writeSavedCatalogItems(result.data);
+        setCatalogError('');
+      } else {
+        setCatalogError(result.error);
+      }
+
+      setIsLoadingCatalog(false);
+    }
+
+    loadCatalogItems();
+
+    return () => {
+      active = false;
+    };
+  }, []);
 
   const catalogSummary = useMemo(() => {
     const availableItems = projectedItems.filter((item) => item.status === 'available');
@@ -365,6 +443,9 @@ export default function CatalogManagement() {
     setForm(emptyForm);
     setFormError('');
     setImgErrors({});
+    setUploadError('');
+    setIsUploadingImage(false);
+    setPendingUploadedImageUrls([]);
     setIsModalOpen(true);
   };
 
@@ -378,15 +459,31 @@ export default function CatalogManagement() {
     setForm(itemToForm(item));
     setFormError('');
     setImgErrors({});
+    setUploadError('');
+    setIsUploadingImage(false);
+    setPendingUploadedImageUrls([]);
     setIsModalOpen(true);
   };
 
-  const closeModal = () => {
+  const closeCatalogModal = (cleanupPendingUploads: boolean) => {
+    if (cleanupPendingUploads) {
+      pendingUploadedImageUrls.forEach((url) => {
+        void deleteUploadedCatalogImage(url);
+      });
+    }
+
     setIsModalOpen(false);
     setEditingItem(null);
     setForm(emptyForm);
     setFormError('');
     setImgErrors({});
+    setUploadError('');
+    setIsUploadingImage(false);
+    setPendingUploadedImageUrls([]);
+  };
+
+  const closeModal = () => {
+    closeCatalogModal(true);
   };
 
   const updateFormField = <Key extends keyof CatalogFormState>(
@@ -417,18 +514,28 @@ export default function CatalogManagement() {
   };
 
   const addImageSlot = () => {
-    if (form.imageUrls.length >= 6) return;
+    if (form.imageUrls.length >= maxImageSlots) return;
     updateFormField('imageUrls', [...form.imageUrls, '']);
   };
 
   const removeImageSlot = (index: number) => {
+    const removedUrl = form.imageUrls[index]?.trim() ?? '';
+
     if (form.imageUrls.length <= 1) {
       updateFormField('imageUrls', ['']);
+      if (removedUrl && pendingUploadedImageUrls.includes(removedUrl)) {
+        void deleteUploadedCatalogImage(removedUrl);
+        setPendingUploadedImageUrls((urls) => urls.filter((url) => url !== removedUrl));
+      }
       return;
     }
 
     const next = form.imageUrls.filter((_, i) => i !== index);
     updateFormField('imageUrls', next);
+    if (removedUrl && pendingUploadedImageUrls.includes(removedUrl)) {
+      void deleteUploadedCatalogImage(removedUrl);
+      setPendingUploadedImageUrls((urls) => urls.filter((url) => url !== removedUrl));
+    }
     setImgErrors((prev) => {
       const updated = { ...prev };
       delete updated[index];
@@ -443,8 +550,85 @@ export default function CatalogManagement() {
     updateFormField('imageUrls', next);
   };
 
-  const saveItem = (event: FormEvent<HTMLFormElement>) => {
+  const addUploadedImageUrl = (url: string) => {
+    setForm((current) => {
+      const nextUrls = [...current.imageUrls];
+      const emptyIndex = nextUrls.findIndex((entry) => !entry.trim());
+
+      if (emptyIndex >= 0) {
+        nextUrls[emptyIndex] = url;
+      } else if (nextUrls.length < maxImageSlots) {
+        nextUrls.push(url);
+      } else {
+        return current;
+      }
+
+      return { ...current, imageUrls: nextUrls };
+    });
+  };
+
+  const uploadImage = async (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0] ?? null;
+    event.target.value = '';
+
+    if (!file || isUploadingImage) {
+      return;
+    }
+
+    const filledSlots = form.imageUrls.filter((url) => url.trim()).length;
+
+    if (filledSlots >= maxImageSlots) {
+      setUploadError(`Maximum ${maxImageSlots} photos per item.`);
+      return;
+    }
+
+    if (!acceptedUploadTypes.includes(file.type)) {
+      setUploadError('Use JPG, PNG, or WebP image files.');
+      return;
+    }
+
+    if (file.size > maxUploadBytes) {
+      setUploadError('Image must be 5 MB or smaller.');
+      return;
+    }
+
+    setIsUploadingImage(true);
+    setUploadError('');
+
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('code', form.code.trim() || editingItem?.code || 'draft');
+
+    try {
+      const response = await fetch('/api/admin/catalog-images', {
+        method: 'POST',
+        body: formData,
+      });
+      const payload = (await response.json().catch(() => ({
+        ok: false,
+        error: 'Upload failed before the server returned details.',
+      }))) as CatalogImageUploadResponse;
+
+      if (!response.ok || !payload.ok) {
+        setUploadError(payload.ok ? 'Upload failed.' : payload.error);
+        return;
+      }
+
+      addUploadedImageUrl(payload.data.url);
+      setPendingUploadedImageUrls((urls) => [...urls, payload.data.url]);
+    } catch {
+      setUploadError('Upload failed. Please try again.');
+    } finally {
+      setIsUploadingImage(false);
+    }
+  };
+
+  const saveItem = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    if (isSaving) {
+      return;
+    }
+
     const price = parsePrice(form.rentalPrice);
     const code = form.code.trim();
     const name = form.name.trim();
@@ -467,17 +651,31 @@ export default function CatalogManagement() {
       return;
     }
 
-    const nextItem = createItemFromForm(form, editingItem?.id ?? `catalog-${Date.now()}`);
-    const nextItems = editingItem
-      ? catalogItems.map((item) => (item.id === editingItem.id ? nextItem : item))
-      : [nextItem, ...catalogItems];
+    setIsSaving(true);
+    setFormError('');
 
-    writeSavedCatalogItems(nextItems);
-    closeModal();
+    const nextItem = createItemFromForm(form, editingItem?.id ?? `catalog-${Date.now()}`);
+    const result = await saveCatalogItemAction(nextItem);
+
+    if (result.ok) {
+      writeSavedCatalogItems(result.data);
+      closeCatalogModal(false);
+    } else {
+      setFormError(result.error);
+    }
+
+    setIsSaving(false);
   };
 
-  const deleteItem = (itemId: string) => {
-    writeSavedCatalogItems(catalogItems.filter((item) => item.id !== itemId));
+  const deleteItem = async (itemId: string) => {
+    const result = await deleteCatalogItemAction(itemId);
+
+    if (result.ok) {
+      writeSavedCatalogItems(result.data);
+      setCatalogError('');
+    } else {
+      setCatalogError(result.error);
+    }
   };
 
   const resetFilters = () => {
@@ -488,6 +686,8 @@ export default function CatalogManagement() {
   };
 
   const coverUrl = form.imageUrls.find((url) => url.trim()) ?? '';
+  const filledImageCount = form.imageUrls.filter((url) => url.trim()).length;
+  const canAddImageSlot = form.imageUrls.length < maxImageSlots;
   const editingProjectedItem = editingItem
     ? projectedItems.find((item) => item.id === editingItem.id) ?? null
     : null;
@@ -511,12 +711,25 @@ export default function CatalogManagement() {
         <button
           type="button"
           onClick={openCreateModal}
+          disabled={isLoadingCatalog}
           className="inline-flex items-center justify-center gap-2 bg-neutral-900 px-4 py-3 text-sm font-semibold text-white transition-colors hover:bg-neutral-800 sm:self-start lg:self-auto"
         >
           <Plus className="h-4 w-4" />
           Add item
         </button>
       </div>
+
+      {(isLoadingCatalog || catalogError) && (
+        <div
+          className={`border px-4 py-3 text-sm font-semibold ${
+            catalogError
+              ? 'border-red-200 bg-red-50 text-red-700'
+              : 'border-neutral-200 bg-neutral-50 text-neutral-600'
+          }`}
+        >
+          {catalogError || 'Loading catalog from database...'}
+        </div>
+      )}
 
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
         <div className="border border-neutral-200 bg-white p-4 shadow-sm">
@@ -908,7 +1121,36 @@ export default function CatalogManagement() {
               </div>
 
               <div className="min-h-0 flex-1 overflow-y-auto p-4">
-                <SectionLabel>Photos ({form.imageUrls.length}/6)</SectionLabel>
+                <SectionLabel>
+                  Photos ({filledImageCount}/{maxImageSlots})
+                </SectionLabel>
+                <div className="mb-3 space-y-2">
+                  <label
+                    className={`flex w-full items-center justify-center gap-2 border px-3 py-2.5 text-xs font-semibold transition-colors ${
+                      isUploadingImage || filledImageCount >= maxImageSlots
+                        ? 'cursor-not-allowed border-neutral-200 bg-neutral-100 text-neutral-400'
+                        : 'cursor-pointer border-neutral-900 bg-neutral-900 text-white hover:bg-neutral-800'
+                    }`}
+                  >
+                    <ImagePlus className="h-4 w-4" />
+                    {isUploadingImage ? 'Uploading...' : 'Upload photo'}
+                    <input
+                      type="file"
+                      accept={acceptedUploadInput}
+                      disabled={isUploadingImage || filledImageCount >= maxImageSlots}
+                      onChange={uploadImage}
+                      className="sr-only"
+                    />
+                  </label>
+                  <p className="text-[10px] leading-relaxed text-neutral-400">
+                    JPG, PNG, or WebP. Max 5 MB each.
+                  </p>
+                  {uploadError && (
+                    <p className="border border-red-200 bg-red-50 px-2 py-1.5 text-[10px] font-medium text-red-600">
+                      {uploadError}
+                    </p>
+                  )}
+                </div>
                 <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-1">
                   {form.imageUrls.map((url, index) => (
                     <div key={index} className="flex items-start gap-2">
@@ -969,14 +1211,14 @@ export default function CatalogManagement() {
                   ))}
                 </div>
 
-                {form.imageUrls.length < 6 && (
+                {canAddImageSlot && (
                   <button
                     type="button"
                     onClick={addImageSlot}
                     className="mt-3 flex w-full items-center justify-center gap-1.5 border border-dashed border-neutral-300 py-2 text-xs font-medium text-neutral-500 transition-colors hover:border-neutral-500 hover:text-neutral-700"
                   >
                     <ImagePlus className="h-3.5 w-3.5" />
-                    Add photo
+                    Add URL field
                   </button>
                 )}
               </div>
@@ -1304,15 +1546,17 @@ export default function CatalogManagement() {
                     <button
                       type="button"
                       onClick={closeModal}
+                      disabled={isSaving}
                       className="border border-neutral-200 bg-white px-4 py-2.5 text-sm font-semibold text-neutral-700 transition-colors hover:bg-neutral-50"
                     >
                       Cancel
                     </button>
                     <button
                       type="submit"
-                      className="bg-neutral-900 px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-neutral-800"
+                      disabled={isSaving}
+                      className="bg-neutral-900 px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-neutral-800 disabled:cursor-not-allowed disabled:opacity-50"
                     >
-                      {editingItem ? 'Save item' : 'Add item'}
+                      {isSaving ? 'Saving to database...' : editingItem ? 'Save item' : 'Add item'}
                     </button>
                   </div>
                 </div>

@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { ArrowUpDown, CheckCircle2 } from 'lucide-react';
-import { KebayaItem, mockCMS } from '@/data/mockData';
+import { CMSContent, KebayaItem, SiteSettings } from '@/data/mockData';
 import Filters, { FilterState } from './Filters';
 import ProductCard from './ProductCard';
 import ProductDetailModal from './ProductDetailModal';
@@ -35,6 +35,9 @@ const sortOptions: Array<{ value: SortOption; label: string }> = [
 ];
 
 interface CatalogProps {
+  cmsContent: CMSContent;
+  initialItems: KebayaItem[];
+  siteSettings: SiteSettings;
   initialCategory?: LandingCategorySlug | null;
 }
 
@@ -51,11 +54,16 @@ function readSavedMobileGrid(): MobileGridColumns | null {
   return isMobileGridColumns(savedValue) ? savedValue : null;
 }
 
-export default function Catalog({ initialCategory = null }: CatalogProps) {
+export default function Catalog({
+  cmsContent,
+  initialItems,
+  siteSettings: initialSiteSettings,
+  initialCategory = null,
+}: CatalogProps) {
   const router = useRouter();
-  const catalogItems = useSavedCatalogItems();
+  const catalogItems = useSavedCatalogItems(initialItems);
   const ledger = useSavedPosLedger();
-  const siteSettings = useSavedSiteSettings();
+  const siteSettings = useSavedSiteSettings(initialSiteSettings);
   const landingCategory = getLandingCategory(initialCategory);
   const projectedCatalogItems = useMemo(
     () => projectCatalogItems(catalogItems, ledger),
@@ -309,7 +317,7 @@ export default function Catalog({ initialCategory = null }: CatalogProps) {
     <div
       id="catalog-section"
       data-farsha-catalog
-      data-farsha-phone={mockCMS.studioPhone}
+      data-farsha-phone={cmsContent.studioPhone}
       className="theme-surface theme-border w-full border-t pt-5 pb-16 sm:pt-8 sm:pb-24"
     >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -488,7 +496,11 @@ export default function Catalog({ initialCategory = null }: CatalogProps) {
       </div>
 
       {/* DETAILED MODAL OVERLAY */}
-      <ProductDetailModal product={selectedProduct} onClose={() => setSelectedProduct(null)} />
+      <ProductDetailModal
+        product={selectedProduct}
+        studioPhone={cmsContent.studioPhone}
+        onClose={() => setSelectedProduct(null)}
+      />
     </div>
   );
 }

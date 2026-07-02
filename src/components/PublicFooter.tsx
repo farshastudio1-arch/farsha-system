@@ -1,8 +1,16 @@
 import Link from 'next/link';
 
-import { mockCMS } from '@/data/mockData';
+import { CMSContent, SiteSettings } from '@/data/mockData';
 
-export default function PublicFooter() {
+interface PublicFooterProps {
+  cmsContent: CMSContent;
+  siteSettings: SiteSettings;
+}
+
+export default function PublicFooter({ cmsContent, siteSettings }: PublicFooterProps) {
+  const whatsappNumber = siteSettings.whatsappNumber || cmsContent.studioPhone;
+  const whatsappHref = `https://wa.me/${whatsappNumber.replace(/[^0-9]/g, '')}`;
+
   return (
     <footer
       id="contact-section"
@@ -20,8 +28,7 @@ export default function PublicFooter() {
               </span>
             </div>
             <p className="theme-inverse-muted max-w-sm text-xs leading-relaxed sm:text-sm">
-              Studio sewa kebaya dan dress premium untuk wisuda, lamaran, kondangan, dan
-              bridesmaid.
+              {siteSettings.tagline}
             </p>
           </div>
 
@@ -30,8 +37,8 @@ export default function PublicFooter() {
               Informasi Studio
             </h4>
             <ul className="theme-inverse-muted space-y-2 text-xs sm:text-sm">
-              <li>Paccerakkang, Makassar</li>
-              <li>{mockCMS.studioPhone}</li>
+              <li>{cmsContent.studioAddress || siteSettings.address}</li>
+              <li>{cmsContent.studioPhone}</li>
             </ul>
           </div>
 
@@ -50,7 +57,7 @@ export default function PublicFooter() {
               </li>
               <li>
                 <a
-                  href={`https://wa.me/${mockCMS.studioPhone.replace(/[^0-9]/g, '')}`}
+                  href={whatsappHref}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="hover:text-[var(--theme-background)] transition-colors"
@@ -76,8 +83,8 @@ export default function PublicFooter() {
         </div>
 
         <div className="theme-inverse-muted flex flex-col items-center justify-between gap-3 pt-6 font-mono text-[10px] uppercase tracking-wider sm:flex-row sm:text-xs">
-          <p>© {new Date().getFullYear()} Farsha Studio. All rights reserved.</p>
-          <p>Paccerakkang, Makassar</p>
+          <p>© {new Date().getFullYear()} {siteSettings.studioName}. All rights reserved.</p>
+          <p>{siteSettings.locationLabel}</p>
         </div>
       </div>
     </footer>

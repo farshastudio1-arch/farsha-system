@@ -8,12 +8,21 @@
     "directory": ".open-next/assets",
     "binding": "ASSETS"
   },
+  "vars": {
+    "R2_PUBLIC_BASE_URL": "https://images.farshastudio.com"
+  },
   "d1_databases": [
     {
       "binding": "DB",
       "database_name": "farsha-system-db",
       "database_id": "b329750d-070f-4525-a41b-43576f0ee38f",
       "migrations_dir": "migrations"
+    }
+  ],
+  "r2_buckets": [
+    {
+      "binding": "CATALOG_IMAGES",
+      "bucket_name": "farsha-catalog-images"
     }
   ],
   "services": [

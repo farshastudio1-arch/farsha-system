@@ -1,15 +1,20 @@
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
-import { KebayaItem, mockCMS } from '@/data/mockData';
+import { KebayaItem } from '@/data/mockData';
 import { matchesLandingCategory } from '@/lib/landing-categories';
 
 interface ProductDetailModalProps {
   product: KebayaItem | null;
+  studioPhone: string;
   onClose: () => void;
 }
 
-export default function ProductDetailModal({ product, onClose }: ProductDetailModalProps) {
+export default function ProductDetailModal({
+  product,
+  studioPhone,
+  onClose,
+}: ProductDetailModalProps) {
   const [activeImageSelection, setActiveImageSelection] = useState<{
     productId: string;
     index: number;
@@ -80,7 +85,7 @@ export default function ProductDetailModal({ product, onClose }: ProductDetailMo
 
   // WhatsApp Deep-Link generator
   const getWhatsAppLink = () => {
-    const cleanPhone = mockCMS.studioPhone.replace(/[^0-9]/g, ''); // strip spaces, +, dashes
+    const cleanPhone = studioPhone.replace(/[^0-9]/g, ''); // strip spaces, +, dashes
     const message = `Halo, saya tertarik dengan ${product.name} (kode: ${product.code}). Apakah masih tersedia?`;
     return `https://wa.me/${cleanPhone}?text=${encodeURIComponent(message)}`;
   };

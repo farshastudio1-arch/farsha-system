@@ -5,19 +5,19 @@ import PublicFooter from '@/components/PublicFooter';
 import PublicHeader from '@/components/PublicHeader';
 import StoreStatusBadge from '@/components/StoreStatusBadge';
 import { landingCategories } from '@/lib/landing-categories';
-import { mockSiteSettings } from '@/data/mockData';
+import { getCmsContent, getSiteSettings } from '@/lib/farsha-db';
 
-export default function Home() {
-  const cleanWhatsapp = mockSiteSettings.whatsappNumber.replace(/[^0-9]/g, '');
+export default async function Home() {
+  const [cmsContent, siteSettings] = await Promise.all([getCmsContent(), getSiteSettings()]);
+  const cleanWhatsapp = siteSettings.whatsappNumber.replace(/[^0-9]/g, '');
   const whatsappLink = `https://wa.me/${cleanWhatsapp}?text=Halo%20Admin%20Farsha%20Studio,%20saya%20tertarik%20tanya%20sewa%20kebaya.`;
-  const tiktokLink = mockSiteSettings.tiktokUrl || 'https://tiktok.com';
+  const tiktokLink = siteSettings.tiktokUrl || 'https://tiktok.com';
 
-  const heroImageUrl =
-    'https://images.unsplash.com/photo-1441986300917-64674bd600d8?w=1600&auto=format&fit=crop&q=80';
+  const heroImageUrl = cmsContent.heroImageUrl;
   const trustPoints = [
     'datang langsung tanpa appointment',
     'banyak pilihan model',
-    'studio di Paccerakkang, Makassar',
+    `studio di ${siteSettings.locationLabel}`,
   ];
 
   return (
@@ -39,14 +39,13 @@ export default function Home() {
             <div className="landing-hero-grid">
               <div className="theme-border border-b pb-6 lg:border-b-0 lg:border-r lg:pb-0 lg:pr-8">
                 <span className="theme-muted-strong font-mono text-xs font-bold uppercase tracking-widest">
-                  Sewa Kebaya & Dress / Makassar
+                  Sewa Kebaya & Dress / {siteSettings.locationLabel}
                 </span>
                 <h1 className="mt-3 max-w-xl font-serif text-4xl font-semibold leading-tight tracking-tight text-[var(--theme-text)] sm:text-5xl">
-                  Your next &quot;wow&quot; moment is just a rental away.
+                  {cmsContent.heroTitle}
                 </h1>
                 <p className="theme-muted-strong mt-4 max-w-md text-sm leading-relaxed sm:text-base">
-                  Sewa kebaya dan dress premium untuk momen sekali pakai, tanpa harus beli
-                  mahal-mahal.
+                  {cmsContent.heroSubtitle}
                 </p>
                 <div className="mt-6 flex flex-col gap-2.5 w-full sm:max-w-[280px]">
                   <Link
@@ -87,14 +86,14 @@ export default function Home() {
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img
                       src={heroImageUrl}
-                      alt="Dress rental store interior"
+                      alt={cmsContent.heroTitle}
                       className="h-full w-full object-cover"
                       loading="eager"
                     />
                   </div>
                   <div className="theme-surface theme-border flex flex-col justify-between border-l px-3 py-3">
                     <p className="theme-muted font-mono text-[10px] uppercase leading-relaxed tracking-widest">
-                      walk in studio / Makassar
+                      walk in studio / {siteSettings.locationLabel}
                     </p>
                     <StoreStatusBadge />
                   </div>
@@ -112,7 +111,7 @@ export default function Home() {
               <span aria-hidden="true">✨</span>
             </span>
             <p className="landing-reminder-quote font-serif italic text-base sm:text-lg text-neutral-950 text-center leading-relaxed">
-              &quot;Rent the look, own the moment&quot;
+              &quot;{cmsContent.promoText || 'Rent the look, own the moment'}&quot;
             </p>
           </div>
         </section>
@@ -196,11 +195,10 @@ export default function Home() {
               full catalog
             </span>
             <h2 className="mt-3 font-serif text-3xl font-semibold text-[var(--theme-text)] sm:text-4xl">
-              Browse semua koleksi Farsha Studio
+              {cmsContent.aboutTitle}
             </h2>
             <p className="theme-muted-strong mt-3 max-w-xl text-sm leading-relaxed sm:text-base">
-              Gunakan katalog lengkap untuk cek model, warna, ukuran, harga sewa, dan status
-              ketersediaan sebelum datang ke studio.
+              {cmsContent.aboutText}
             </p>
             <Link
               href="/catalog"
@@ -212,7 +210,7 @@ export default function Home() {
         </section>
       </main>
 
-      <PublicFooter />
+      <PublicFooter cmsContent={cmsContent} siteSettings={siteSettings} />
     </div>
   );
 }
