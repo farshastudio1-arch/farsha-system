@@ -29,6 +29,7 @@ type CmsRow = {
   about_text: string;
   studio_address: string;
   studio_phone: string;
+  landing_categories?: string | null;
 };
 
 type SettingsRow = {
@@ -113,6 +114,7 @@ function cmsRowToContent(row: CmsRow): CMSContent {
     aboutText: row.about_text,
     studioAddress: row.studio_address,
     studioPhone: row.studio_phone,
+    landingCategories: parseJson<CMSContent['landingCategories']>(row.landing_categories, []),
   });
 }
 
@@ -277,7 +279,7 @@ export async function getCmsContent(): Promise<CMSContent> {
     const row = await db
       .prepare(
         `SELECT hero_title, hero_subtitle, hero_image_url, promo_text, about_title,
-          about_text, studio_address, studio_phone
+          about_text, studio_address, studio_phone, landing_categories
          FROM cms_content
          WHERE id = 'main'
          LIMIT 1`,
@@ -298,9 +300,9 @@ export async function updateCmsContent(content: CMSContent): Promise<void> {
     .prepare(
       `INSERT INTO cms_content (
         id, hero_title, hero_subtitle, hero_image_url, promo_text, about_title,
-        about_text, studio_address, studio_phone
+        about_text, studio_address, studio_phone, landing_categories
       )
-      VALUES ('main', ?, ?, ?, ?, ?, ?, ?, ?)
+      VALUES ('main', ?, ?, ?, ?, ?, ?, ?, ?, ?)
       ON CONFLICT(id) DO UPDATE SET
         hero_title = excluded.hero_title,
         hero_subtitle = excluded.hero_subtitle,
@@ -310,6 +312,7 @@ export async function updateCmsContent(content: CMSContent): Promise<void> {
         about_text = excluded.about_text,
         studio_address = excluded.studio_address,
         studio_phone = excluded.studio_phone,
+        landing_categories = excluded.landing_categories,
         updated_at = CURRENT_TIMESTAMP`,
     )
     .bind(
@@ -321,6 +324,7 @@ export async function updateCmsContent(content: CMSContent): Promise<void> {
       normalized.aboutText,
       normalized.studioAddress,
       normalized.studioPhone,
+      JSON.stringify(normalized.landingCategories),
     )
     .run();
 }

@@ -35,6 +35,19 @@ export interface CMSContent {
   aboutText: string;
   studioAddress: string;
   studioPhone: string;
+  landingCategories: LandingCategoryContent[];
+}
+
+export interface LandingCategoryContent {
+  slug: KebayaCategory;
+  emoji: string;
+  title: string;
+  descriptor: string;
+  action: string;
+  availabilityCue: string;
+  availabilityTone: 'ready' | 'soon';
+  imageUrl: string;
+  imageUrls: string[];
 }
 
 export interface SiteSettings {
@@ -75,21 +88,6 @@ export interface SiteSettings {
   showPromoBanner: boolean;
   updatedAt: string;
 }
-
-export const mockCMS: CMSContent = {
-  heroTitle: 'Sewa Kebaya Premium untuk Momen Istimewamu',
-  heroSubtitle:
-    'Temukan koleksi kebaya modern dan klasik terbaik di Farsha Studio. Pilihan elegan, ukuran lengkap, dan siap membuat penampilanmu memukau.',
-  heroImageUrl:
-    'https://images.unsplash.com/photo-1583391733956-3750e0ff4e8b?w=1600&auto=format&fit=crop&q=80',
-  promoText:
-    '✨ Dapatkan diskon sewa 10% untuk penyewaan di hari kerja (Senin - Kamis)! Hubungi admin sekarang. ✨',
-  aboutTitle: 'Tentang Farsha Studio',
-  aboutText:
-    'Farsha Studio adalah destinasi utama penyewaan kebaya premium yang berfokus pada kualitas jahatan, detail payet yang indah, dan kecocokan fitting yang sempurna. Koleksi kami berkisar dari kebaya tradisional klasik hingga desain modern kontemporer untuk wisuda, pernikahan, pertunangan, dan acara formal lainnya. Kami percaya bahwa setiap wanita berhak tampil anggun dan percaya diri di hari spesialnya.',
-  studioAddress: 'Jl. Kebon Jeruk Raya No. 45, Jakarta Barat, DKI Jakarta 11530',
-  studioPhone: '+62 812-3456-7890',
-};
 
 export const mockSiteSettings: SiteSettings = {
   studioName: 'Farsha Studio',
@@ -312,3 +310,68 @@ export const mockKebayas: KebayaItem[] = [
       'Kebaya Kartini berbahan sifon tipis warna merah muda lembut bermotif floral tulip kecil. Sangat anggun dengan bros susun tiga antik berwarna perak bakar di kerah dada. Koleksi edisi terbatas yang elegan untuk foto keluarga atau hari Kartinian.',
   },
 ];
+
+const fallbackCategoryImage = mockKebayas[0]?.imageUrls[0] ?? '';
+
+export const defaultLandingCategories: LandingCategoryContent[] = [
+  {
+    slug: 'wisuda',
+    emoji: '🎓',
+    title: 'Kebaya for Wisuda',
+    descriptor: 'Rapi, ringan, dan fotogenik untuk hari kelulusan.',
+    action: 'Lihat wisuda',
+    availabilityCue: 'Now Ready',
+    availabilityTone: 'ready',
+    imageUrl: mockKebayas[5]?.imageUrls[0] ?? fallbackCategoryImage,
+    imageUrls: mockKebayas[5]?.imageUrls.slice(0, 3) ?? [fallbackCategoryImage],
+  },
+  {
+    slug: 'lamaran',
+    emoji: '💍',
+    title: 'Kebaya for Lamaran',
+    descriptor: 'Siluet lembut untuk momen keluarga yang lebih formal.',
+    action: 'Lihat lamaran',
+    availabilityCue: 'Now Ready',
+    availabilityTone: 'ready',
+    imageUrl: mockKebayas[2]?.imageUrls[0] ?? fallbackCategoryImage,
+    imageUrls: mockKebayas[2]?.imageUrls.slice(0, 3) ?? [fallbackCategoryImage],
+  },
+  {
+    slug: 'kondangan',
+    emoji: '✨',
+    title: 'Dress premium untuk kondangan',
+    descriptor: 'Pilihan dressy dan kebaya modern untuk undangan malam.',
+    action: 'Lihat kondangan',
+    availabilityCue: 'Now Ready',
+    availabilityTone: 'ready',
+    imageUrl: mockKebayas[4]?.imageUrls[0] ?? fallbackCategoryImage,
+    imageUrls: mockKebayas[4]?.imageUrls.slice(0, 3) ?? [fallbackCategoryImage],
+  },
+  {
+    slug: 'bridesmaid',
+    emoji: '🌸',
+    title: 'Seragam bridesmaid',
+    descriptor: 'Nuansa senada untuk look rombongan yang tetap personal.',
+    action: 'Lihat bridesmaid',
+    availabilityCue: 'Coming Soon',
+    availabilityTone: 'soon',
+    imageUrl: mockKebayas[7]?.imageUrls[1] ?? fallbackCategoryImage,
+    imageUrls: mockKebayas[7]?.imageUrls.slice(0, 3) ?? [fallbackCategoryImage],
+  },
+];
+
+export const mockCMS: CMSContent = {
+  heroTitle: 'Sewa Kebaya Premium untuk Momen Istimewamu',
+  heroSubtitle:
+    'Temukan koleksi kebaya modern dan klasik terbaik di Farsha Studio. Pilihan elegan, ukuran lengkap, dan siap membuat penampilanmu memukau.',
+  heroImageUrl:
+    'https://images.unsplash.com/photo-1583391733956-3750e0ff4e8b?w=1600&auto=format&fit=crop&q=80',
+  promoText:
+    '✨ Dapatkan diskon sewa 10% untuk penyewaan di hari kerja (Senin - Kamis)! Hubungi admin sekarang. ✨',
+  aboutTitle: 'Tentang Farsha Studio',
+  aboutText:
+    'Farsha Studio adalah destinasi utama penyewaan kebaya premium yang berfokus pada kualitas jahatan, detail payet yang indah, dan kecocokan fitting yang sempurna. Koleksi kami berkisar dari kebaya tradisional klasik hingga desain modern kontemporer untuk wisuda, pernikahan, pertunangan, dan acara formal lainnya. Kami percaya bahwa setiap wanita berhak tampil anggun dan percaya diri di hari spesialnya.',
+  studioAddress: 'Jl. Kebon Jeruk Raya No. 45, Jakarta Barat, DKI Jakarta 11530',
+  studioPhone: '+62 812-3456-7890',
+  landingCategories: defaultLandingCategories,
+};

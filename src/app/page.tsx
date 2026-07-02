@@ -1,10 +1,11 @@
 import Link from 'next/link';
 import { Compass } from 'lucide-react';
 
+import LandingCategoryCard from '@/components/LandingCategoryCard';
 import PublicFooter from '@/components/PublicFooter';
 import PublicHeader from '@/components/PublicHeader';
 import StoreStatusBadge from '@/components/StoreStatusBadge';
-import { landingCategories } from '@/lib/landing-categories';
+import { mergeLandingCategories } from '@/lib/landing-categories';
 import { getCmsContent, getSiteSettings } from '@/lib/farsha-db';
 
 export default async function Home() {
@@ -14,6 +15,7 @@ export default async function Home() {
   const tiktokLink = siteSettings.tiktokUrl || 'https://tiktok.com';
 
   const heroImageUrl = cmsContent.heroImageUrl;
+  const landingCategories = mergeLandingCategories(cmsContent.landingCategories);
   const trustPoints = [
     'datang langsung tanpa appointment',
     'banyak pilihan model',
@@ -132,45 +134,7 @@ export default async function Home() {
 
             <div className="landing-category-grid">
               {landingCategories.map((category) => (
-                <Link
-                  key={category.slug}
-                  href={`/catalog?category=${category.slug}`}
-                  className="theme-surface theme-border group flex min-h-[340px] flex-col border transition-all duration-300 hover:-translate-y-1 hover:shadow-md sm:min-h-[380px]"
-                >
-                  <div className="theme-border flex items-center justify-between border-b px-4 py-3">
-                    <span className="text-base" aria-hidden="true">
-                      {category.emoji}
-                    </span>
-                    <span
-                      className={`border px-2.5 py-1 font-mono text-[10px] font-semibold uppercase tracking-widest ${
-                        category.availabilityTone === 'ready'
-                          ? 'border-emerald-200 bg-emerald-50 text-emerald-700'
-                          : 'border-amber-200 bg-amber-50 text-amber-700'
-                      }`}
-                    >
-                      {category.availabilityCue}
-                    </span>
-                  </div>
-                  <div className="theme-soft-surface mx-3 mt-3 aspect-[4/3] overflow-hidden sm:aspect-[3/4]">
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img
-                      src={category.imageUrl}
-                      alt={category.title}
-                      className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-105"
-                    />
-                  </div>
-                  <div className="flex flex-1 flex-col p-4">
-                    <h3 className="font-serif text-lg font-semibold leading-tight text-[var(--theme-text)] sm:text-xl">
-                      {category.title}
-                    </h3>
-                    <p className="theme-muted-strong mt-2 mb-5 text-sm leading-relaxed">
-                      {category.descriptor}
-                    </p>
-                    <span className="theme-border mt-auto inline-flex border-t pt-4 font-mono text-[10px] font-semibold uppercase tracking-widest text-[var(--theme-text)]">
-                      {category.action}
-                    </span>
-                  </div>
-                </Link>
+                <LandingCategoryCard key={category.slug} category={category} />
               ))}
             </div>
           </div>

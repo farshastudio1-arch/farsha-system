@@ -28,7 +28,7 @@ type ActionResult<T> =
     };
 
 const catalogSchemaError =
-  'Catalog database schema is outdated. Apply D1 migration 0002_catalog_cms_settings.sql, then try again.';
+  'Database schema is outdated. Apply the latest D1 migrations, then try again.';
 
 async function ensureAdmin() {
   const session = await auth();
@@ -58,7 +58,8 @@ function getActionErrorMessage(error: unknown, fallback: string) {
 
   if (
     message.includes('no such column: categories') ||
-    message.includes('no such column: measurements')
+    message.includes('no such column: measurements') ||
+    message.includes('no such column: landing_categories')
   ) {
     return catalogSchemaError;
   }
