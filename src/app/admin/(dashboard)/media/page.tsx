@@ -189,7 +189,7 @@ export default function MediaLibraryPage() {
 
       const formData = new FormData();
       formData.append('file', optimization.file);
-      formData.append('code', 'library');
+      formData.append('filenameHint', optimization.originalFile.name);
       formData.append('sourceArea', 'media-library');
       formData.append('originalFilename', optimization.originalFile.name);
       formData.append('originalSize', String(optimization.originalSize));
@@ -204,7 +204,7 @@ export default function MediaLibraryPage() {
         formData.append('albumId', uploadAlbumId);
       }
 
-      const response = await fetch('/api/admin/catalog-images', {
+      const response = await fetch('/api/admin/media/upload', {
         method: 'POST',
         body: formData,
       });

@@ -1,14 +1,15 @@
-import { auth } from '../../../../../auth';
+import { auth } from '../../../../../../auth';
 import { upsertMediaAsset } from '@/lib/farsha-db';
 import {
-  CATALOG_IMAGE_MAX_BYTES,
-  catalogImageKeyToUrl,
-  createCatalogImageKey,
-  getAllowedCatalogImageTypes,
-  getCatalogImagesBucket,
-  isAllowedCatalogImageType,
-} from '@/lib/catalog-images';
-import { normalizeMediaSourceArea } from '@/lib/media-library';
+  MEDIA_IMAGE_MAX_BYTES,
+  createMediaAssetKey,
+  getAllowedMediaImageTypes,
+  getMediaBucket,
+  isAllowedMediaImageType,
+  mediaKeyToUrl,
+  normalizeMediaSourceArea,
+  sanitizeMediaSegment,
+} from '@/lib/media-library';
 
 export const dynamic = 'force-dynamic';
 
@@ -34,7 +35,7 @@ export async function POST(request: Request) {
 
     const formData = await request.formData();
     const file = formData.get('file');
-    const code = String(formData.get('code') ?? 'draft');
+    const filenameHint = String(formData.get('filenameHint') ?? formData.get('code') ?? 'upload');
     const albumIdValue = formData.get('albumId');
     const sourceArea = normalizeMediaSourceArea(formData.get('sourceArea'));
     const originalFilename = String(formData.get('originalFilename') ?? '');
@@ -53,22 +54,26 @@ export async function POST(request: Request) {
       return jsonResponse({ ok: false, error: 'Image file is empty.' }, 400);
     }
 
-    if (file.size > CATALOG_IMAGE_MAX_BYTES) {
+    if (file.size > MEDIA_IMAGE_MAX_BYTES) {
       return jsonResponse({ ok: false, error: 'Image must be 5 MB or smaller.' }, 400);
     }
 
-    if (!isAllowedCatalogImageType(file.type)) {
+    if (!isAllowedMediaImageType(file.type)) {
       return jsonResponse(
         {
           ok: false,
-          error: `Use one of these image types: ${getAllowedCatalogImageTypes().join(', ')}.`,
+          error: `Use one of these image types: ${getAllowedMediaImageTypes().join(', ')}.`,
         },
         400,
       );
     }
 
-    const key = createCatalogImageKey(code, file.type);
-    const bucket = await getCatalogImagesBucket();
+    const key = createMediaAssetKey(
+      sourceArea,
+      sanitizeMediaSegment(filenameHint, 'upload'),
+      file.type,
+    );
+    const bucket = await getMediaBucket();
     const fileBuffer = await file.arrayBuffer();
 
     await bucket.put(key, fileBuffer, {
@@ -77,7 +82,7 @@ export async function POST(request: Request) {
         cacheControl: 'public, max-age=31536000, immutable',
       },
       customMetadata: {
-        source: 'farsha-admin-catalog',
+        source: `farsha-admin-${sourceArea}`,
         originalName: originalFilename || file.name,
         originalSize: Number.isFinite(originalSize) && originalSize > 0 ? String(originalSize) : '',
         optimized: String(optimized),
@@ -100,7 +105,7 @@ export async function POST(request: Request) {
       ok: true,
       data: {
         key,
-        url: catalogImageKeyToUrl(key),
+        url: mediaKeyToUrl(key),
         contentType: file.type,
         size: file.size,
         asset,

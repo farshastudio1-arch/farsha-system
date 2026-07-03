@@ -1,4 +1,4 @@
-import { decodeKey, getCatalogImagesBucket, isCatalogImageKey } from '@/lib/catalog-images';
+import { decodeMediaKey, getMediaBucket, isMediaAssetKey } from '@/lib/media-library';
 
 export const dynamic = 'force-dynamic';
 
@@ -10,13 +10,13 @@ type MediaRouteContext = {
 
 export async function GET(_request: Request, context: MediaRouteContext) {
   const params = await context.params;
-  const key = decodeKey(params.key.join('/'));
+  const key = decodeMediaKey(params.key.join('/'));
 
-  if (!isCatalogImageKey(key)) {
+  if (!isMediaAssetKey(key)) {
     return new Response('Invalid image key.', { status: 400 });
   }
 
-  const bucket = await getCatalogImagesBucket();
+  const bucket = await getMediaBucket();
   const object = await bucket.get(key);
 
   if (!object) {

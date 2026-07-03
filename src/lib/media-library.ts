@@ -79,11 +79,11 @@ export function getAllowedMediaImageTypes() {
 export async function getMediaBucket(): Promise<R2Bucket> {
   const { env } = await getCloudflareContext({ async: true });
 
-  if (!env.CATALOG_IMAGES) {
-    throw new Error('Cloudflare R2 binding CATALOG_IMAGES is not available.');
+  if (!env.MEDIA_BUCKET) {
+    throw new Error('Cloudflare R2 binding MEDIA_BUCKET is not available.');
   }
 
-  return env.CATALOG_IMAGES;
+  return env.MEDIA_BUCKET;
 }
 
 export function sanitizeMediaSegment(value: string, fallback = 'library') {

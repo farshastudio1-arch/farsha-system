@@ -51,7 +51,7 @@ const maxUploadBytes = 5 * 1024 * 1024;
 const acceptedUploadTypes = ['image/jpeg', 'image/png', 'image/webp'];
 const acceptedUploadInput = acceptedUploadTypes.join(',');
 
-type CatalogImageUploadResponse =
+type MediaUploadResponse =
   | {
       ok: true;
       data: {
@@ -567,7 +567,7 @@ export default function CatalogManagement() {
 
       const formData = new FormData();
       formData.append('file', optimization.file);
-      formData.append('code', form.code.trim() || editingItem?.code || 'draft');
+      formData.append('filenameHint', form.code.trim() || editingItem?.code || 'draft');
       formData.append('sourceArea', 'catalog');
       formData.append('originalFilename', optimization.originalFile.name);
       formData.append('originalSize', String(optimization.originalSize));
@@ -579,14 +579,14 @@ export default function CatalogManagement() {
         formData.append('height', String(optimization.height));
       }
 
-      const response = await fetch('/api/admin/catalog-images', {
+      const response = await fetch('/api/admin/media/upload', {
         method: 'POST',
         body: formData,
       });
       const payload = (await response.json().catch(() => ({
         ok: false,
         error: 'Upload failed before the server returned details.',
-      }))) as CatalogImageUploadResponse;
+      }))) as MediaUploadResponse;
 
       if (!response.ok || !payload.ok) {
         setUploadError(payload.ok ? 'Upload failed.' : payload.error);

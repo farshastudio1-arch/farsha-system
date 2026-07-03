@@ -21,7 +21,7 @@
   ],
   "r2_buckets": [
     {
-      "binding": "CATALOG_IMAGES",
+      "binding": "MEDIA_BUCKET",
       "bucket_name": "farsha-catalog-images"
     }
   ],
