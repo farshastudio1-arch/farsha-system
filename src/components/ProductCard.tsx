@@ -139,7 +139,7 @@ export default function ProductCard({
 
             {/* Carousel Dot Indicators */}
             {product.imageUrls.length > 1 && (
-              <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex items-center gap-1.5 bg-[color-mix(in_srgb,var(--theme-text)_60%,transparent)] backdrop-blur-xs px-2.5 py-1 rounded-full z-10">
+              <div className="absolute bottom-4 left-4 z-10 flex items-center gap-1.5 rounded-full bg-[color-mix(in_srgb,var(--theme-text)_60%,transparent)] px-2.5 py-1 backdrop-blur-xs">
                 {product.imageUrls.map((_, index) => (
                   <button
                     key={index}
@@ -200,8 +200,8 @@ export default function ProductCard({
             {product.wearStyles.map((style) => (
               <span
                 key={style}
-                className={`px-2 py-0.5 text-[10px] font-semibold font-mono text-white shadow-xs ${
-                  style === 'Hijab' ? 'bg-emerald-600' : 'bg-blue-600'
+                className={`px-2 py-0.5 text-[10px] font-semibold font-mono text-neutral-900 shadow-xs ${
+                  style === 'Hijab' ? 'bg-[#f8edeb]' : 'bg-[#f5ebe0]'
                 }`}
               >
                 {style}
@@ -228,7 +228,7 @@ export default function ProductCard({
         <h3
           onClick={() => onOpenDetail(product)}
           className={`font-serif text-[var(--theme-text)] cursor-pointer hover:text-[var(--theme-accent)] transition-colors leading-tight font-medium ${
-            isOneColumn ? 'text-lg sm:text-xl mb-2' : 'text-sm sm:text-base mb-1 line-clamp-2'
+            isOneColumn ? 'text-lg sm:text-xl mb-1' : 'text-sm sm:text-base mb-0.5 line-clamp-2'
           }`}
         >
           {product.name}
@@ -236,7 +236,7 @@ export default function ProductCard({
 
         {/* Technical features summary for 1-column layout */}
         {isOneColumn && displaySettings.showProductDescription && (
-          <p className="theme-muted-strong text-xs sm:text-sm line-clamp-2 mb-4 leading-relaxed font-sans">
+          <p className="theme-muted-strong mb-1 line-clamp-2 font-sans text-xs leading-relaxed sm:text-sm">
             {product.description}
           </p>
         )}
@@ -246,10 +246,10 @@ export default function ProductCard({
           displaySettings.showProductSize ||
           displaySettings.showProductColor) && (
           <div
-            className={`mt-auto flex justify-between ${
+            className={`mt-0 flex justify-between ${
               isOneColumn
-                ? 'flex-row items-end gap-3 pt-3'
-                : 'flex-col items-start gap-2 pt-2 sm:flex-row sm:items-end sm:gap-3'
+                ? 'flex-row items-end gap-3'
+                : 'flex-col items-start gap-1.5 sm:flex-row sm:items-end sm:gap-3'
             }`}
           >
             {displaySettings.showPrices && (

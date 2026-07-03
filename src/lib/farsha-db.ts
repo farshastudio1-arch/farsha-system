@@ -33,6 +33,26 @@ type CatalogRow = {
   measurements?: string | null;
 };
 
+const catalogSelectFieldsWithComparePrice =
+  `id, code, name, color, size, model, rental_price, compare_at_rental_price, status, rental_end_date,
+  image_urls, description, wear_styles, categories, measurements`;
+const catalogSelectFieldsLegacy =
+  `id, code, name, color, size, model, rental_price, status, rental_end_date,
+  image_urls, description, wear_styles, categories, measurements`;
+
+function isMissingComparePriceColumnError(error: unknown) {
+  return String(error).includes('no such column: compare_at_rental_price');
+}
+
+async function hasCatalogComparePriceColumn(db: D1Database) {
+  try {
+    const result = await db.prepare('PRAGMA table_info(kebaya_items)').all<{ name: string }>();
+    return result.results.some((column) => column.name === 'compare_at_rental_price');
+  } catch {
+    return false;
+  }
+}
+
 type CmsRow = {
   hero_eyebrow?: string | null;
   hero_title: string;
@@ -155,6 +175,100 @@ function catalogRowToItem(row: CatalogRow, index: number): KebayaItem | null {
     },
     index,
   );
+}
+
+async function listCatalogRows(db: D1Database) {
+  const selectFields = (await hasCatalogComparePriceColumn(db))
+    ? catalogSelectFieldsWithComparePrice
+    : catalogSelectFieldsLegacy;
+
+  try {
+    return await db
+      .prepare(
+        `SELECT ${selectFields}
+         FROM kebaya_items
+         WHERE status != 'archived'
+         ORDER BY created_at DESC, code ASC`,
+      )
+      .all<CatalogRow>();
+  } catch (error) {
+    if (!isMissingComparePriceColumnError(error)) {
+      throw error;
+    }
+
+    return db
+      .prepare(
+        `SELECT ${catalogSelectFieldsLegacy}
+         FROM kebaya_items
+         WHERE status != 'archived'
+         ORDER BY created_at DESC, code ASC`,
+      )
+      .all<CatalogRow>();
+  }
+}
+
+async function findCatalogRowByCode(db: D1Database, code: string) {
+  const selectFields = (await hasCatalogComparePriceColumn(db))
+    ? catalogSelectFieldsWithComparePrice
+    : catalogSelectFieldsLegacy;
+
+  try {
+    return await db
+      .prepare(
+        `SELECT ${selectFields}
+         FROM kebaya_items
+         WHERE lower(code) = lower(?) AND status != 'archived'
+         LIMIT 1`,
+      )
+      .bind(code)
+      .first<CatalogRow>();
+  } catch (error) {
+    if (!isMissingComparePriceColumnError(error)) {
+      throw error;
+    }
+
+    return db
+      .prepare(
+        `SELECT ${catalogSelectFieldsLegacy}
+         FROM kebaya_items
+         WHERE lower(code) = lower(?) AND status != 'archived'
+         LIMIT 1`,
+      )
+      .bind(code)
+      .first<CatalogRow>();
+  }
+}
+
+async function findCatalogRowById(db: D1Database, itemId: string) {
+  const selectFields = (await hasCatalogComparePriceColumn(db))
+    ? catalogSelectFieldsWithComparePrice
+    : catalogSelectFieldsLegacy;
+
+  try {
+    return await db
+      .prepare(
+        `SELECT ${selectFields}
+         FROM kebaya_items
+         WHERE id = ? AND status != 'archived'
+         LIMIT 1`,
+      )
+      .bind(itemId)
+      .first<CatalogRow>();
+  } catch (error) {
+    if (!isMissingComparePriceColumnError(error)) {
+      throw error;
+    }
+
+    return db
+      .prepare(
+        `SELECT ${catalogSelectFieldsLegacy}
+         FROM kebaya_items
+         WHERE id = ? AND status != 'archived'
+         LIMIT 1`,
+      )
+      .bind(itemId)
+      .first<CatalogRow>();
+  }
 }
 
 function cmsRowToContent(row: CmsRow): CMSContent {
@@ -344,15 +458,7 @@ export async function listCatalogItems(options: { fallbackToMock?: boolean } = {
 
   try {
     const db = await getD1Database();
-    const result = await db
-      .prepare(
-        `SELECT id, code, name, color, size, model, rental_price, compare_at_rental_price, status, rental_end_date,
-          image_urls, description, wear_styles, categories, measurements
-         FROM kebaya_items
-         WHERE status != 'archived'
-         ORDER BY created_at DESC, code ASC`,
-      )
-      .all<CatalogRow>();
+    const result = await listCatalogRows(db);
 
     const items = result.results
       .map((row, index) => catalogRowToItem(row, index))
@@ -370,32 +476,14 @@ export async function listCatalogItems(options: { fallbackToMock?: boolean } = {
 
 export async function findCatalogItemByCode(code: string): Promise<KebayaItem | null> {
   const db = await getD1Database();
-  const row = await db
-    .prepare(
-      `SELECT id, code, name, color, size, model, rental_price, compare_at_rental_price, status, rental_end_date,
-        image_urls, description, wear_styles, categories, measurements
-       FROM kebaya_items
-       WHERE lower(code) = lower(?) AND status != 'archived'
-       LIMIT 1`,
-    )
-    .bind(code)
-    .first<CatalogRow>();
+  const row = await findCatalogRowByCode(db, code);
 
   return row ? catalogRowToItem(row, 0) : null;
 }
 
 export async function findCatalogItemById(itemId: string): Promise<KebayaItem | null> {
   const db = await getD1Database();
-  const row = await db
-    .prepare(
-      `SELECT id, code, name, color, size, model, rental_price, compare_at_rental_price, status, rental_end_date,
-        image_urls, description, wear_styles, categories, measurements
-       FROM kebaya_items
-       WHERE id = ? AND status != 'archived'
-       LIMIT 1`,
-    )
-    .bind(itemId)
-    .first<CatalogRow>();
+  const row = await findCatalogRowById(db, itemId);
 
   return row ? catalogRowToItem(row, 0) : null;
 }
@@ -408,48 +496,101 @@ export async function upsertCatalogItem(item: KebayaItem): Promise<void> {
     throw new Error('Catalog item is invalid.');
   }
 
-  await db
-    .prepare(
-      `INSERT INTO kebaya_items (
-        id, code, name, color, size, model, rental_price, compare_at_rental_price, status, rental_end_date,
-        image_urls, description, wear_styles, categories, measurements
+  try {
+    await db
+      .prepare(
+        `INSERT INTO kebaya_items (
+          id, code, name, color, size, model, rental_price, compare_at_rental_price, status, rental_end_date,
+          image_urls, description, wear_styles, categories, measurements
+        )
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ON CONFLICT(id) DO UPDATE SET
+          code = excluded.code,
+          name = excluded.name,
+          color = excluded.color,
+          size = excluded.size,
+          model = excluded.model,
+          rental_price = excluded.rental_price,
+          compare_at_rental_price = excluded.compare_at_rental_price,
+          status = excluded.status,
+          rental_end_date = excluded.rental_end_date,
+          image_urls = excluded.image_urls,
+          description = excluded.description,
+          wear_styles = excluded.wear_styles,
+          categories = excluded.categories,
+          measurements = excluded.measurements,
+          updated_at = CURRENT_TIMESTAMP`,
       )
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-      ON CONFLICT(id) DO UPDATE SET
-        code = excluded.code,
-        name = excluded.name,
-        color = excluded.color,
-        size = excluded.size,
-        model = excluded.model,
-        rental_price = excluded.rental_price,
-        compare_at_rental_price = excluded.compare_at_rental_price,
-        status = excluded.status,
-        rental_end_date = excluded.rental_end_date,
-        image_urls = excluded.image_urls,
-        description = excluded.description,
-        wear_styles = excluded.wear_styles,
-        categories = excluded.categories,
-        measurements = excluded.measurements,
-        updated_at = CURRENT_TIMESTAMP`,
-    )
-    .bind(
-      normalized.id,
-      normalized.code,
-      normalized.name,
-      normalized.color,
-      normalized.size,
-      normalized.model,
-      normalized.rentalPrice,
-      normalized.compareAtRentalPrice ?? null,
-      normalized.status,
-      normalized.rentalEndDate,
-      JSON.stringify(normalized.imageUrls),
-      normalized.description,
-      JSON.stringify(normalized.wearStyles),
-      JSON.stringify(normalized.categories ?? []),
-      JSON.stringify(normalized.measurements ?? {}),
-    )
-    .run();
+      .bind(
+        normalized.id,
+        normalized.code,
+        normalized.name,
+        normalized.color,
+        normalized.size,
+        normalized.model,
+        normalized.rentalPrice,
+        normalized.compareAtRentalPrice ?? null,
+        normalized.status,
+        normalized.rentalEndDate,
+        JSON.stringify(normalized.imageUrls),
+        normalized.description,
+        JSON.stringify(normalized.wearStyles),
+        JSON.stringify(normalized.categories ?? []),
+        JSON.stringify(normalized.measurements ?? {}),
+      )
+      .run();
+  } catch (error) {
+    if (!isMissingComparePriceColumnError(error)) {
+      throw error;
+    }
+
+    if (normalized.compareAtRentalPrice !== null) {
+      throw new Error(
+        'Compare price cannot be saved until migration 0009_catalog_compare_price.sql is applied.',
+      );
+    }
+
+    await db
+      .prepare(
+        `INSERT INTO kebaya_items (
+          id, code, name, color, size, model, rental_price, status, rental_end_date,
+          image_urls, description, wear_styles, categories, measurements
+        )
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ON CONFLICT(id) DO UPDATE SET
+          code = excluded.code,
+          name = excluded.name,
+          color = excluded.color,
+          size = excluded.size,
+          model = excluded.model,
+          rental_price = excluded.rental_price,
+          status = excluded.status,
+          rental_end_date = excluded.rental_end_date,
+          image_urls = excluded.image_urls,
+          description = excluded.description,
+          wear_styles = excluded.wear_styles,
+          categories = excluded.categories,
+          measurements = excluded.measurements,
+          updated_at = CURRENT_TIMESTAMP`,
+      )
+      .bind(
+        normalized.id,
+        normalized.code,
+        normalized.name,
+        normalized.color,
+        normalized.size,
+        normalized.model,
+        normalized.rentalPrice,
+        normalized.status,
+        normalized.rentalEndDate,
+        JSON.stringify(normalized.imageUrls),
+        normalized.description,
+        JSON.stringify(normalized.wearStyles),
+        JSON.stringify(normalized.categories ?? []),
+        JSON.stringify(normalized.measurements ?? {}),
+      )
+      .run();
+  }
 }
 
 export async function deleteCatalogItem(itemId: string): Promise<void> {

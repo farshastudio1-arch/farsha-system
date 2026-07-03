@@ -308,8 +308,8 @@ export default function ProductDetailModal({
                 {product.wearStyles.map((style) => (
                   <span
                     key={style}
-                    className={`px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider font-mono text-white ${
-                      style === 'Hijab' ? 'bg-emerald-600' : 'bg-blue-600'
+                    className={`px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider font-mono text-neutral-900 ${
+                      style === 'Hijab' ? 'bg-[#f8edeb]' : 'bg-[#f5ebe0]'
                     }`}
                   >
                     {style}

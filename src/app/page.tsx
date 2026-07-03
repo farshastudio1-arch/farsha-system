@@ -26,17 +26,8 @@ export default async function Home() {
       <PublicHeader />
 
       <main className="flex-grow">
-        <section className="theme-surface relative overflow-hidden">
-          <div
-            className="pointer-events-none absolute inset-0 opacity-[0.045]"
-            style={{
-              backgroundImage:
-                'linear-gradient(var(--theme-text) 1px, transparent 1px), linear-gradient(90deg, var(--theme-text) 1px, transparent 1px)',
-              backgroundSize: '42px 42px',
-            }}
-          />
-
-          <div className="relative mx-auto max-w-7xl px-4 py-7 sm:px-6 sm:py-9 lg:px-8">
+        <section className="landing-hero-satin relative overflow-hidden">
+          <div className="relative z-10 mx-auto max-w-7xl px-4 py-7 sm:px-6 sm:py-9 lg:px-8">
             <div className="landing-hero-grid">
               <div className="theme-border border-b pb-6 lg:border-b-0 lg:border-r lg:pb-0 lg:pr-8">
                 <span className="theme-muted-strong font-mono text-xs font-bold uppercase tracking-widest">
@@ -50,7 +41,7 @@ export default async function Home() {
                 </p>
                 <div className="mt-6 flex flex-col gap-2.5 w-full sm:max-w-[280px]">
                   <Link
-                    href="/catalog"
+                    href="/catalog?view=all"
                     className="theme-primary-action flex items-center justify-center gap-3 px-6 py-4 text-xs font-semibold uppercase tracking-widest transition-all w-full text-center"
                   >
                     <Compass className="w-4 h-4 shrink-0" />
@@ -113,7 +104,10 @@ export default async function Home() {
           </div>
         </section>
 
-        <section className="landing-reminder-strip border-y border-neutral-900/10 py-6 sm:py-7">
+        <section
+          className="landing-reminder-strip border-y border-neutral-900/10 py-6 sm:py-7"
+          style={{ background: '#fffff0' }}
+        >
           <div className="relative z-10 mx-auto flex max-w-7xl flex-col items-center justify-center gap-1.5 px-4 sm:px-6 lg:px-8">
             <span className="landing-reminder-label text-neutral-500 font-mono text-[9px] font-bold uppercase tracking-widest">
               <span aria-hidden="true">✨</span>

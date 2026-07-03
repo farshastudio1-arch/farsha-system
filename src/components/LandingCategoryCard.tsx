@@ -23,23 +23,8 @@ export default function LandingCategoryCard({ category }: LandingCategoryCardPro
   };
 
   return (
-    <div className="theme-surface theme-border group flex min-h-[340px] flex-col border transition-all duration-300 hover:-translate-y-1 hover:shadow-md sm:min-h-[380px]">
-      <Link href={`/catalog?category=${category.slug}`} className="theme-border flex items-center justify-between border-b px-4 py-3">
-        <span className="text-base" aria-hidden="true">
-          {category.emoji}
-        </span>
-        <span
-          className={`border px-2.5 py-1 font-mono text-[10px] font-semibold uppercase tracking-widest ${
-            category.availabilityTone === 'ready'
-              ? 'border-emerald-200 bg-emerald-50 text-emerald-700'
-              : 'border-amber-200 bg-amber-50 text-amber-700'
-          }`}
-        >
-          {category.availabilityCue}
-        </span>
-      </Link>
-
-      <div className="theme-soft-surface relative mx-3 mt-3 aspect-[4/3] overflow-hidden sm:aspect-[3/4]">
+    <div className="group relative overflow-hidden bg-neutral-950 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-lg">
+      <div className="relative aspect-[4/5] w-full overflow-hidden">
         <div
           ref={carouselRef}
           onScroll={(event) => {
@@ -67,8 +52,39 @@ export default function LandingCategoryCard({ category }: LandingCategoryCardPro
           ))}
         </div>
 
+        <div className="pointer-events-none absolute inset-x-0 top-0 z-10 h-32 bg-gradient-to-b from-neutral-950/72 via-neutral-950/28 to-transparent" />
+        <div className="pointer-events-none absolute inset-x-0 bottom-0 z-10 h-1/2 bg-gradient-to-t from-neutral-950/88 via-neutral-950/46 to-transparent" />
+        <div className="pointer-events-none absolute left-4 right-4 top-4 z-20 flex items-start justify-between gap-3">
+          <span className="inline-flex min-h-10 min-w-10 items-center justify-center text-base text-white drop-shadow-md" aria-hidden="true">
+            {category.emoji}
+          </span>
+          <span
+            className={`px-3 py-2 text-right font-mono text-[10px] font-semibold uppercase tracking-widest text-neutral-950 shadow-sm ${
+              category.availabilityTone === 'ready'
+                ? 'bg-[#bde0fe]'
+                : 'bg-[#ffc8dd]'
+            }`}
+          >
+            {category.availabilityCue}
+          </span>
+        </div>
+
+        <div className="absolute inset-x-0 bottom-0 z-20 p-4 sm:p-5">
+          <Link href={`/catalog?category=${category.slug}`} className="block max-w-[92%] pr-12 text-white">
+            <h3 className="font-serif text-xl font-semibold leading-tight sm:text-2xl">
+              {category.title}
+            </h3>
+            <p className="mt-2 max-w-[24rem] text-sm leading-relaxed text-white/85">
+              {category.descriptor}
+            </p>
+            <span className="mt-4 inline-flex font-mono text-[10px] font-semibold uppercase tracking-widest text-white underline decoration-white/45 underline-offset-4 drop-shadow-md transition-colors group-hover:decoration-white">
+              {category.action}
+            </span>
+          </Link>
+        </div>
+
         {imageUrls.length > 1 && (
-          <div className="absolute bottom-3 left-1/2 z-10 flex -translate-x-1/2 items-center gap-1.5 bg-[color-mix(in_srgb,var(--theme-text)_58%,transparent)] px-2.5 py-1 backdrop-blur-xs">
+          <div className="absolute bottom-4 right-4 z-30 flex items-center gap-1.5">
             {imageUrls.map((_, index) => (
               <button
                 key={`${category.slug}-page-${index}`}
@@ -76,8 +92,8 @@ export default function LandingCategoryCard({ category }: LandingCategoryCardPro
                 onClick={() => scrollToImage(index)}
                 className={`h-1.5 rounded-full transition-all ${
                   activeImageIndex === index
-                    ? 'w-3 bg-[var(--theme-surface)]'
-                    : 'w-1.5 bg-[color-mix(in_srgb,var(--theme-surface)_45%,transparent)] hover:bg-[color-mix(in_srgb,var(--theme-surface)_75%,transparent)]'
+                    ? 'w-3 bg-white'
+                    : 'w-1.5 bg-white/45 hover:bg-white/75'
                 }`}
                 aria-label={`Show ${category.title} image ${index + 1}`}
                 aria-current={activeImageIndex === index ? 'true' : undefined}
@@ -86,18 +102,6 @@ export default function LandingCategoryCard({ category }: LandingCategoryCardPro
           </div>
         )}
       </div>
-
-      <Link href={`/catalog?category=${category.slug}`} className="flex flex-1 flex-col p-4">
-        <h3 className="font-serif text-lg font-semibold leading-tight text-[var(--theme-text)] sm:text-xl">
-          {category.title}
-        </h3>
-        <p className="theme-muted-strong mt-2 mb-5 text-sm leading-relaxed">
-          {category.descriptor}
-        </p>
-        <span className="theme-border mt-auto inline-flex border-t pt-4 font-mono text-[10px] font-semibold uppercase tracking-widest text-[var(--theme-text)]">
-          {category.action}
-        </span>
-      </Link>
     </div>
   );
 }

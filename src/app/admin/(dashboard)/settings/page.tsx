@@ -446,8 +446,8 @@ function CatalogCardPreview({
               {product.wearStyles.map((style) => (
                 <span
                   key={style}
-                  className={`px-2 py-0.5 font-mono text-[10px] font-semibold text-white shadow-xs ${
-                    style === 'Hijab' ? 'bg-emerald-600' : 'bg-blue-600'
+                  className={`px-2 py-0.5 font-mono text-[10px] font-semibold text-neutral-900 shadow-xs ${
+                    style === 'Hijab' ? 'bg-[#f8edeb]' : 'bg-[#f5ebe0]'
                   }`}
                 >
                   {style}
@@ -467,13 +467,13 @@ function CatalogCardPreview({
             {product.name}
           </h3>
           {settings.showProductDescription && (
-            <p className="mt-2 line-clamp-2 text-xs leading-relaxed text-neutral-600">
+            <p className="mt-1.5 line-clamp-2 text-xs leading-relaxed text-neutral-600">
               {product.description}
             </p>
           )}
 
           {(settings.showPrices || settings.showProductSize || settings.showProductColor) && (
-            <div className="mt-2 flex flex-col gap-2">
+            <div className="mt-0.5 flex flex-col gap-1.5">
               {settings.showPrices && (
                 <div>
                   <span className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5 font-mono text-sm font-semibold text-neutral-950">

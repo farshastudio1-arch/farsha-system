@@ -7,13 +7,17 @@ import { isOccasionCategory } from '@/lib/landing-categories';
 interface CatalogPageProps {
   searchParams: Promise<{
     category?: string | string[];
+    view?: string | string[];
   }>;
 }
 
 export default async function CatalogPage({ searchParams }: CatalogPageProps) {
   const params = await searchParams;
   const categoryParam = Array.isArray(params.category) ? params.category[0] : params.category;
-  const initialCategory = categoryParam && isOccasionCategory(categoryParam) ? categoryParam : null;
+  const viewParam = Array.isArray(params.view) ? params.view[0] : params.view;
+  const shouldShowAll = viewParam === 'all';
+  const initialCategory =
+    !shouldShowAll && categoryParam && isOccasionCategory(categoryParam) ? categoryParam : null;
   const [catalogItems, cmsContent, siteSettings] = await Promise.all([
     listCatalogItems(),
     getCmsContent(),
