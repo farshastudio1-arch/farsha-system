@@ -52,17 +52,16 @@ export default function LandingCategoryCard({ category }: LandingCategoryCardPro
           ))}
         </div>
 
-        <div className="pointer-events-none absolute inset-x-0 top-0 z-10 h-32 bg-gradient-to-b from-neutral-950/72 via-neutral-950/28 to-transparent" />
         <div className="pointer-events-none absolute inset-x-0 bottom-0 z-10 h-1/2 bg-gradient-to-t from-neutral-950/88 via-neutral-950/46 to-transparent" />
         <div className="pointer-events-none absolute left-4 right-4 top-4 z-20 flex items-start justify-between gap-3">
           <span className="inline-flex min-h-10 min-w-10 items-center justify-center text-base text-white drop-shadow-md" aria-hidden="true">
             {category.emoji}
           </span>
           <span
-            className={`px-3 py-2 text-right font-mono text-[10px] font-semibold uppercase tracking-widest text-neutral-950 shadow-sm ${
+            className={`px-3 py-2 text-right font-mono text-[10px] font-semibold uppercase tracking-widest shadow-sm ${
               category.availabilityTone === 'ready'
-                ? 'bg-[#bde0fe]'
-                : 'bg-[#ffc8dd]'
+                ? 'bg-neutral-950 text-white'
+                : 'bg-white text-neutral-950'
             }`}
           >
             {category.availabilityCue}

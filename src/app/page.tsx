@@ -104,10 +104,7 @@ export default async function Home() {
           </div>
         </section>
 
-        <section
-          className="landing-reminder-strip border-y border-neutral-900/10 py-6 sm:py-7"
-          style={{ background: '#fffff0' }}
-        >
+        <section className="landing-reminder-strip border-y border-neutral-900/10 py-6 sm:py-7">
           <div className="relative z-10 mx-auto flex max-w-7xl flex-col items-center justify-center gap-1.5 px-4 sm:px-6 lg:px-8">
             <span className="landing-reminder-label text-neutral-500 font-mono text-[9px] font-bold uppercase tracking-widest">
               <span aria-hidden="true">✨</span>
