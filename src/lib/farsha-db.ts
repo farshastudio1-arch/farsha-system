@@ -39,6 +39,8 @@ type CmsRow = {
   hero_image_url: string;
   primary_cta_label?: string | null;
   whatsapp_cta_label?: string | null;
+  maps_cta_label?: string | null;
+  maps_cta_url?: string | null;
   tiktok_cta_label?: string | null;
   hero_meta_text?: string | null;
   reminder_label?: string | null;
@@ -161,6 +163,8 @@ function cmsRowToContent(row: CmsRow): CMSContent {
     heroImageUrl: row.hero_image_url,
     primaryCtaLabel: row.primary_cta_label ?? undefined,
     whatsappCtaLabel: row.whatsapp_cta_label ?? undefined,
+    mapsCtaLabel: row.maps_cta_label ?? undefined,
+    mapsCtaUrl: row.maps_cta_url ?? undefined,
     tiktokCtaLabel: row.tiktok_cta_label ?? undefined,
     heroMetaText: row.hero_meta_text ?? undefined,
     reminderLabel: row.reminder_label ?? undefined,
@@ -455,9 +459,10 @@ export async function getCmsContent(): Promise<CMSContent> {
     const row = await db
       .prepare(
         `SELECT hero_eyebrow, hero_title, hero_subtitle, hero_image_url, primary_cta_label,
-          whatsapp_cta_label, tiktok_cta_label, hero_meta_text, reminder_label, promo_text,
-          category_eyebrow, category_title, trust_points, final_eyebrow, about_title,
-          about_text, final_cta_label, studio_address, studio_phone, landing_categories
+          whatsapp_cta_label, maps_cta_label, maps_cta_url, tiktok_cta_label, hero_meta_text,
+          reminder_label, promo_text, category_eyebrow, category_title, trust_points,
+          final_eyebrow, about_title, about_text, final_cta_label, studio_address, studio_phone,
+          landing_categories
          FROM cms_content
          WHERE id = 'main'
          LIMIT 1`,
@@ -478,11 +483,11 @@ export async function updateCmsContent(content: CMSContent): Promise<void> {
     .prepare(
       `INSERT INTO cms_content (
         id, hero_eyebrow, hero_title, hero_subtitle, hero_image_url, primary_cta_label,
-        whatsapp_cta_label, tiktok_cta_label, hero_meta_text, reminder_label, promo_text,
-        category_eyebrow, category_title, trust_points, final_eyebrow, about_title,
-        about_text, final_cta_label, studio_address, studio_phone, landing_categories
+        whatsapp_cta_label, maps_cta_label, maps_cta_url, tiktok_cta_label, hero_meta_text,
+        reminder_label, promo_text, category_eyebrow, category_title, trust_points, final_eyebrow,
+        about_title, about_text, final_cta_label, studio_address, studio_phone, landing_categories
       )
-      VALUES ('main', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      VALUES ('main', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       ON CONFLICT(id) DO UPDATE SET
         hero_eyebrow = excluded.hero_eyebrow,
         hero_title = excluded.hero_title,
@@ -490,6 +495,8 @@ export async function updateCmsContent(content: CMSContent): Promise<void> {
         hero_image_url = excluded.hero_image_url,
         primary_cta_label = excluded.primary_cta_label,
         whatsapp_cta_label = excluded.whatsapp_cta_label,
+        maps_cta_label = excluded.maps_cta_label,
+        maps_cta_url = excluded.maps_cta_url,
         tiktok_cta_label = excluded.tiktok_cta_label,
         hero_meta_text = excluded.hero_meta_text,
         reminder_label = excluded.reminder_label,
@@ -513,6 +520,8 @@ export async function updateCmsContent(content: CMSContent): Promise<void> {
       normalized.heroImageUrl,
       normalized.primaryCtaLabel,
       normalized.whatsappCtaLabel,
+      normalized.mapsCtaLabel,
+      normalized.mapsCtaUrl,
       normalized.tiktokCtaLabel,
       normalized.heroMetaText,
       normalized.reminderLabel,

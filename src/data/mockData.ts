@@ -52,6 +52,8 @@ export interface CMSContent {
   heroImageUrl: string;
   primaryCtaLabel: string;
   whatsappCtaLabel: string;
+  mapsCtaLabel: string;
+  mapsCtaUrl: string;
   tiktokCtaLabel: string;
   heroMetaText: string;
   reminderLabel: string;
@@ -409,6 +411,8 @@ export const mockCMS: CMSContent = {
     'https://images.unsplash.com/photo-1583391733956-3750e0ff4e8b?w=1600&auto=format&fit=crop&q=80',
   primaryCtaLabel: 'LIHAT KATALOG',
   whatsappCtaLabel: 'Hubungi WhatsApp',
+  mapsCtaLabel: 'Lihat Lokasi',
+  mapsCtaUrl: 'https://maps.app.goo.gl/DgNjPLoBTzHhxRx3A',
   tiktokCtaLabel: 'Tiktok Studio',
   heroMetaText: 'walk in studio / {location}',
   reminderLabel: 'REMINDER',

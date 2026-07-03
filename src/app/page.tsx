@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { Compass } from 'lucide-react';
+import { Compass, MapPin } from 'lucide-react';
 
 import LandingCategoryCard from '@/components/LandingCategoryCard';
 import PublicFooter from '@/components/PublicFooter';
@@ -13,6 +13,7 @@ export default async function Home() {
   const cleanWhatsapp = siteSettings.whatsappNumber.replace(/[^0-9]/g, '');
   const whatsappLink = `https://wa.me/${cleanWhatsapp}?text=Halo%20Admin%20Farsha%20Studio,%20saya%20tertarik%20tanya%20sewa%20kebaya.`;
   const tiktokLink = siteSettings.tiktokUrl || 'https://tiktok.com';
+  const mapsLink = cmsContent.mapsCtaUrl;
 
   const heroImageUrl = cmsContent.heroImageUrl;
   const landingCategories = mergeLandingCategories(cmsContent.landingCategories);
@@ -65,6 +66,15 @@ export default async function Home() {
                       <path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946C.06 5.348 5.397.01 12.008.01c3.202.001 6.212 1.246 8.477 3.514 2.266 2.268 3.507 5.28 3.505 8.484-.004 6.657-5.34 11.997-11.953 11.997-2.005-.001-3.973-.502-5.724-1.455L0 24zm6.59-4.846c1.6.95 3.188 1.449 4.825 1.451 5.436 0 9.86-4.42 9.864-9.864.002-2.637-1.03-5.115-2.908-6.993-1.879-1.88-4.359-2.912-7-2.912-5.439 0-9.873 4.432-9.877 9.877-.001 1.769.479 3.498 1.39 5.031l-.963 3.518 3.6-.944z" />
                     </svg>
                     {cmsContent.whatsappCtaLabel}
+                  </a>
+                  <a
+                    href={mapsLink}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="theme-border flex items-center justify-center gap-3 border bg-[var(--theme-surface)] px-6 py-4 text-center text-xs font-semibold uppercase tracking-widest text-[var(--theme-text)] shadow-xs transition-all hover:bg-[var(--theme-soft-surface)] w-full"
+                  >
+                    <MapPin className="w-4 h-4 shrink-0" />
+                    {cmsContent.mapsCtaLabel}
                   </a>
                   <a
                     href={tiktokLink}

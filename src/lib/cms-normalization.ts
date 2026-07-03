@@ -8,6 +8,21 @@ function normalizeText(value: unknown, fallback: string) {
   return typeof value === 'string' && value.trim() ? value.trim() : fallback;
 }
 
+function normalizeUrl(value: unknown, fallback: string) {
+  if (typeof value !== 'string') {
+    return fallback;
+  }
+
+  const trimmed = value.trim();
+
+  try {
+    const url = new URL(trimmed);
+    return url.protocol === 'https:' || url.protocol === 'http:' ? trimmed : fallback;
+  } catch {
+    return fallback;
+  }
+}
+
 function normalizeAvailabilityTone(value: unknown, fallback: LandingCategoryContent['availabilityTone']) {
   return value === 'ready' || value === 'soon' ? value : fallback;
 }
@@ -66,6 +81,8 @@ export function normalizeCmsContent(value: Partial<CMSContent>): CMSContent {
     heroImageUrl: normalizeText(value.heroImageUrl, mockCMS.heroImageUrl),
     primaryCtaLabel: normalizeText(value.primaryCtaLabel, mockCMS.primaryCtaLabel),
     whatsappCtaLabel: normalizeText(value.whatsappCtaLabel, mockCMS.whatsappCtaLabel),
+    mapsCtaLabel: normalizeText(value.mapsCtaLabel, mockCMS.mapsCtaLabel),
+    mapsCtaUrl: normalizeUrl(value.mapsCtaUrl, mockCMS.mapsCtaUrl),
     tiktokCtaLabel: normalizeText(value.tiktokCtaLabel, mockCMS.tiktokCtaLabel),
     heroMetaText: normalizeText(value.heroMetaText, mockCMS.heroMetaText),
     reminderLabel: normalizeText(value.reminderLabel, mockCMS.reminderLabel),

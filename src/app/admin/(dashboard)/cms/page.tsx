@@ -1,7 +1,7 @@
 'use client';
 
 import { ChangeEvent, FormEvent, useEffect, useMemo, useState } from 'react';
-import { AlertTriangle, Check, Image as ImageIcon, Images, Save } from 'lucide-react';
+import { AlertTriangle, Check, Image as ImageIcon, Images, MapPin, Save } from 'lucide-react';
 
 import MediaLibraryPicker from '@/components/admin/MediaLibraryPicker';
 import { CMSContent, mockCMS } from '@/data/mockData';
@@ -57,6 +57,14 @@ function getValidationErrors(content: CMSContent) {
 
   if (!content.whatsappCtaLabel.trim()) {
     errors.whatsappCtaLabel = 'WhatsApp CTA label is required.';
+  }
+
+  if (!content.mapsCtaLabel.trim()) {
+    errors.mapsCtaLabel = 'Maps CTA label is required.';
+  }
+
+  if (!isValidRequiredUrl(content.mapsCtaUrl)) {
+    errors.mapsCtaUrl = 'Use a valid Maps URL that starts with http or https.';
   }
 
   if (!content.tiktokCtaLabel.trim()) {
@@ -503,7 +511,7 @@ export default function CMSManagement() {
               </p>
               <FieldError>{validationErrors.heroMetaText}</FieldError>
             </div>
-            <div className="grid gap-4 sm:grid-cols-3">
+            <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
               <div>
                 <label className="mb-1 block text-sm font-semibold text-neutral-700">
                   Primary CTA
@@ -530,6 +538,18 @@ export default function CMSManagement() {
               </div>
               <div>
                 <label className="mb-1 block text-sm font-semibold text-neutral-700">
+                  Maps CTA
+                </label>
+                <input
+                  type="text"
+                  value={draftContent.mapsCtaLabel}
+                  onChange={updateField('mapsCtaLabel')}
+                  className={inputCls}
+                />
+                <FieldError>{validationErrors.mapsCtaLabel}</FieldError>
+              </div>
+              <div>
+                <label className="mb-1 block text-sm font-semibold text-neutral-700">
                   TikTok CTA
                 </label>
                 <input
@@ -540,6 +560,19 @@ export default function CMSManagement() {
                 />
                 <FieldError>{validationErrors.tiktokCtaLabel}</FieldError>
               </div>
+            </div>
+            <div>
+              <label className="mb-1 flex items-center gap-2 text-sm font-semibold text-neutral-700">
+                <MapPin className="h-4 w-4 text-neutral-400" />
+                Maps CTA URL
+              </label>
+              <input
+                type="url"
+                value={draftContent.mapsCtaUrl}
+                onChange={updateField('mapsCtaUrl')}
+                className={inputCls}
+              />
+              <FieldError>{validationErrors.mapsCtaUrl}</FieldError>
             </div>
           </SectionPanel>
 
