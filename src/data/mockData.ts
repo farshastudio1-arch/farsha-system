@@ -1,4 +1,22 @@
-export type KebayaCategory = 'wisuda' | 'lamaran' | 'kondangan' | 'bridesmaid';
+export const kebayaOccasions = ['wisuda', 'lamaran', 'kondangan', 'bridesmaid', 'pengajian'] as const;
+export type KebayaCategory = (typeof kebayaOccasions)[number];
+
+export const kebayaModelOptions = [
+  'Kebaya Modern',
+  'Kebaya Kutubaru',
+  'Kebaya Janggan',
+  'Dress Premium',
+  'Bajubodo Modern',
+  'Kurung Melayu',
+] as const;
+export type KebayaModel = (typeof kebayaModelOptions)[number];
+
+export const kebayaSizeOptions = ['S-M', 'L-XL'] as const;
+export type KebayaSize = (typeof kebayaSizeOptions)[number];
+
+export const kebayaRentalCategoryOptions = ['Makassar Only', 'Bisa Luar Kota'] as const;
+export const kebayaWearStyleOptions = ['Hijab', 'Non-Hijab'] as const;
+export type KebayaWearStyle = (typeof kebayaWearStyleOptions)[number];
 
 export interface KebayaMeasurements {
   bust: string;
@@ -15,13 +33,14 @@ export interface KebayaItem {
   code: string;
   name: string;
   color: string;
-  size: 'S' | 'M' | 'L' | 'XL' | 'Custom';
-  model: 'Modern' | 'Klasik' | 'Kartini' | 'Kutubaru';
+  size: KebayaSize;
+  model: KebayaModel;
   rentalPrice: number;
   status: 'available' | 'rented' | 'maintenance';
   rentalEndDate: string | null;
   imageUrls: string[];
   description: string;
+  wearStyles: KebayaWearStyle[];
   categories?: KebayaCategory[];
   measurements?: Partial<KebayaMeasurements>;
 }
@@ -145,8 +164,8 @@ export const mockKebayas: KebayaItem[] = [
     code: 'KB-SGE-01',
     name: 'Kebaya Brokat Modern Sage Green',
     color: 'Sage Green',
-    size: 'M',
-    model: 'Modern',
+    size: 'S-M',
+    model: 'Kebaya Modern',
     rentalPrice: 250000,
     status: 'available',
     rentalEndDate: null,
@@ -157,14 +176,15 @@ export const mockKebayas: KebayaItem[] = [
     ],
     description:
       'Kebaya brokat modern dengan nuansa Sage Green yang sedang tren. Dihiasi payet premium berkilau di bagian dada dan kerah shanghai yang tegak elegan. Sangat cocok untuk acara wisuda, lamaran, atau kondangan formal. Bagian belakang dilengkapi resleting tersembunyi untuk fitting yang pas.',
+    wearStyles: ['Hijab', 'Non-Hijab'],
   },
   {
     id: '2',
     code: 'KB-BLV-02',
     name: 'Kebaya Klasik Solo Beludru Hitam',
     color: 'Hitam',
-    size: 'L',
-    model: 'Klasik',
+    size: 'L-XL',
+    model: 'Kebaya Janggan',
     rentalPrice: 300000,
     status: 'rented',
     rentalEndDate: '2026-07-05',
@@ -175,14 +195,15 @@ export const mockKebayas: KebayaItem[] = [
     ],
     description:
       'Kebaya beludru hitam tradisional khas Solo dengan bordir benang emas bermotif floral klasik di sepanjang tepi pakaian. Potongan kutubaru yang mempertegas lekuk tubuh secara anggun. Bahan beludru stretch berkualitas tinggi yang nyaman dipakai sepanjang hari.',
+    wearStyles: ['Hijab'],
   },
   {
     id: '3',
     code: 'KB-IVR-03',
     name: 'Kebaya Kartini Putih Gading (Ivory)',
     color: 'Putih',
-    size: 'S',
-    model: 'Kartini',
+    size: 'S-M',
+    model: 'Kebaya Janggan',
     rentalPrice: 220000,
     status: 'available',
     rentalEndDate: null,
@@ -193,14 +214,15 @@ export const mockKebayas: KebayaItem[] = [
     ],
     description:
       'Kebaya model Kartini dengan potongan leher V-neck yang bersih dan kain katun lace premium warna putih gading. Desain elegan yang sederhana namun tetap anggun, sangat cocok untuk prosesi akad nikah atau pertunangan bertema tradisional suci.',
+    wearStyles: ['Hijab'],
   },
   {
     id: '4',
     code: 'KB-KTB-04',
     name: 'Kebaya Kutubaru Sutra Merah Floral',
     color: 'Merah',
-    size: 'M',
-    model: 'Kutubaru',
+    size: 'S-M',
+    model: 'Kebaya Kutubaru',
     rentalPrice: 200000,
     status: 'available',
     rentalEndDate: null,
@@ -211,14 +233,15 @@ export const mockKebayas: KebayaItem[] = [
     ],
     description:
       'Kebaya Kutubaru klasik berbahan sutra satin bermotif floral warna merah menyala. Dilengkapi dengan angkin (stagen penutup perut) berwarna kontras yang mempercantik tampilan pinggang. Pilihan berani untuk hari-hari perayaan budaya dan pesta pernikahan.',
+    wearStyles: ['Non-Hijab'],
   },
   {
     id: '5',
     code: 'KB-RSG-05',
     name: 'Kebaya Modern Premium Rose Gold',
     color: 'Rose Gold',
-    size: 'XL',
-    model: 'Modern',
+    size: 'L-XL',
+    model: 'Kebaya Modern',
     rentalPrice: 280000,
     status: 'available',
     rentalEndDate: null,
@@ -229,14 +252,15 @@ export const mockKebayas: KebayaItem[] = [
     ],
     description:
       'Kebaya modern bersiluet asimetris dengan payet 3D berwarna Rose Gold mewah. Menggunakan tile polos transparan di bagian pundak untuk memberikan efek melayang (floating effect) yang menakjubkan. Ukuran XL dengan potongan bersahabat yang tetap memberi efek langsing.',
+    wearStyles: ['Non-Hijab'],
   },
   {
     id: '6',
     code: 'KB-LIL-06',
     name: 'Kebaya Balinese Lace Lilac Dream',
     color: 'Lilac',
-    size: 'S',
-    model: 'Modern',
+    size: 'S-M',
+    model: 'Bajubodo Modern',
     rentalPrice: 180000,
     status: 'available',
     rentalEndDate: null,
@@ -247,14 +271,15 @@ export const mockKebayas: KebayaItem[] = [
     ],
     description:
       'Kebaya khas Bali dengan bahan brokat prada halus bernuansa Lilac lembut. Dilengkapi obi (selendang pinggang) berbahan satin ungu tua dengan bros kuningan tradisional Bali di tengahnya. Menghadirkan kecantikan eksotis pulau dewata dalam balutan warna modern.',
+    wearStyles: ['Hijab', 'Non-Hijab'],
   },
   {
     id: '7',
     code: 'KB-AUR-07',
     name: 'Kebaya Aurora Sapphire Blue Velvet',
     color: 'Biru',
-    size: 'M',
-    model: 'Klasik',
+    size: 'S-M',
+    model: 'Dress Premium',
     rentalPrice: 320000,
     status: 'rented',
     rentalEndDate: '2026-07-01',
@@ -265,14 +290,15 @@ export const mockKebayas: KebayaItem[] = [
     ],
     description:
       'Kebaya mewah berbahan beludru tebal warna biru safir tua dengan potongan ekor panjang menyapu lantai. Detail payet perak handmade menyebar di seluruh lengan dan punggung. Sempurna untuk pengantin wanita tradisional Jawa yang menginginkan sentuhan royal aristokrat.',
+    wearStyles: ['Non-Hijab'],
   },
   {
     id: '8',
     code: 'KB-TER-08',
     name: 'Kebaya Modern Terracotta Organza',
     color: 'Terracotta',
-    size: 'L',
-    model: 'Modern',
+    size: 'L-XL',
+    model: 'Dress Premium',
     rentalPrice: 260000,
     status: 'available',
     rentalEndDate: null,
@@ -283,14 +309,15 @@ export const mockKebayas: KebayaItem[] = [
     ],
     description:
       'Kebaya modern dengan kombinasi bahan organza terstruktur dan brokat chantilly warna Terracotta hangat yang segar. Desain lengan balon/puffy yang memberikan kesan anggun dan kekinian. Dilengkapi bustier sewarna yang nyaman di kulit.',
+    wearStyles: ['Hijab', 'Non-Hijab'],
   },
   {
     id: '9',
     code: 'KB-GLD-09',
     name: 'Kebaya Kutubaru Royal Gold Brocade',
     color: 'Emas',
-    size: 'Custom',
-    model: 'Kutubaru',
+    size: 'L-XL',
+    model: 'Kebaya Kutubaru',
     rentalPrice: 350000,
     status: 'available',
     rentalEndDate: null,
@@ -301,14 +328,15 @@ export const mockKebayas: KebayaItem[] = [
     ],
     description:
       'Kebaya kutubaru eksklusif dengan sulaman benang emas metalik berkilau tinggi. Model klasik dengan kerah tinggi yang memberikan wibawa ningrat. Disediakan dalam size Custom (bisa di-fit sesuai lingkar dada peminjam 94-102 cm) di studio kami.',
+    wearStyles: ['Hijab'],
   },
   {
     id: '10',
     code: 'KB-PNK-10',
     name: 'Kebaya Kartini Soft Pink Tulip',
     color: 'Pink',
-    size: 'M',
-    model: 'Kartini',
+    size: 'S-M',
+    model: 'Kurung Melayu',
     rentalPrice: 210000,
     status: 'available',
     rentalEndDate: null,
@@ -319,6 +347,7 @@ export const mockKebayas: KebayaItem[] = [
     ],
     description:
       'Kebaya Kartini berbahan sifon tipis warna merah muda lembut bermotif floral tulip kecil. Sangat anggun dengan bros susun tiga antik berwarna perak bakar di kerah dada. Koleksi edisi terbatas yang elegan untuk foto keluarga atau hari Kartinian.',
+    wearStyles: ['Hijab'],
   },
 ];
 

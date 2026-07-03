@@ -18,7 +18,15 @@ import {
 } from 'lucide-react';
 
 import MediaLibraryPicker from '@/components/admin/MediaLibraryPicker';
-import { KebayaCategory, KebayaItem, KebayaMeasurements } from '@/data/mockData';
+import {
+  kebayaModelOptions,
+  kebayaRentalCategoryOptions,
+  kebayaSizeOptions,
+  kebayaWearStyleOptions,
+  KebayaCategory,
+  KebayaItem,
+  KebayaMeasurements,
+} from '@/data/mockData';
 import { optimizeImageBeforeUpload } from '@/lib/client-image-optimizer';
 import {
   deleteCatalogItemAction,
@@ -26,16 +34,22 @@ import {
   saveCatalogItemAction,
 } from '@/lib/farsha-actions';
 import { useSavedCatalogItems, writeSavedCatalogItems } from '@/lib/catalog-storage';
-import { landingCategories, matchesLandingCategory } from '@/lib/landing-categories';
+import {
+  getOccasionLabel,
+  matchesLandingCategory,
+  occasionCategories,
+} from '@/lib/landing-categories';
 import { projectCatalogItems, useSavedPosLedger } from '@/lib/pos-ledger';
 
 type CatalogFormState = {
   name: string;
   code: string;
+  codeNumber: string;
   rentalPrice: string;
   model: KebayaItem['model'];
   size: KebayaItem['size'];
   color: string;
+  wearStyles: KebayaItem['wearStyles'];
   imageUrls: string[];
   description: string;
   categories: KebayaCategory[];
@@ -69,10 +83,12 @@ type MediaUploadResponse =
 const emptyForm: CatalogFormState = {
   name: '',
   code: '',
+  codeNumber: '',
   rentalPrice: '',
-  model: 'Modern',
-  size: 'M',
+  model: 'Kebaya Modern',
+  size: 'S-M',
   color: '',
+  wearStyles: ['Hijab', 'Non-Hijab'],
   imageUrls: [''],
   description: '',
   categories: [],
@@ -83,16 +99,11 @@ const emptyForm: CatalogFormState = {
     sleeveLength: '',
     armhole: '',
     otherDetails: '',
-    rentalCategory: 'Offline Studio',
+    rentalCategory: 'Makassar Only',
   },
 };
 
-const categoryOptions: { value: KebayaCategory; label: string; emoji: string }[] = [
-  { value: 'wisuda', label: 'Wisuda', emoji: '🎓' },
-  { value: 'lamaran', label: 'Lamaran', emoji: '💍' },
-  { value: 'kondangan', label: 'Kondangan', emoji: '✨' },
-  { value: 'bridesmaid', label: 'Bridesmaid', emoji: '🌸' },
-];
+const categoryOptions = occasionCategories;
 
 const statusOptions: { value: KebayaItem['status'] | 'all'; label: string }[] = [
   { value: 'all', label: 'All Status' },
@@ -101,15 +112,18 @@ const statusOptions: { value: KebayaItem['status'] | 'all'; label: string }[] = 
   { value: 'maintenance', label: 'DICUCI' },
 ];
 
-const modelOptions: KebayaItem['model'][] = ['Modern', 'Klasik', 'Kartini', 'Kutubaru'];
-const sizeOptions: KebayaItem['size'][] = ['S', 'M', 'L', 'XL', 'Custom'];
-const rentalCategoryOptions = [
-  'Offline Studio',
-  'Studio Fitting',
-  'Event Rental',
-  'Bridesmaid Package',
-  'Custom Booking',
-];
+const modelOptions = kebayaModelOptions;
+const sizeOptions = kebayaSizeOptions;
+const rentalCategoryOptions = kebayaRentalCategoryOptions;
+const wearStyleOptions = kebayaWearStyleOptions;
+const modelCodePrefixes: Record<KebayaItem['model'], string> = {
+  'Kebaya Modern': 'KB',
+  'Kebaya Kutubaru': 'KK',
+  'Kebaya Janggan': 'KJ',
+  'Dress Premium': 'DP',
+  'Bajubodo Modern': 'BM',
+  'Kurung Melayu': 'KM',
+};
 
 const statusStyles: Record<KebayaItem['status'], string> = {
   available: 'border-emerald-200 bg-emerald-50 text-emerald-700',
@@ -134,6 +148,45 @@ function formatPrice(price: number) {
 
 function parsePrice(value: string) {
   return Number(value.replace(/[^\d]/g, ''));
+}
+
+function getModelPrefix(model: KebayaItem['model']) {
+  return modelCodePrefixes[model];
+}
+
+function formatInventoryDate(date: Date) {
+  const day = String(date.getDate()).padStart(2, '0');
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const year = String(date.getFullYear()).slice(-2);
+
+  return `${day}${month}${year}`;
+}
+
+function formatManualNumber(value: string) {
+  const digits = value.replace(/\D/g, '');
+
+  if (!digits) {
+    return '';
+  }
+
+  return digits.length > 3 ? digits : digits.padStart(3, '0');
+}
+
+function buildInventoryCode(model: KebayaItem['model'], date: Date, manualNumber: string) {
+  const formattedNumber = formatManualNumber(manualNumber);
+
+  if (!formattedNumber) {
+    return '';
+  }
+
+  return `${getModelPrefix(model)}${formatInventoryDate(date)}${formattedNumber}`;
+}
+
+function createEmptyForm(date = new Date()): CatalogFormState {
+  return {
+    ...emptyForm,
+    code: buildInventoryCode(emptyForm.model, date, emptyForm.codeNumber),
+  };
 }
 
 function formatDate(value: string | null) {
@@ -165,17 +218,19 @@ function statusLabel(status: KebayaItem['status']) {
 }
 
 function categoryLabel(value: KebayaCategory) {
-  return categoryOptions.find((category) => category.value === value)?.label ?? value;
+  return getOccasionLabel(value);
 }
 
 function itemToForm(item: KebayaItem): CatalogFormState {
   return {
     name: item.name,
     code: item.code,
+    codeNumber: '',
     rentalPrice: String(item.rentalPrice),
     model: item.model,
     size: item.size,
     color: item.color,
+    wearStyles: item.wearStyles,
     imageUrls: item.imageUrls.length > 0 ? [...item.imageUrls] : [''],
     description: item.description,
     categories: item.categories ?? [],
@@ -186,7 +241,7 @@ function itemToForm(item: KebayaItem): CatalogFormState {
       sleeveLength: item.measurements?.sleeveLength ?? '',
       armhole: item.measurements?.armhole ?? '',
       otherDetails: item.measurements?.otherDetails ?? '',
-      rentalCategory: item.measurements?.rentalCategory ?? 'Offline Studio',
+      rentalCategory: item.measurements?.rentalCategory ?? 'Makassar Only',
     },
   };
 }
@@ -208,6 +263,7 @@ function createItemFromForm(form: CatalogFormState, id: string): KebayaItem {
     code: form.code.trim(),
     name: form.name.trim(),
     color: form.color.trim() || 'Neutral',
+    wearStyles: form.wearStyles,
     size: form.size,
     model: form.model,
     rentalPrice: parsePrice(form.rentalPrice),
@@ -225,9 +281,9 @@ function getItemCategories(item: KebayaItem) {
     return item.categories;
   }
 
-  return landingCategories
-    .filter((category) => matchesLandingCategory(item, category.slug))
-    .map((category) => category.slug);
+  return occasionCategories
+    .filter((category) => matchesLandingCategory(item, category.value))
+    .map((category) => category.value);
 }
 
 function getItemQualityIssues(item: KebayaItem) {
@@ -335,6 +391,7 @@ export default function CatalogManagement() {
   const [isSaving, setIsSaving] = useState(false);
   const [editingItem, setEditingItem] = useState<KebayaItem | null>(null);
   const [form, setForm] = useState<CatalogFormState>(emptyForm);
+  const [inventoryCodeDate, setInventoryCodeDate] = useState(() => new Date());
   const [formError, setFormError] = useState('');
   const [imgErrors, setImgErrors] = useState<Record<number, boolean>>({});
   const [isUploadingImage, setIsUploadingImage] = useState(false);
@@ -386,14 +443,16 @@ export default function CatalogManagement() {
 
   const categoryCoverage = useMemo(
     () =>
-      landingCategories.map((category) => {
+      occasionCategories.map((category) => {
         const matches = projectedItems.filter(
-          (item) => matchesLandingCategory(item, category.slug),
+          (item) => matchesLandingCategory(item, category.value),
         );
         const ready = matches.filter((item) => item.status === 'available');
 
         return {
           ...category,
+          slug: category.value,
+          title: category.label,
           count: matches.length,
           readyCount: ready.length,
         };
@@ -422,8 +481,10 @@ export default function CatalogManagement() {
   }, [projectedItems, coverageFilter, qualityFilter, searchQuery, statusFilter]);
 
   const openCreateModal = () => {
+    const codeDate = new Date();
+    setInventoryCodeDate(codeDate);
     setEditingItem(null);
-    setForm(emptyForm);
+    setForm(createEmptyForm(codeDate));
     setFormError('');
     setImgErrors({});
     setUploadError('');
@@ -451,7 +512,7 @@ export default function CatalogManagement() {
   const closeCatalogModal = () => {
     setIsModalOpen(false);
     setEditingItem(null);
-    setForm(emptyForm);
+    setForm(createEmptyForm(inventoryCodeDate));
     setFormError('');
     setImgErrors({});
     setUploadError('');
@@ -467,7 +528,22 @@ export default function CatalogManagement() {
     key: Key,
     value: CatalogFormState[Key],
   ) => {
-    setForm((current) => ({ ...current, [key]: value }));
+    setForm((current) => {
+      const next = { ...current, [key]: value };
+
+      if (!editingItem && (key === 'model' || key === 'codeNumber')) {
+        return {
+          ...next,
+          code: buildInventoryCode(
+            next.model,
+            inventoryCodeDate,
+            key === 'codeNumber' ? String(value) : next.codeNumber,
+          ),
+        };
+      }
+
+      return next;
+    });
   };
 
   const updateMeasurementField = <Key extends keyof KebayaMeasurements>(
@@ -610,6 +686,7 @@ export default function CatalogManagement() {
 
     const price = parsePrice(form.rentalPrice);
     const code = form.code.trim();
+    const codeNumber = Number(form.codeNumber);
     const name = form.name.trim();
     const duplicateCode = catalogItems.some(
       (item) => item.code.toLowerCase() === code.toLowerCase() && item.id !== editingItem?.id,
@@ -617,6 +694,16 @@ export default function CatalogManagement() {
 
     if (!name || !code || !form.color.trim()) {
       setFormError('Name, code, and color are required.');
+      return;
+    }
+
+    if (form.wearStyles.length === 0) {
+      setFormError('Choose at least one wear style.');
+      return;
+    }
+
+    if (!editingItem && (!Number.isFinite(codeNumber) || codeNumber <= 0)) {
+      setFormError('Manual number is required and must be greater than 0.');
       return;
     }
 
@@ -771,12 +858,12 @@ export default function CatalogManagement() {
         <div className="border-b border-neutral-200 p-4 sm:p-5">
           <div className="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
             <div>
-              <h2 className="text-base font-semibold text-neutral-950">Landing coverage</h2>
+              <h2 className="text-base font-semibold text-neutral-950">Occasion coverage</h2>
               <p className="mt-1 text-sm text-neutral-500">
-                Occasion categories used by the landing page and catalog filters.
+                Occasion categories used by catalog filters and item detail chips.
               </p>
             </div>
-            <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
+            <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-5">
               {categoryCoverage.map((category) => (
                 <button
                   key={category.slug}
@@ -913,9 +1000,11 @@ export default function CatalogManagement() {
                     <td className="px-5 py-4">
                       <div className="flex flex-col gap-2">
                         <span className="text-sm font-medium text-neutral-900">
-                          {item.model} / Size {item.size}
+                          {item.model} / Fit {item.size}
                         </span>
-                        <span className="text-xs text-neutral-500">{item.color}</span>
+                        <span className="text-xs text-neutral-500">
+                          {[item.color, ...item.wearStyles].join(' / ')}
+                        </span>
                         <div className="flex max-w-[260px] flex-wrap gap-1.5">
                           {categories.slice(0, 3).map((category) => (
                             <span
@@ -1270,13 +1359,36 @@ export default function CatalogManagement() {
                             <input
                               type="text"
                               value={form.code}
-                              onChange={(event) =>
-                                updateFormField('code', event.target.value.toUpperCase())
-                              }
-                              placeholder="KB-NEW-11"
-                              className={inputCls}
+                              readOnly
+                              placeholder={buildInventoryCode(form.model, new Date(), '1')}
+                              className={`${inputCls} bg-neutral-100 font-mono text-neutral-700`}
                             />
+                            <p className="mt-1 text-[10px] text-neutral-400">
+                              {editingItem
+                                ? 'Saved code is kept when editing an existing item.'
+                                : 'Generated from model, today, and manual number.'}
+                            </p>
                           </FieldLabel>
+                          {!editingItem && (
+                            <FieldLabel label="Manual number">
+                              <input
+                                type="text"
+                                inputMode="numeric"
+                                value={form.codeNumber}
+                                onChange={(event) =>
+                                  updateFormField(
+                                    'codeNumber',
+                                    event.target.value.replace(/\D/g, ''),
+                                  )
+                                }
+                                placeholder="001"
+                                className={inputCls}
+                              />
+                              <p className="mt-1 text-[10px] text-neutral-400">
+                                1 becomes 001, 12 becomes 012, 1234 stays 1234.
+                              </p>
+                            </FieldLabel>
+                          )}
                           <FieldLabel label="Model">
                             <select
                               value={form.model}
@@ -1320,7 +1432,41 @@ export default function CatalogManagement() {
                           </div>
                           <div className="md:col-span-2">
                             <span className="mb-1 block text-sm font-medium text-neutral-700">
-                              Landing categories
+                              Wear style
+                            </span>
+                            <div className="flex flex-wrap gap-2">
+                              {wearStyleOptions.map((style) => {
+                                const checked = form.wearStyles.includes(style);
+
+                                return (
+                                  <label
+                                    key={style}
+                                    className={`flex cursor-pointer select-none items-center gap-2 border px-3 py-2 text-sm transition-colors ${
+                                      checked
+                                        ? 'border-neutral-900 bg-neutral-900 text-white'
+                                        : 'border-neutral-200 bg-neutral-50 text-neutral-700 hover:border-neutral-400'
+                                    }`}
+                                  >
+                                    <input
+                                      type="checkbox"
+                                      className="sr-only"
+                                      checked={checked}
+                                      onChange={() => {
+                                        const next = checked
+                                          ? form.wearStyles.filter((item) => item !== style)
+                                          : [...form.wearStyles, style];
+                                        updateFormField('wearStyles', next);
+                                      }}
+                                    />
+                                    <span className="font-medium">{style}</span>
+                                  </label>
+                                );
+                              })}
+                            </div>
+                          </div>
+                          <div className="md:col-span-2">
+                            <span className="mb-1 block text-sm font-medium text-neutral-700">
+                              Occasion categories
                             </span>
                             <div className="flex flex-wrap gap-2">
                               {categoryOptions.map((category) => {
@@ -1386,23 +1532,21 @@ export default function CatalogManagement() {
                             </p>
                           </FieldLabel>
                           <FieldLabel label="Kategori sewa">
-                            <input
-                              list="rental-category-options"
-                              type="text"
+                            <select
                               value={form.measurements.rentalCategory}
                               onChange={(event) =>
                                 updateMeasurementField('rentalCategory', event.target.value)
                               }
-                              placeholder="Offline Studio"
-                              className={inputCls}
-                            />
+                              className={selectCls}
+                            >
+                              {rentalCategoryOptions.map((option) => (
+                                <option key={option} value={option}>
+                                  {option}
+                                </option>
+                              ))}
+                            </select>
                           </FieldLabel>
                         </div>
-                        <datalist id="rental-category-options">
-                          {rentalCategoryOptions.map((option) => (
-                            <option key={option} value={option} />
-                          ))}
-                        </datalist>
                       </section>
 
                       <section className="border border-neutral-200 bg-white p-4">
@@ -1515,8 +1659,16 @@ export default function CatalogManagement() {
                         <div className="flex flex-wrap gap-1.5">
                           <StatusBadge status={editingProjectedItem?.status ?? 'available'} />
                           <span className="border border-neutral-200 bg-white px-2 py-1 text-xs font-semibold text-neutral-600">
-                            Size {form.size}
+                            Fit {form.size}
                           </span>
+                          {form.wearStyles.map((style) => (
+                            <span
+                              key={style}
+                              className="border border-neutral-200 bg-white px-2 py-1 text-xs font-semibold text-neutral-600"
+                            >
+                              {style}
+                            </span>
+                          ))}
                         </div>
                         <div className="space-y-2 border-y border-neutral-200 py-3 text-xs">
                           {[

@@ -116,7 +116,7 @@ const catalogCardToggleOptions: Array<{
   {
     key: 'showProductModel',
     title: 'Model label',
-    description: 'Shows Modern, Klasik, Kartini, or Kutubaru.',
+    description: 'Shows the selected kebaya model label.',
   },
   {
     key: 'showProductSize',
@@ -441,7 +441,7 @@ function CatalogCardPreview({
         <div className="p-4">
           {settings.showProductModel && (
             <span className="mb-1 block font-mono text-[10px] font-semibold uppercase tracking-wider text-neutral-500">
-              Koleksi {product.model}
+              {product.model}
             </span>
           )}
           <h3 className="font-serif text-base font-semibold leading-tight text-neutral-950">
@@ -453,7 +453,10 @@ function CatalogCardPreview({
             </p>
           )}
 
-          {(settings.showPrices || settings.showProductSize || settings.showProductColor) && (
+          {(settings.showPrices ||
+            settings.showProductSize ||
+            settings.showProductColor ||
+            product.wearStyles.length > 0) && (
             <div className="mt-3 border-t border-neutral-200 pt-3">
               {settings.showPrices && (
                 <div className="mb-2">
@@ -466,11 +469,13 @@ function CatalogCardPreview({
                   </span>
                 </div>
               )}
-              {(settings.showProductSize || settings.showProductColor) && (
+              {(settings.showProductSize ||
+                settings.showProductColor ||
+                product.wearStyles.length > 0) && (
                 <div className="flex flex-wrap gap-1.5">
                   {settings.showProductSize && (
                     <span className="bg-neutral-100 px-2 py-0.5 font-mono text-[10px] font-medium text-neutral-600">
-                      Ukuran {product.size}
+                      Fit {product.size}
                     </span>
                   )}
                   {settings.showProductColor && (
@@ -478,6 +483,14 @@ function CatalogCardPreview({
                       {product.color}
                     </span>
                   )}
+                  {product.wearStyles.map((style) => (
+                    <span
+                      key={style}
+                      className="bg-neutral-100 px-2 py-0.5 font-mono text-[10px] font-medium text-neutral-600"
+                    >
+                      {style}
+                    </span>
+                  ))}
                 </div>
               )}
             </div>

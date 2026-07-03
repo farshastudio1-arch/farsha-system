@@ -200,7 +200,7 @@ export default function ProductCard({
         {/* Kebaya Model Category */}
         {displaySettings.showProductModel && (
           <span className="theme-muted text-[10px] sm:text-xs font-semibold tracking-wider uppercase font-mono mb-1">
-            Koleksi {product.model}
+            {product.model}
           </span>
         )}
 
@@ -224,7 +224,8 @@ export default function ProductCard({
         {/* Price & Specs row */}
         {(displaySettings.showPrices ||
           displaySettings.showProductSize ||
-          displaySettings.showProductColor) && (
+          displaySettings.showProductColor ||
+          product.wearStyles.length > 0) && (
           <div
             className={`theme-border mt-auto pt-3 border-t flex justify-between items-center ${
               isOneColumn
@@ -246,13 +247,15 @@ export default function ProductCard({
               </div>
             )}
 
-            {(displaySettings.showProductSize || displaySettings.showProductColor) && (
+            {(displaySettings.showProductSize ||
+              displaySettings.showProductColor ||
+              product.wearStyles.length > 0) && (
               <div
                 className={`flex flex-wrap gap-1.5 ${isOneColumn ? 'items-center' : 'mt-1 sm:mt-0'}`}
               >
                 {displaySettings.showProductSize && (
                   <span className="theme-soft-surface theme-muted-strong text-[10px] font-medium px-2 py-0.5 font-mono">
-                    Ukuran {product.size}
+                    Fit {product.size}
                   </span>
                 )}
                 {displaySettings.showProductColor && (
@@ -260,6 +263,14 @@ export default function ProductCard({
                     {product.color}
                   </span>
                 )}
+                {product.wearStyles.map((style) => (
+                  <span
+                    key={style}
+                    className="theme-soft-surface theme-muted-strong text-[10px] font-medium px-2 py-0.5 font-mono"
+                  >
+                    {style}
+                  </span>
+                ))}
               </div>
             )}
           </div>

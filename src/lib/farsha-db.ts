@@ -27,6 +27,7 @@ type CatalogRow = {
   rental_end_date: string | null;
   image_urls: string;
   description: string;
+  wear_styles?: string | null;
   categories?: string | null;
   measurements?: string | null;
 };
@@ -144,6 +145,7 @@ function catalogRowToItem(row: CatalogRow, index: number): KebayaItem | null {
       rentalEndDate: row.rental_end_date,
       imageUrls: parseJson<string[]>(row.image_urls, []),
       description: row.description,
+      wearStyles: parseJson<KebayaItem['wearStyles']>(row.wear_styles, []),
       categories: parseJson<KebayaItem['categories']>(row.categories, undefined),
       measurements: parseJson<KebayaItem['measurements']>(row.measurements, undefined),
     },
@@ -339,7 +341,7 @@ export async function listCatalogItems(options: { fallbackToMock?: boolean } = {
     const result = await db
       .prepare(
         `SELECT id, code, name, color, size, model, rental_price, status, rental_end_date,
-          image_urls, description, categories, measurements
+          image_urls, description, wear_styles, categories, measurements
          FROM kebaya_items
          WHERE status != 'archived'
          ORDER BY created_at DESC, code ASC`,
@@ -365,7 +367,7 @@ export async function findCatalogItemByCode(code: string): Promise<KebayaItem | 
   const row = await db
     .prepare(
       `SELECT id, code, name, color, size, model, rental_price, status, rental_end_date,
-        image_urls, description, categories, measurements
+        image_urls, description, wear_styles, categories, measurements
        FROM kebaya_items
        WHERE lower(code) = lower(?) AND status != 'archived'
        LIMIT 1`,
@@ -381,7 +383,7 @@ export async function findCatalogItemById(itemId: string): Promise<KebayaItem | 
   const row = await db
     .prepare(
       `SELECT id, code, name, color, size, model, rental_price, status, rental_end_date,
-        image_urls, description, categories, measurements
+        image_urls, description, wear_styles, categories, measurements
        FROM kebaya_items
        WHERE id = ? AND status != 'archived'
        LIMIT 1`,
@@ -404,9 +406,9 @@ export async function upsertCatalogItem(item: KebayaItem): Promise<void> {
     .prepare(
       `INSERT INTO kebaya_items (
         id, code, name, color, size, model, rental_price, status, rental_end_date,
-        image_urls, description, categories, measurements
+        image_urls, description, wear_styles, categories, measurements
       )
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       ON CONFLICT(id) DO UPDATE SET
         code = excluded.code,
         name = excluded.name,
@@ -418,6 +420,7 @@ export async function upsertCatalogItem(item: KebayaItem): Promise<void> {
         rental_end_date = excluded.rental_end_date,
         image_urls = excluded.image_urls,
         description = excluded.description,
+        wear_styles = excluded.wear_styles,
         categories = excluded.categories,
         measurements = excluded.measurements,
         updated_at = CURRENT_TIMESTAMP`,
@@ -434,6 +437,7 @@ export async function upsertCatalogItem(item: KebayaItem): Promise<void> {
       normalized.rentalEndDate,
       JSON.stringify(normalized.imageUrls),
       normalized.description,
+      JSON.stringify(normalized.wearStyles),
       JSON.stringify(normalized.categories ?? []),
       JSON.stringify(normalized.measurements ?? {}),
     )

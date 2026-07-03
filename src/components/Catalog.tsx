@@ -13,6 +13,7 @@ import { useSavedPosLedger, projectCatalogItems } from '@/lib/pos-ledger';
 import { readLocalStorageItem, writeLocalStorageItem } from '@/lib/browser-storage';
 import {
   getLandingCategory,
+  getOccasionLabel,
   LandingCategorySlug,
   matchesLandingCategory,
 } from '@/lib/landing-categories';
@@ -65,6 +66,9 @@ export default function Catalog({
   const ledger = useSavedPosLedger();
   const siteSettings = useSavedSiteSettings(initialSiteSettings);
   const landingCategory = getLandingCategory(initialCategory);
+  const activeCategoryLabel = initialCategory
+    ? (landingCategory?.title ?? getOccasionLabel(initialCategory))
+    : null;
   const projectedCatalogItems = useMemo(
     () => projectCatalogItems(catalogItems, ledger),
     [catalogItems, ledger],
@@ -117,6 +121,7 @@ export default function Catalog({
     colors: [],
     sizes: [],
     models: [],
+    wearStyles: [],
     statuses: [],
     maxPrice: maxPriceLimit,
     categories: initialCategory ? [initialCategory] : [],
@@ -174,12 +179,20 @@ export default function Catalog({
         return false;
       }
 
-      // 5. Status filter
+      // 5. Wear style filter
+      if (
+        filters.wearStyles.length > 0 &&
+        !filters.wearStyles.some((style) => item.wearStyles.includes(style))
+      ) {
+        return false;
+      }
+
+      // 6. Status filter
       if (filters.statuses.length > 0 && !filters.statuses.includes(item.status)) {
         return false;
       }
 
-      // 6. Max Price filter
+      // 7. Max Price filter
       if (item.rentalPrice > filters.maxPrice) {
         return false;
       }
@@ -215,6 +228,7 @@ export default function Catalog({
       colors: [],
       sizes: [],
       models: [],
+      wearStyles: [],
       statuses: [],
       maxPrice: maxPriceLimit,
       categories: [],
@@ -242,9 +256,10 @@ export default function Catalog({
     filters.colors.length +
     filters.sizes.length +
     filters.models.length +
+    filters.wearStyles.length +
     filters.statuses.length +
     (filters.maxPrice < maxPriceLimit ? 1 : 0) +
-    (landingCategory ? 1 : 0);
+    (initialCategory ? 1 : 0);
 
   const mobileViewOptions: MobileGridColumns[] = [1, 2, 3];
   const desktopViewOptions: DesktopGridColumns[] = [2, 3, 4];
@@ -327,10 +342,10 @@ export default function Catalog({
             <span className="block theme-muted-strong text-xs font-bold tracking-widest uppercase font-mono">
               KATALOG KAMI
             </span>
-            {landingCategory && (
+            {activeCategoryLabel && (
               <div className="mt-4 flex flex-wrap items-center gap-3">
                 <span className="theme-selected px-3 py-2 font-mono text-[10px] font-semibold uppercase tracking-widest">
-                  {landingCategory.title}
+                  {activeCategoryLabel}
                 </span>
                 <button
                   type="button"

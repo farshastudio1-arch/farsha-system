@@ -2,18 +2,30 @@ import {
   defaultLandingCategories,
   KebayaItem,
   KebayaCategory,
+  kebayaOccasions,
   LandingCategoryContent,
 } from '@/data/mockData';
 
 export type { KebayaCategory };
 
-export type LandingCategorySlug = 'wisuda' | 'lamaran' | 'kondangan' | 'bridesmaid';
+export type LandingCategorySlug = KebayaCategory;
 
 export interface LandingCategory extends LandingCategoryContent {
   slug: LandingCategorySlug;
 }
 
 export const landingCategories: LandingCategory[] = defaultLandingCategories;
+export const occasionCategories: Array<{
+  value: KebayaCategory;
+  label: string;
+  emoji: string;
+}> = [
+  { value: 'wisuda', label: 'Wisuda', emoji: '🎓' },
+  { value: 'lamaran', label: 'Lamaran', emoji: '💍' },
+  { value: 'kondangan', label: 'Kondangan', emoji: '✨' },
+  { value: 'bridesmaid', label: 'Bridesmaid', emoji: '🌸' },
+  { value: 'pengajian', label: 'Pengajian', emoji: '🕌' },
+];
 
 export function getLandingCategory(slug: string | null | undefined) {
   return landingCategories.find((category) => category.slug === slug) ?? null;
@@ -47,32 +59,45 @@ export function matchesLandingCategory(item: KebayaItem, slug: LandingCategorySl
 
   if (slug === 'wisuda') {
     return (
-      item.model === 'Modern' ||
-      item.model === 'Kartini' ||
-      item.model === 'Kutubaru' ||
+      item.model === 'Kebaya Modern' ||
+      item.model === 'Kebaya Janggan' ||
+      item.model === 'Kebaya Kutubaru' ||
       includesAny(text, ['wisuda', 'kelulusan', 'fotogenik'])
     );
   }
 
   if (slug === 'lamaran') {
     return (
-      item.model === 'Klasik' ||
-      item.model === 'Kartini' ||
-      item.model === 'Kutubaru' ||
+      item.model === 'Kebaya Janggan' ||
+      item.model === 'Kebaya Kutubaru' ||
       includesAny(text, ['lamaran', 'pertunangan', 'akad', 'ivory', 'putih', 'rose gold'])
     );
   }
 
   if (slug === 'kondangan') {
     return (
-      item.model === 'Modern' ||
+      item.model === 'Kebaya Modern' ||
+      item.model === 'Dress Premium' ||
       item.rentalPrice >= 250000 ||
       includesAny(text, ['kondangan', 'formal', 'premium', 'mewah', 'pesta', 'organza'])
     );
   }
 
-  return (
-    item.model === 'Modern' ||
-    includesAny(text, ['soft', 'pink', 'lilac', 'sage', 'rose', 'bridesmaid', 'rombongan'])
-  );
+  if (slug === 'bridesmaid') {
+    return (
+      item.model === 'Kebaya Modern' ||
+      item.model === 'Bajubodo Modern' ||
+      includesAny(text, ['soft', 'pink', 'lilac', 'sage', 'rose', 'bridesmaid', 'rombongan'])
+    );
+  }
+
+  return includesAny(text, ['pengajian', 'kajian', 'syari', 'syar’i', 'muslimah', 'kurung']);
+}
+
+export function getOccasionLabel(value: KebayaCategory) {
+  return occasionCategories.find((category) => category.value === value)?.label ?? value;
+}
+
+export function isOccasionCategory(value: string): value is KebayaCategory {
+  return kebayaOccasions.includes(value as KebayaCategory);
 }

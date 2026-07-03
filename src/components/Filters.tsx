@@ -1,15 +1,24 @@
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
+import {
+  kebayaModelOptions,
+  kebayaSizeOptions,
+  kebayaWearStyleOptions,
+  KebayaCategory,
+  KebayaItem,
+} from '@/data/mockData';
+import { occasionCategories } from '@/lib/landing-categories';
 
 export interface FilterState {
   search: string;
   colors: string[];
-  sizes: ('S' | 'M' | 'L' | 'XL' | 'Custom')[];
-  models: ('Modern' | 'Klasik' | 'Kartini' | 'Kutubaru')[];
+  sizes: KebayaItem['size'][];
+  models: KebayaItem['model'][];
+  wearStyles: KebayaItem['wearStyles'];
   statuses: ('available' | 'rented' | 'maintenance')[];
   maxPrice: number;
-  categories: ('wisuda' | 'lamaran' | 'kondangan' | 'bridesmaid')[];
+  categories: KebayaCategory[];
 }
 
 interface FiltersProps {
@@ -41,22 +50,10 @@ export default function Filters({
   const desktopSearchInputRef = useRef<HTMLInputElement>(null);
   const mobileSearchInputRef = useRef<HTMLInputElement>(null);
 
-  const sizesOptions: ('S' | 'M' | 'L' | 'XL' | 'Custom')[] = ['S', 'M', 'L', 'XL', 'Custom'];
-  const modelsOptions: ('Modern' | 'Klasik' | 'Kartini' | 'Kutubaru')[] = [
-    'Modern',
-    'Klasik',
-    'Kartini',
-    'Kutubaru',
-  ];
-  const categoryOptions: {
-    value: 'wisuda' | 'lamaran' | 'kondangan' | 'bridesmaid';
-    label: string;
-  }[] = [
-    { value: 'wisuda', label: 'Wisuda' },
-    { value: 'lamaran', label: 'Lamaran' },
-    { value: 'kondangan', label: 'Kondangan' },
-    { value: 'bridesmaid', label: 'Bridesmaid' },
-  ];
+  const sizesOptions = kebayaSizeOptions;
+  const modelsOptions = kebayaModelOptions;
+  const wearStyleOptions = kebayaWearStyleOptions;
+  const categoryOptions = occasionCategories;
   const statusOptions: {
     value: 'available' | 'rented' | 'maintenance';
     label: string;
@@ -97,21 +94,28 @@ export default function Filters({
     onChange({ ...filters, colors: nextColors });
   };
 
-  const handleSizeToggle = (size: 'S' | 'M' | 'L' | 'XL' | 'Custom') => {
+  const handleSizeToggle = (size: KebayaItem['size']) => {
     const nextSizes = filters.sizes.includes(size)
       ? filters.sizes.filter((s) => s !== size)
       : [...filters.sizes, size];
     onChange({ ...filters, sizes: nextSizes });
   };
 
-  const handleModelToggle = (model: 'Modern' | 'Klasik' | 'Kartini' | 'Kutubaru') => {
+  const handleModelToggle = (model: KebayaItem['model']) => {
     const nextModels = filters.models.includes(model)
       ? filters.models.filter((m) => m !== model)
       : [...filters.models, model];
     onChange({ ...filters, models: nextModels });
   };
 
-  const handleCategoryToggle = (category: 'wisuda' | 'lamaran' | 'kondangan' | 'bridesmaid') => {
+  const handleWearStyleToggle = (style: KebayaItem['wearStyles'][number]) => {
+    const nextWearStyles = filters.wearStyles.includes(style)
+      ? filters.wearStyles.filter((item) => item !== style)
+      : [...filters.wearStyles, style];
+    onChange({ ...filters, wearStyles: nextWearStyles });
+  };
+
+  const handleCategoryToggle = (category: KebayaCategory) => {
     const nextCategories = filters.categories.includes(category)
       ? filters.categories.filter((c) => c !== category)
       : [...filters.categories, category];
@@ -135,6 +139,7 @@ export default function Filters({
       colors: [],
       sizes: [],
       models: [],
+      wearStyles: [],
       statuses: [], // Empty means show all
       maxPrice: maxPriceLimit,
       categories: [],
@@ -157,6 +162,7 @@ export default function Filters({
     filters.colors.length +
     filters.sizes.length +
     filters.models.length +
+    filters.wearStyles.length +
     filters.statuses.length +
     (filters.categories?.length ?? 0) +
     (filters.maxPrice < maxPriceLimit ? 1 : 0);
@@ -261,7 +267,7 @@ export default function Filters({
         <span className="theme-muted block text-xs font-semibold uppercase tracking-wider font-mono mb-2.5">
           Ukuran (Size)
         </span>
-        <div className="grid grid-cols-5 gap-1.5">
+        <div className="grid grid-cols-2 gap-1.5">
           {sizesOptions.map((size) => {
             const isSelected = filters.sizes.includes(size);
             return (
@@ -275,6 +281,31 @@ export default function Filters({
                 }`}
               >
                 {size}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Wear Style Filter */}
+      <div>
+        <span className="theme-muted block text-xs font-semibold uppercase tracking-wider font-mono mb-2.5">
+          Gaya Pakai
+        </span>
+        <div className="grid grid-cols-2 gap-1.5">
+          {wearStyleOptions.map((style) => {
+            const isSelected = filters.wearStyles.includes(style);
+            return (
+              <button
+                key={style}
+                onClick={() => handleWearStyleToggle(style)}
+                className={`text-xs text-center py-2.5 border transition-all font-mono font-medium ${
+                  isSelected
+                    ? 'theme-selected'
+                    : 'theme-surface theme-border theme-muted-strong hover:border-[var(--theme-accent)]'
+                }`}
+              >
+                {style}
               </button>
             );
           })}

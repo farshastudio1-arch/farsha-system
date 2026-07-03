@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { KebayaItem } from '@/data/mockData';
-import { matchesLandingCategory } from '@/lib/landing-categories';
+import { matchesLandingCategory, occasionCategories } from '@/lib/landing-categories';
 
 interface ProductDetailModalProps {
   product: KebayaItem | null;
@@ -107,45 +107,25 @@ export default function ProductDetailModal({
 
   const getDefaultMeasurements = (size: string) => {
     switch (size) {
-      case 'S':
+      case 'S-M':
         return {
-          bust: '88 cm',
-          waist: '70 cm',
-          length: '60 cm',
-          sleeveLength: '52 cm',
-          armhole: '42 cm',
+          bust: '88-94 cm',
+          waist: '70-76 cm',
+          length: '60-62 cm',
+          sleeveLength: '52-54 cm',
+          armhole: '42-44 cm',
           otherDetails: '',
-          rentalCategory: 'Offline Studio',
+          rentalCategory: 'Makassar Only',
         };
-      case 'M':
+      case 'L-XL':
         return {
-          bust: '94 cm',
-          waist: '76 cm',
-          length: '62 cm',
-          sleeveLength: '54 cm',
-          armhole: '44 cm',
+          bust: '100-106 cm',
+          waist: '82-88 cm',
+          length: '64-66 cm',
+          sleeveLength: '56-58 cm',
+          armhole: '46-48 cm',
           otherDetails: '',
-          rentalCategory: 'Offline Studio',
-        };
-      case 'L':
-        return {
-          bust: '100 cm',
-          waist: '82 cm',
-          length: '64 cm',
-          sleeveLength: '56 cm',
-          armhole: '46 cm',
-          otherDetails: '',
-          rentalCategory: 'Offline Studio',
-        };
-      case 'XL':
-        return {
-          bust: '106 cm',
-          waist: '88 cm',
-          length: '66 cm',
-          sleeveLength: '58 cm',
-          armhole: '48 cm',
-          otherDetails: '',
-          rentalCategory: 'Offline Studio',
+          rentalCategory: 'Makassar Only',
         };
       default:
         return {
@@ -155,7 +135,7 @@ export default function ProductDetailModal({
           sleeveLength: '55 cm',
           armhole: '45 cm',
           otherDetails: '',
-          rentalCategory: 'Offline Studio',
+          rentalCategory: 'Makassar Only',
         };
     }
   };
@@ -171,18 +151,10 @@ export default function ProductDetailModal({
     rentalCategory: product.measurements?.rentalCategory || defaultMeasurements.rentalCategory,
   };
 
-  // Get matched event categories
-  const matchedCategories = (['wisuda', 'lamaran', 'kondangan', 'bridesmaid'] as const)
-    .filter((slug) => matchesLandingCategory(product, slug))
-    .map((slug) => {
-      const labels = {
-        wisuda: { label: 'Wisuda', emoji: '🎓' },
-        lamaran: { label: 'Lamaran', emoji: '💍' },
-        kondangan: { label: 'Kondangan', emoji: '✨' },
-        bridesmaid: { label: 'Bridesmaid', emoji: '🌸' },
-      };
-      return labels[slug];
-    });
+  // Get matched occasion categories
+  const matchedCategories = occasionCategories.filter((category) =>
+    matchesLandingCategory(product, category.value),
+  );
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-black/60 backdrop-blur-xs transition-opacity duration-300">
@@ -327,8 +299,16 @@ export default function ProductDetailModal({
                   {product.model}
                 </span>
                 <span className="theme-soft-surface theme-border border px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider font-mono text-[var(--theme-text)]">
-                  Size {product.size}
+                  Fit {product.size}
                 </span>
+                {product.wearStyles.map((style) => (
+                  <span
+                    key={style}
+                    className="theme-soft-surface theme-border border px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider font-mono text-[var(--theme-text)]"
+                  >
+                    {style}
+                  </span>
+                ))}
                 {matchedCategories.map((cat, idx) => (
                   <span
                     key={idx}
