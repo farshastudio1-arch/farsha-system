@@ -82,7 +82,7 @@ export default async function Home() {
 
               <div>
                 <div className="theme-border grid grid-cols-[minmax(0,1fr)_96px] gap-3 border p-2 sm:grid-cols-[minmax(0,1fr)_128px]">
-                  <div className="theme-soft-surface aspect-[16/9] overflow-hidden">
+                  <div className="theme-soft-surface aspect-[3/2] overflow-hidden">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img
                       src={heroImageUrl}
