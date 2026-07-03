@@ -46,6 +46,7 @@ type CatalogFormState = {
   code: string;
   codeNumber: string;
   rentalPrice: string;
+  compareAtRentalPrice: string;
   model: KebayaItem['model'];
   size: KebayaItem['size'];
   color: string;
@@ -85,6 +86,7 @@ const emptyForm: CatalogFormState = {
   code: '',
   codeNumber: '',
   rentalPrice: '',
+  compareAtRentalPrice: '',
   model: 'Kebaya Modern',
   size: 'S-M',
   color: '',
@@ -148,6 +150,16 @@ function formatPrice(price: number) {
 
 function parsePrice(value: string) {
   return Number(value.replace(/[^\d]/g, ''));
+}
+
+function parseOptionalPrice(value: string) {
+  const trimmedValue = value.trim();
+
+  if (!trimmedValue) {
+    return null;
+  }
+
+  return parsePrice(trimmedValue);
 }
 
 function getModelPrefix(model: KebayaItem['model']) {
@@ -227,6 +239,7 @@ function itemToForm(item: KebayaItem): CatalogFormState {
     code: item.code,
     codeNumber: '',
     rentalPrice: String(item.rentalPrice),
+    compareAtRentalPrice: item.compareAtRentalPrice ? String(item.compareAtRentalPrice) : '',
     model: item.model,
     size: item.size,
     color: item.color,
@@ -267,6 +280,7 @@ function createItemFromForm(form: CatalogFormState, id: string): KebayaItem {
     size: form.size,
     model: form.model,
     rentalPrice: parsePrice(form.rentalPrice),
+    compareAtRentalPrice: parseOptionalPrice(form.compareAtRentalPrice),
     status: 'available',
     rentalEndDate: null,
     imageUrls: validUrls.length > 0 ? validUrls : [defaultImageUrl],
@@ -685,6 +699,7 @@ export default function CatalogManagement() {
     }
 
     const price = parsePrice(form.rentalPrice);
+    const compareAtPrice = parseOptionalPrice(form.compareAtRentalPrice);
     const code = form.code.trim();
     const codeNumber = Number(form.codeNumber);
     const name = form.name.trim();
@@ -709,6 +724,14 @@ export default function CatalogManagement() {
 
     if (!Number.isFinite(price) || price <= 0) {
       setFormError('Rental price must be greater than 0.');
+      return;
+    }
+
+    if (
+      compareAtPrice !== null &&
+      (!Number.isFinite(compareAtPrice) || compareAtPrice <= price)
+    ) {
+      setFormError('Before price must be higher than the rental price, or left empty.');
       return;
     }
 
@@ -1529,6 +1552,26 @@ export default function CatalogManagement() {
                             </div>
                             <p className="mt-1 text-[10px] text-neutral-400">
                               Tarif dasar untuk durasi sewa standar 3 hari.
+                            </p>
+                          </FieldLabel>
+                          <FieldLabel label="Before price (crossed-out)">
+                            <div className="relative">
+                              <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm text-neutral-400">
+                                Rp
+                              </span>
+                              <input
+                                type="text"
+                                inputMode="numeric"
+                                value={form.compareAtRentalPrice}
+                                onChange={(event) =>
+                                  updateFormField('compareAtRentalPrice', event.target.value)
+                                }
+                                placeholder="650000"
+                                className={`${inputCls} pl-9`}
+                              />
+                            </div>
+                            <p className="mt-1 text-[10px] text-neutral-400">
+                              Optional. Must be higher than the rental price to appear publicly.
                             </p>
                           </FieldLabel>
                           <FieldLabel label="Kategori sewa">

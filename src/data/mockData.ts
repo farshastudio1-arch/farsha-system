@@ -36,6 +36,7 @@ export interface KebayaItem {
   size: KebayaSize;
   model: KebayaModel;
   rentalPrice: number;
+  compareAtRentalPrice?: number | null;
   status: 'available' | 'rented' | 'maintenance';
   rentalEndDate: string | null;
   imageUrls: string[];

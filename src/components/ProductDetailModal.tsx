@@ -104,6 +104,10 @@ export default function ProductDetailModal({
   };
 
   const statusBadge = getStatusBadge(product.status);
+  const visibleCompareAtRentalPrice =
+    product.compareAtRentalPrice && product.compareAtRentalPrice > product.rentalPrice
+      ? product.compareAtRentalPrice
+      : null;
 
   const getDefaultMeasurements = (size: string) => {
     switch (size) {
@@ -304,7 +308,9 @@ export default function ProductDetailModal({
                 {product.wearStyles.map((style) => (
                   <span
                     key={style}
-                    className="theme-soft-surface theme-border border px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider font-mono text-[var(--theme-text)]"
+                    className={`px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider font-mono text-white ${
+                      style === 'Hijab' ? 'bg-emerald-600' : 'bg-blue-600'
+                    }`}
                   >
                     {style}
                   </span>
@@ -495,6 +501,11 @@ export default function ProductDetailModal({
                   Harga Sewa
                 </span>
                 <div className="flex items-baseline gap-1.5 flex-wrap">
+                  {visibleCompareAtRentalPrice && (
+                    <span className="theme-muted-strong text-sm font-mono line-through">
+                      {formatPrice(visibleCompareAtRentalPrice)}
+                    </span>
+                  )}
                   <span className="text-2xl font-semibold font-mono text-[var(--theme-text)]">
                     {formatPrice(product.rentalPrice)}
                   </span>

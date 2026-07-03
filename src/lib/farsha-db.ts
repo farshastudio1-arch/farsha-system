@@ -23,6 +23,7 @@ type CatalogRow = {
   size: KebayaItem['size'];
   model: KebayaItem['model'];
   rental_price: number;
+  compare_at_rental_price?: number | null;
   status: KebayaItem['status'];
   rental_end_date: string | null;
   image_urls: string;
@@ -143,6 +144,7 @@ function catalogRowToItem(row: CatalogRow, index: number): KebayaItem | null {
       size: row.size,
       model: row.model,
       rentalPrice: row.rental_price,
+      compareAtRentalPrice: row.compare_at_rental_price ?? null,
       status: row.status,
       rentalEndDate: row.rental_end_date,
       imageUrls: parseJson<string[]>(row.image_urls, []),
@@ -344,7 +346,7 @@ export async function listCatalogItems(options: { fallbackToMock?: boolean } = {
     const db = await getD1Database();
     const result = await db
       .prepare(
-        `SELECT id, code, name, color, size, model, rental_price, status, rental_end_date,
+        `SELECT id, code, name, color, size, model, rental_price, compare_at_rental_price, status, rental_end_date,
           image_urls, description, wear_styles, categories, measurements
          FROM kebaya_items
          WHERE status != 'archived'
@@ -370,7 +372,7 @@ export async function findCatalogItemByCode(code: string): Promise<KebayaItem | 
   const db = await getD1Database();
   const row = await db
     .prepare(
-      `SELECT id, code, name, color, size, model, rental_price, status, rental_end_date,
+      `SELECT id, code, name, color, size, model, rental_price, compare_at_rental_price, status, rental_end_date,
         image_urls, description, wear_styles, categories, measurements
        FROM kebaya_items
        WHERE lower(code) = lower(?) AND status != 'archived'
@@ -386,7 +388,7 @@ export async function findCatalogItemById(itemId: string): Promise<KebayaItem | 
   const db = await getD1Database();
   const row = await db
     .prepare(
-      `SELECT id, code, name, color, size, model, rental_price, status, rental_end_date,
+      `SELECT id, code, name, color, size, model, rental_price, compare_at_rental_price, status, rental_end_date,
         image_urls, description, wear_styles, categories, measurements
        FROM kebaya_items
        WHERE id = ? AND status != 'archived'
@@ -409,10 +411,10 @@ export async function upsertCatalogItem(item: KebayaItem): Promise<void> {
   await db
     .prepare(
       `INSERT INTO kebaya_items (
-        id, code, name, color, size, model, rental_price, status, rental_end_date,
+        id, code, name, color, size, model, rental_price, compare_at_rental_price, status, rental_end_date,
         image_urls, description, wear_styles, categories, measurements
       )
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       ON CONFLICT(id) DO UPDATE SET
         code = excluded.code,
         name = excluded.name,
@@ -420,6 +422,7 @@ export async function upsertCatalogItem(item: KebayaItem): Promise<void> {
         size = excluded.size,
         model = excluded.model,
         rental_price = excluded.rental_price,
+        compare_at_rental_price = excluded.compare_at_rental_price,
         status = excluded.status,
         rental_end_date = excluded.rental_end_date,
         image_urls = excluded.image_urls,
@@ -437,6 +440,7 @@ export async function upsertCatalogItem(item: KebayaItem): Promise<void> {
       normalized.size,
       normalized.model,
       normalized.rentalPrice,
+      normalized.compareAtRentalPrice ?? null,
       normalized.status,
       normalized.rentalEndDate,
       JSON.stringify(normalized.imageUrls),

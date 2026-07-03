@@ -53,10 +53,15 @@ export default function ProductCard({
 
   const statusInfo = getStatusDetails(product.status);
   const isCompactPortraitTile = isMobile && layoutColumns === 3;
+  const visibleCompareAtRentalPrice =
+    product.compareAtRentalPrice && product.compareAtRentalPrice > product.rentalPrice
+      ? product.compareAtRentalPrice
+      : null;
 
   // Layout-specific styling classes
   const isOneColumn = layoutColumns === 1;
   const isMobileTwoColumn = isMobile && layoutColumns === 2;
+  const hasPhotoWearStyleBadges = product.wearStyles.length > 0;
 
   if (isCompactPortraitTile) {
     return (
@@ -189,6 +194,21 @@ export default function ProductCard({
             </span>
           )}
         </div>
+
+        {hasPhotoWearStyleBadges && (
+          <div className="absolute bottom-3 right-3 z-10 flex max-w-[62%] flex-wrap justify-end gap-1.5 pointer-events-none">
+            {product.wearStyles.map((style) => (
+              <span
+                key={style}
+                className={`px-2 py-0.5 text-[10px] font-semibold font-mono text-white shadow-xs ${
+                  style === 'Hijab' ? 'bg-emerald-600' : 'bg-blue-600'
+                }`}
+              >
+                {style}
+              </span>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* CARD CONTENT */}
@@ -224,34 +244,43 @@ export default function ProductCard({
         {/* Price & Specs row */}
         {(displaySettings.showPrices ||
           displaySettings.showProductSize ||
-          displaySettings.showProductColor ||
-          product.wearStyles.length > 0) && (
+          displaySettings.showProductColor) && (
           <div
-            className={`theme-border mt-auto pt-3 border-t flex justify-between items-center ${
+            className={`mt-auto flex justify-between ${
               isOneColumn
-                ? 'flex-row'
-                : 'flex-col items-start gap-1 sm:flex-row sm:items-center sm:gap-0'
+                ? 'flex-row items-end gap-3 pt-3'
+                : 'flex-col items-start gap-2 pt-2 sm:flex-row sm:items-end sm:gap-3'
             }`}
           >
             {displaySettings.showPrices && (
               <div className="flex flex-col">
-                <span className="theme-muted text-[9px] uppercase tracking-wider font-mono">
-                  Biaya Sewa
-                </span>
-                <span
-                  className={`text-[var(--theme-text)] font-semibold font-mono ${isOneColumn ? 'text-base sm:text-lg' : 'text-xs sm:text-sm'}`}
+                <div
+                  className={`flex flex-wrap items-baseline gap-x-2 gap-y-0.5 font-mono ${
+                    isOneColumn ? '' : 'leading-tight'
+                  }`}
                 >
-                  {formatPrice(product.rentalPrice)}{' '}
+                  {visibleCompareAtRentalPrice && (
+                    <span
+                      className={`theme-muted-strong line-through ${
+                        isOneColumn ? 'text-xs' : 'text-[10px]'
+                      }`}
+                    >
+                      {formatPrice(visibleCompareAtRentalPrice)}
+                    </span>
+                  )}
+                  <span
+                    className={`text-[var(--theme-text)] font-semibold ${isOneColumn ? 'text-base sm:text-lg' : 'text-xs sm:text-sm'}`}
+                  >
+                    {formatPrice(product.rentalPrice)}
+                  </span>
                   <span className="theme-muted-strong text-[9px] font-normal">/3 hari</span>
-                </span>
+                </div>
               </div>
             )}
 
-            {(displaySettings.showProductSize ||
-              displaySettings.showProductColor ||
-              product.wearStyles.length > 0) && (
+            {(displaySettings.showProductSize || displaySettings.showProductColor) && (
               <div
-                className={`flex flex-wrap gap-1.5 ${isOneColumn ? 'items-center' : 'mt-1 sm:mt-0'}`}
+                className={`flex flex-wrap gap-1.5 ${isOneColumn ? 'items-center' : 'sm:justify-end'}`}
               >
                 {displaySettings.showProductSize && (
                   <span className="theme-soft-surface theme-muted-strong text-[10px] font-medium px-2 py-0.5 font-mono">
@@ -263,14 +292,6 @@ export default function ProductCard({
                     {product.color}
                   </span>
                 )}
-                {product.wearStyles.map((style) => (
-                  <span
-                    key={style}
-                    className="theme-soft-surface theme-muted-strong text-[10px] font-medium px-2 py-0.5 font-mono"
-                  >
-                    {style}
-                  </span>
-                ))}
               </div>
             )}
           </div>

@@ -68,6 +68,15 @@ export function normalizeNumber(value: unknown, fallback: number) {
   return Number.isFinite(numberValue) && numberValue >= 0 ? numberValue : fallback;
 }
 
+function normalizeOptionalNumber(value: unknown) {
+  if (value === undefined || value === null || value === '') {
+    return null;
+  }
+
+  const numberValue = typeof value === 'number' ? value : Number(value);
+  return Number.isFinite(numberValue) && numberValue >= 0 ? numberValue : null;
+}
+
 export function normalizeMeasurements(value: unknown): Partial<KebayaMeasurements> | undefined {
   if (!value || typeof value !== 'object') {
     return undefined;
@@ -132,6 +141,7 @@ export function normalizeCatalogItem(value: Partial<KebayaItem>, index: number):
     size: normalizeSize(value.size),
     model: normalizeModel(value.model),
     rentalPrice: normalizeNumber(value.rentalPrice, 0),
+    compareAtRentalPrice: normalizeOptionalNumber(value.compareAtRentalPrice),
     status: validStatuses.has(value.status as KebayaItem['status'])
       ? (value.status as KebayaItem['status'])
       : 'available',

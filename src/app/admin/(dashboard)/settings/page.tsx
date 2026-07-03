@@ -404,6 +404,11 @@ function CatalogCardPreview({
   product: KebayaItem;
 }) {
   const statusInfo = getStatusDetails(product.status);
+  const visibleCompareAtRentalPrice =
+    product.compareAtRentalPrice && product.compareAtRentalPrice > product.rentalPrice
+      ? product.compareAtRentalPrice
+      : null;
+  const hasPhotoWearStyleBadges = product.wearStyles.length > 0;
 
   return (
     <div className="border border-neutral-200 bg-white p-4">
@@ -436,6 +441,20 @@ function CatalogCardPreview({
               </span>
             )}
           </div>
+          {hasPhotoWearStyleBadges && (
+            <div className="absolute bottom-3 right-3 flex max-w-[62%] flex-wrap justify-end gap-1.5">
+              {product.wearStyles.map((style) => (
+                <span
+                  key={style}
+                  className={`px-2 py-0.5 font-mono text-[10px] font-semibold text-white shadow-xs ${
+                    style === 'Hijab' ? 'bg-emerald-600' : 'bg-blue-600'
+                  }`}
+                >
+                  {style}
+                </span>
+              ))}
+            </div>
+          )}
         </div>
 
         <div className="p-4">
@@ -453,25 +472,22 @@ function CatalogCardPreview({
             </p>
           )}
 
-          {(settings.showPrices ||
-            settings.showProductSize ||
-            settings.showProductColor ||
-            product.wearStyles.length > 0) && (
-            <div className="mt-3 border-t border-neutral-200 pt-3">
+          {(settings.showPrices || settings.showProductSize || settings.showProductColor) && (
+            <div className="mt-2 flex flex-col gap-2">
               {settings.showPrices && (
-                <div className="mb-2">
-                  <span className="block font-mono text-[9px] uppercase tracking-wider text-neutral-500">
-                    Biaya Sewa
-                  </span>
-                  <span className="font-mono text-sm font-semibold text-neutral-950">
-                    {formatPrice(product.rentalPrice)}
-                    <span className="text-[9px] font-normal text-neutral-500"> /hari</span>
+                <div>
+                  <span className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5 font-mono text-sm font-semibold text-neutral-950">
+                    {visibleCompareAtRentalPrice && (
+                      <span className="text-[10px] font-normal text-neutral-500 line-through">
+                        {formatPrice(visibleCompareAtRentalPrice)}
+                      </span>
+                    )}
+                    <span>{formatPrice(product.rentalPrice)}</span>
+                    <span className="text-[9px] font-normal text-neutral-500"> /3 hari</span>
                   </span>
                 </div>
               )}
-              {(settings.showProductSize ||
-                settings.showProductColor ||
-                product.wearStyles.length > 0) && (
+              {(settings.showProductSize || settings.showProductColor) && (
                 <div className="flex flex-wrap gap-1.5">
                   {settings.showProductSize && (
                     <span className="bg-neutral-100 px-2 py-0.5 font-mono text-[10px] font-medium text-neutral-600">
@@ -483,14 +499,6 @@ function CatalogCardPreview({
                       {product.color}
                     </span>
                   )}
-                  {product.wearStyles.map((style) => (
-                    <span
-                      key={style}
-                      className="bg-neutral-100 px-2 py-0.5 font-mono text-[10px] font-medium text-neutral-600"
-                    >
-                      {style}
-                    </span>
-                  ))}
                 </div>
               )}
             </div>
