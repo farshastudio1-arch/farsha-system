@@ -97,6 +97,8 @@ export default function MediaLibraryPage() {
   const [albumName, setAlbumName] = useState('');
   const [editingAlbumId, setEditingAlbumId] = useState<string | null>(null);
   const [editingAsset, setEditingAsset] = useState<MediaAsset | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<MediaAsset | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
   const [assetDraft, setAssetDraft] = useState({
     title: '',
     altText: '',
@@ -313,17 +315,48 @@ export default function MediaLibraryPage() {
     }
   };
 
-  const deleteAsset = async (asset: MediaAsset) => {
-    const result = await deleteMediaAssetAction(asset.id);
+  const requestDeleteAsset = (asset: MediaAsset) => {
+    if ((asset.usage?.length ?? 0) > 0) {
+      return;
+    }
 
-    if (result.ok) {
-      writeSavedMediaAssets(result.data);
-      setEditingAsset(null);
-      setActionError('');
-      setSaveState('saved');
-    } else {
-      setActionError(result.error);
-      setSaveState('error');
+    setDeleteTarget(asset);
+    setActionError('');
+    setSaveState('idle');
+  };
+
+  const closeDeleteConfirm = () => {
+    if (isDeleting) {
+      return;
+    }
+
+    setDeleteTarget(null);
+  };
+
+  const confirmDeleteAsset = async () => {
+    if (!deleteTarget || isDeleting) {
+      return;
+    }
+
+    setIsDeleting(true);
+
+    try {
+      const result = await deleteMediaAssetAction(deleteTarget.id);
+
+      if (result.ok) {
+        writeSavedMediaAssets(result.data);
+        if (editingAsset?.id === deleteTarget.id) {
+          setEditingAsset(null);
+        }
+        setDeleteTarget(null);
+        setActionError('');
+        setSaveState('saved');
+      } else {
+        setActionError(result.error);
+        setSaveState('error');
+      }
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -623,7 +656,7 @@ export default function MediaLibraryPage() {
                     </button>
                     <button
                       type="button"
-                      onClick={() => deleteAsset(asset)}
+                      onClick={() => requestDeleteAsset(asset)}
                       disabled={(asset.usage?.length ?? 0) > 0}
                       className="inline-flex items-center justify-center gap-2 border border-red-200 bg-red-50 px-3 py-2 text-xs font-semibold text-red-700 transition-colors hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-45"
                     >
@@ -749,7 +782,7 @@ export default function MediaLibraryPage() {
               <div className="flex flex-col gap-2 border-t border-neutral-200 p-4 sm:flex-row sm:justify-end sm:px-6">
                 <button
                   type="button"
-                  onClick={() => deleteAsset(editingAsset)}
+                  onClick={() => requestDeleteAsset(editingAsset)}
                   disabled={(editingAsset.usage?.length ?? 0) > 0}
                   className="inline-flex items-center justify-center gap-2 border border-red-200 bg-red-50 px-4 py-2.5 text-sm font-semibold text-red-700 transition-colors hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-45"
                 >
@@ -765,6 +798,67 @@ export default function MediaLibraryPage() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {deleteTarget && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm">
+          <div className="w-full max-w-md border border-red-100 bg-white p-5 shadow-2xl">
+            <div className="flex items-start gap-3">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center bg-red-50 text-red-600">
+                <AlertTriangle className="h-5 w-5" />
+              </div>
+              <div className="min-w-0">
+                <p className="font-mono text-[10px] font-bold uppercase tracking-widest text-red-500">
+                  Confirm delete
+                </p>
+                <h2 className="mt-1 text-lg font-semibold text-neutral-950">
+                  Delete {deleteTarget.title}?
+                </h2>
+                <p className="mt-2 text-sm leading-relaxed text-neutral-500">
+                  This permanently removes the photo from the media library and storage. Use this
+                  confirmation to avoid accidental trash-button presses.
+                </p>
+                <div className="mt-3 flex items-center gap-3 border border-neutral-200 bg-neutral-50 p-2">
+                  <div className="h-14 w-11 shrink-0 overflow-hidden bg-neutral-100">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={deleteTarget.url}
+                      alt={deleteTarget.altText || deleteTarget.title}
+                      className="h-full w-full object-cover"
+                    />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="truncate text-xs font-semibold text-neutral-700">
+                      {deleteTarget.filename}
+                    </p>
+                    <p className="mt-1 text-xs text-neutral-500">
+                      {formatBytes(deleteTarget.size)} / {formatDate(deleteTarget.createdAt)}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="mt-5 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+              <button
+                type="button"
+                onClick={closeDeleteConfirm}
+                disabled={isDeleting}
+                className="border border-neutral-200 bg-white px-4 py-2.5 text-sm font-semibold text-neutral-700 transition-colors hover:bg-neutral-50 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={confirmDeleteAsset}
+                disabled={isDeleting}
+                className="bg-red-600 px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {isDeleting ? 'Deleting...' : 'Delete photo'}
+              </button>
+            </div>
           </div>
         </div>
       )}

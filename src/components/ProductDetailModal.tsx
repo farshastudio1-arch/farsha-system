@@ -303,6 +303,9 @@ export default function ProductDetailModal({
                   {product.model}
                 </span>
                 <span className="theme-soft-surface theme-border border px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider font-mono text-[var(--theme-text)]">
+                  {product.color}
+                </span>
+                <span className="theme-soft-surface theme-border border px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider font-mono text-[var(--theme-text)]">
                   Fit {product.size}
                 </span>
                 {product.wearStyles.map((style) => (

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { ArrowUpDown, CheckCircle2 } from 'lucide-react';
 import { CMSContent, KebayaItem, SiteSettings } from '@/data/mockData';
@@ -222,7 +222,7 @@ export default function Catalog({
     return items.map(({ item }) => item);
   }, [filteredProducts, sortBy]);
 
-  const resetFilterState = () => {
+  const resetFilterState = useCallback(() => {
     setFilters({
       search: '',
       colors: [],
@@ -233,15 +233,15 @@ export default function Catalog({
       maxPrice: maxPriceLimit,
       categories: [],
     });
-  };
+  }, [maxPriceLimit]);
 
-  const handleResetFilters = () => {
+  const handleResetFilters = useCallback(() => {
     resetFilterState();
 
     if (initialCategory) {
       router.replace('/catalog');
     }
-  };
+  }, [initialCategory, resetFilterState, router]);
 
   // Switch column size handler
   const selectColumns = (cols: MobileGridColumns | DesktopGridColumns) => {
@@ -259,7 +259,36 @@ export default function Catalog({
     filters.wearStyles.length +
     filters.statuses.length +
     (filters.maxPrice < maxPriceLimit ? 1 : 0) +
-    (initialCategory ? 1 : 0);
+    filters.categories.length;
+
+  useEffect(() => {
+    window.dispatchEvent(
+      new CustomEvent('farsha-catalog-active-filters-change', {
+        detail: { count: totalActiveFilters },
+      }),
+    );
+  }, [totalActiveFilters]);
+
+  useEffect(() => {
+    return () => {
+      window.dispatchEvent(
+        new CustomEvent('farsha-catalog-active-filters-change', {
+          detail: { count: 0 },
+        }),
+      );
+    };
+  }, []);
+
+  useEffect(() => {
+    const handleClearFiltersRequest = () => {
+      handleResetFilters();
+    };
+
+    window.addEventListener('farsha-catalog-clear-filters-request', handleClearFiltersRequest);
+    return () => {
+      window.removeEventListener('farsha-catalog-clear-filters-request', handleClearFiltersRequest);
+    };
+  }, [handleResetFilters]);
 
   const mobileViewOptions: MobileGridColumns[] = [1, 2, 3];
   const desktopViewOptions: DesktopGridColumns[] = [2, 3, 4];
