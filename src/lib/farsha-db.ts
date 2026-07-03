@@ -2,6 +2,17 @@ import { CMSContent, KebayaItem, mockCMS, mockKebayas, mockSiteSettings, SiteSet
 import { normalizeCatalogItem } from '@/lib/catalog-normalization';
 import { normalizeCmsContent } from '@/lib/cms-normalization';
 import { getD1Database } from '@/lib/cloudflare';
+import {
+  MediaAlbum,
+  MediaAsset,
+  MediaAssetInput,
+  MediaAssetUpdate,
+  MediaUsage,
+  mediaKeyToUrl,
+  mediaUrlToKey,
+  normalizeMediaSourceArea,
+  normalizeMediaTags,
+} from '@/lib/media-library';
 import { normalizeSiteSettings } from '@/lib/site-settings-normalization';
 
 type CatalogRow = {
@@ -68,6 +79,31 @@ type SettingsRow = {
   logo_url: string;
   favicon_url: string;
   show_promo_banner: number;
+  updated_at: string;
+};
+
+type MediaAlbumRow = {
+  id: string;
+  name: string;
+  created_at: string;
+  updated_at: string;
+};
+
+type MediaAssetRow = {
+  id: string;
+  key: string;
+  url: string;
+  filename: string;
+  content_type: string;
+  size: number;
+  width: number | null;
+  height: number | null;
+  title: string;
+  alt_text: string;
+  tags: string;
+  album_id: string | null;
+  source_area: string;
+  created_at: string;
   updated_at: string;
 };
 
@@ -157,6 +193,120 @@ function settingsRowToSettings(row: SettingsRow): SiteSettings {
     showPromoBanner: row.show_promo_banner === 1,
     updatedAt: row.updated_at,
   });
+}
+
+function mediaAlbumRowToAlbum(row: MediaAlbumRow): MediaAlbum {
+  return {
+    id: row.id,
+    name: row.name,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+  };
+}
+
+function mediaAssetRowToAsset(row: MediaAssetRow): MediaAsset {
+  return {
+    id: row.id,
+    key: row.key,
+    url: row.url,
+    filename: row.filename,
+    contentType: row.content_type,
+    size: row.size,
+    width: row.width,
+    height: row.height,
+    title: row.title,
+    altText: row.alt_text,
+    tags: normalizeMediaTags(parseJson<unknown>(row.tags, [])),
+    albumId: row.album_id,
+    sourceArea: normalizeMediaSourceArea(row.source_area),
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+  };
+}
+
+function isSchemaMissing(error: unknown, tableName: string) {
+  const message = error instanceof Error ? error.message : '';
+
+  return message.includes(`no such table: ${tableName}`);
+}
+
+function createMediaUsageFromCatalog(items: KebayaItem[], url: string): MediaUsage[] {
+  return items.flatMap((item) =>
+    item.imageUrls.includes(url)
+      ? [
+          {
+            surface: 'catalog' as const,
+            label: item.name,
+            detail: item.code,
+            href: '/admin/catalog',
+          },
+        ]
+      : [],
+  );
+}
+
+function createMediaUsageFromCms(content: CMSContent, url: string): MediaUsage[] {
+  const usage: MediaUsage[] = [];
+
+  if (content.heroImageUrl === url) {
+    usage.push({
+      surface: 'cms',
+      label: 'Homepage hero',
+      detail: 'Hero image',
+      href: '/admin/cms',
+    });
+  }
+
+  content.landingCategories.forEach((category) => {
+    if (category.imageUrl === url || category.imageUrls.includes(url)) {
+      usage.push({
+        surface: 'cms',
+        label: category.title,
+        detail: 'Landing category image',
+        href: '/admin/cms',
+      });
+    }
+  });
+
+  return usage;
+}
+
+function createMediaUsageFromSettings(settings: SiteSettings, url: string): MediaUsage[] {
+  const usage: MediaUsage[] = [];
+
+  if (settings.logoUrl === url) {
+    usage.push({
+      surface: 'settings',
+      label: 'Site logo',
+      detail: 'Public identity',
+      href: '/admin/settings',
+    });
+  }
+
+  if (settings.faviconUrl === url) {
+    usage.push({
+      surface: 'settings',
+      label: 'Favicon',
+      detail: 'Browser icon',
+      href: '/admin/settings',
+    });
+  }
+
+  return usage;
+}
+
+async function getMediaUsageByUrl(url: string): Promise<MediaUsage[]> {
+  const [catalogItems, cmsContent, siteSettings] = await Promise.all([
+    listCatalogItems(),
+    getCmsContent(),
+    getSiteSettings(),
+  ]);
+
+  return [
+    ...createMediaUsageFromCatalog(catalogItems, url),
+    ...createMediaUsageFromCms(cmsContent, url),
+    ...createMediaUsageFromSettings(siteSettings, url),
+  ];
 }
 
 export async function listCatalogItems(options: { fallbackToMock?: boolean } = {}): Promise<KebayaItem[]> {
@@ -446,4 +596,239 @@ export async function updateSiteSettings(settings: SiteSettings): Promise<void> 
       normalized.updatedAt,
     )
     .run();
+}
+
+export async function listMediaAlbums(): Promise<MediaAlbum[]> {
+  try {
+    const db = await getD1Database();
+    const result = await db
+      .prepare(
+        `SELECT id, name, created_at, updated_at
+         FROM media_albums
+         ORDER BY lower(name) ASC`,
+      )
+      .all<MediaAlbumRow>();
+
+    return result.results.map(mediaAlbumRowToAlbum);
+  } catch (error) {
+    if (isSchemaMissing(error, 'media_albums')) {
+      return [];
+    }
+
+    throw error;
+  }
+}
+
+export async function upsertMediaAlbum(input: { id?: string; name: string }): Promise<MediaAlbum[]> {
+  const db = await getD1Database();
+  const id = input.id ?? `album-${crypto.randomUUID()}`;
+  const name = input.name.trim();
+
+  if (!name) {
+    throw new Error('Album name is required.');
+  }
+
+  await db
+    .prepare(
+      `INSERT INTO media_albums (id, name)
+       VALUES (?, ?)
+       ON CONFLICT(id) DO UPDATE SET
+         name = excluded.name,
+         updated_at = CURRENT_TIMESTAMP`,
+    )
+    .bind(id, name)
+    .run();
+
+  return listMediaAlbums();
+}
+
+export async function deleteMediaAlbum(albumId: string): Promise<MediaAlbum[]> {
+  const db = await getD1Database();
+
+  await db.batch([
+    db.prepare('UPDATE media_assets SET album_id = NULL, updated_at = CURRENT_TIMESTAMP WHERE album_id = ?').bind(albumId),
+    db.prepare('DELETE FROM media_albums WHERE id = ?').bind(albumId),
+  ]);
+
+  return listMediaAlbums();
+}
+
+export async function listMediaAssets(): Promise<MediaAsset[]> {
+  try {
+    const db = await getD1Database();
+    const result = await db
+      .prepare(
+        `SELECT id, key, url, filename, content_type, size, width, height, title, alt_text,
+          tags, album_id, source_area, created_at, updated_at
+         FROM media_assets
+         ORDER BY created_at DESC`,
+      )
+      .all<MediaAssetRow>();
+
+    const assets = result.results.map(mediaAssetRowToAsset);
+    const withUsage = await Promise.all(
+      assets.map(async (asset) => ({
+        ...asset,
+        usage: await getMediaUsageByUrl(asset.url),
+      })),
+    );
+
+    return withUsage;
+  } catch (error) {
+    if (isSchemaMissing(error, 'media_assets')) {
+      return [];
+    }
+
+    throw error;
+  }
+}
+
+export async function findMediaAssetById(assetId: string): Promise<MediaAsset | null> {
+  const db = await getD1Database();
+  const row = await db
+    .prepare(
+      `SELECT id, key, url, filename, content_type, size, width, height, title, alt_text,
+        tags, album_id, source_area, created_at, updated_at
+       FROM media_assets
+       WHERE id = ?
+       LIMIT 1`,
+    )
+    .bind(assetId)
+    .first<MediaAssetRow>();
+
+  if (!row) {
+    return null;
+  }
+
+  const asset = mediaAssetRowToAsset(row);
+
+  return {
+    ...asset,
+    usage: await getMediaUsageByUrl(asset.url),
+  };
+}
+
+export async function findMediaAssetByKey(key: string): Promise<MediaAsset | null> {
+  const db = await getD1Database();
+  const row = await db
+    .prepare(
+      `SELECT id, key, url, filename, content_type, size, width, height, title, alt_text,
+        tags, album_id, source_area, created_at, updated_at
+       FROM media_assets
+       WHERE key = ?
+       LIMIT 1`,
+    )
+    .bind(key)
+    .first<MediaAssetRow>();
+
+  return row ? mediaAssetRowToAsset(row) : null;
+}
+
+export async function upsertMediaAsset(input: MediaAssetInput): Promise<MediaAsset> {
+  const db = await getD1Database();
+  const id = input.id ?? `media-${crypto.randomUUID()}`;
+  const url = input.url ?? mediaKeyToUrl(input.key);
+  const title = input.title?.trim() || input.filename.replace(/\.[^.]+$/, '') || 'Untitled image';
+  const sourceArea = input.sourceArea ?? 'media-library';
+
+  await db
+    .prepare(
+      `INSERT INTO media_assets (
+        id, key, url, filename, content_type, size, width, height, title, alt_text,
+        tags, album_id, source_area
+      )
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ON CONFLICT(key) DO UPDATE SET
+        url = excluded.url,
+        filename = excluded.filename,
+        content_type = excluded.content_type,
+        size = excluded.size,
+        width = excluded.width,
+        height = excluded.height,
+        title = excluded.title,
+        alt_text = excluded.alt_text,
+        tags = excluded.tags,
+        album_id = excluded.album_id,
+        source_area = excluded.source_area,
+        updated_at = CURRENT_TIMESTAMP`,
+    )
+    .bind(
+      id,
+      input.key,
+      url,
+      input.filename,
+      input.contentType,
+      input.size,
+      input.width ?? null,
+      input.height ?? null,
+      title,
+      input.altText?.trim() ?? '',
+      JSON.stringify(normalizeMediaTags(input.tags ?? [])),
+      input.albumId ?? null,
+      sourceArea,
+    )
+    .run();
+
+  const saved = await findMediaAssetByKey(input.key);
+  if (!saved) {
+    throw new Error('Media asset could not be saved.');
+  }
+
+  return {
+    ...saved,
+    usage: await getMediaUsageByUrl(saved.url),
+  };
+}
+
+export async function updateMediaAssetMetadata(input: MediaAssetUpdate): Promise<MediaAsset[]> {
+  const db = await getD1Database();
+
+  await db
+    .prepare(
+      `UPDATE media_assets
+       SET title = ?, alt_text = ?, tags = ?, album_id = ?, updated_at = CURRENT_TIMESTAMP
+       WHERE id = ?`,
+    )
+    .bind(
+      input.title.trim() || 'Untitled image',
+      input.altText.trim(),
+      JSON.stringify(normalizeMediaTags(input.tags)),
+      input.albumId,
+      input.id,
+    )
+    .run();
+
+  return listMediaAssets();
+}
+
+export async function deleteMediaAssetRecord(assetId: string): Promise<void> {
+  const db = await getD1Database();
+  await db.prepare('DELETE FROM media_assets WHERE id = ?').bind(assetId).run();
+}
+
+export async function ensureMediaAssetForUrl(
+  url: string,
+  sourceArea: MediaAssetInput['sourceArea'],
+  title: string,
+): Promise<MediaAsset | null> {
+  const key = mediaUrlToKey(url);
+
+  if (!key) {
+    return null;
+  }
+
+  const existing = await findMediaAssetByKey(key).catch(() => null);
+  if (existing) {
+    return existing;
+  }
+
+  return upsertMediaAsset({
+    key,
+    url,
+    filename: key.split('/').at(-1) ?? 'existing-image',
+    contentType: 'image/jpeg',
+    size: 0,
+    title,
+    sourceArea,
+  });
 }

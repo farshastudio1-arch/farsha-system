@@ -6,6 +6,7 @@ import { KebayaItem } from '@/data/mockData';
 import { normalizeCatalogItems } from '@/lib/catalog-normalization';
 
 const catalogChangeEvent = 'farsha-catalog-items-cache-change';
+const emptyCatalogItems: KebayaItem[] = [];
 
 let cachedCatalogItems: KebayaItem[] = [];
 
@@ -43,6 +44,8 @@ function subscribeToSavedCatalogItems(onStoreChange: () => void) {
 }
 
 export function useSavedCatalogItems(initialItems?: KebayaItem[]) {
+  const serverSnapshot = initialItems ?? emptyCatalogItems;
+
   useEffect(() => {
     if (initialItems) {
       seedSavedCatalogItems(initialItems);
@@ -52,7 +55,7 @@ export function useSavedCatalogItems(initialItems?: KebayaItem[]) {
   return useSyncExternalStore(
     subscribeToSavedCatalogItems,
     readSavedCatalogItems,
-    () => initialItems ?? [],
+    () => serverSnapshot,
   );
 }
 

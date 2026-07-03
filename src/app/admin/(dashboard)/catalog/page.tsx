@@ -8,6 +8,7 @@ import {
   Edit,
   GripVertical,
   ImagePlus,
+  Images,
   PackageSearch,
   Plus,
   Search,
@@ -16,7 +17,9 @@ import {
   X,
 } from 'lucide-react';
 
+import MediaLibraryPicker from '@/components/admin/MediaLibraryPicker';
 import { KebayaCategory, KebayaItem, KebayaMeasurements } from '@/data/mockData';
+import { optimizeImageBeforeUpload } from '@/lib/client-image-optimizer';
 import {
   deleteCatalogItemAction,
   fetchAdminCatalogItemsAction,
@@ -277,26 +280,6 @@ function FieldLabel({ label, children }: { label: string; children: React.ReactN
   );
 }
 
-async function deleteUploadedCatalogImage(url: string) {
-  const trimmed = url.trim();
-
-  if (!trimmed) {
-    return;
-  }
-
-  try {
-    await fetch('/api/admin/catalog-images', {
-      method: 'DELETE',
-      headers: {
-        'content-type': 'application/json',
-      },
-      body: JSON.stringify({ url: trimmed }),
-    });
-  } catch {
-    // Cleanup is best-effort; saving catalog data should not be blocked by this.
-  }
-}
-
 function StatusBadge({ status }: { status: KebayaItem['status'] }) {
   const Icon = statusIcons[status];
 
@@ -356,7 +339,7 @@ export default function CatalogManagement() {
   const [imgErrors, setImgErrors] = useState<Record<number, boolean>>({});
   const [isUploadingImage, setIsUploadingImage] = useState(false);
   const [uploadError, setUploadError] = useState('');
-  const [pendingUploadedImageUrls, setPendingUploadedImageUrls] = useState<string[]>([]);
+  const [pickerTarget, setPickerTarget] = useState<number | 'append' | null>(null);
 
   useEffect(() => {
     let active = true;
@@ -445,7 +428,7 @@ export default function CatalogManagement() {
     setImgErrors({});
     setUploadError('');
     setIsUploadingImage(false);
-    setPendingUploadedImageUrls([]);
+    setPickerTarget(null);
     setIsModalOpen(true);
   };
 
@@ -461,17 +444,11 @@ export default function CatalogManagement() {
     setImgErrors({});
     setUploadError('');
     setIsUploadingImage(false);
-    setPendingUploadedImageUrls([]);
+    setPickerTarget(null);
     setIsModalOpen(true);
   };
 
-  const closeCatalogModal = (cleanupPendingUploads: boolean) => {
-    if (cleanupPendingUploads) {
-      pendingUploadedImageUrls.forEach((url) => {
-        void deleteUploadedCatalogImage(url);
-      });
-    }
-
+  const closeCatalogModal = () => {
     setIsModalOpen(false);
     setEditingItem(null);
     setForm(emptyForm);
@@ -479,11 +456,11 @@ export default function CatalogManagement() {
     setImgErrors({});
     setUploadError('');
     setIsUploadingImage(false);
-    setPendingUploadedImageUrls([]);
+    setPickerTarget(null);
   };
 
   const closeModal = () => {
-    closeCatalogModal(true);
+    closeCatalogModal();
   };
 
   const updateFormField = <Key extends keyof CatalogFormState>(
@@ -519,23 +496,13 @@ export default function CatalogManagement() {
   };
 
   const removeImageSlot = (index: number) => {
-    const removedUrl = form.imageUrls[index]?.trim() ?? '';
-
     if (form.imageUrls.length <= 1) {
       updateFormField('imageUrls', ['']);
-      if (removedUrl && pendingUploadedImageUrls.includes(removedUrl)) {
-        void deleteUploadedCatalogImage(removedUrl);
-        setPendingUploadedImageUrls((urls) => urls.filter((url) => url !== removedUrl));
-      }
       return;
     }
 
     const next = form.imageUrls.filter((_, i) => i !== index);
     updateFormField('imageUrls', next);
-    if (removedUrl && pendingUploadedImageUrls.includes(removedUrl)) {
-      void deleteUploadedCatalogImage(removedUrl);
-      setPendingUploadedImageUrls((urls) => urls.filter((url) => url !== removedUrl));
-    }
     setImgErrors((prev) => {
       const updated = { ...prev };
       delete updated[index];
@@ -587,19 +554,31 @@ export default function CatalogManagement() {
       return;
     }
 
-    if (file.size > maxUploadBytes) {
-      setUploadError('Image must be 5 MB or smaller.');
-      return;
-    }
-
     setIsUploadingImage(true);
-    setUploadError('');
-
-    const formData = new FormData();
-    formData.append('file', file);
-    formData.append('code', form.code.trim() || editingItem?.code || 'draft');
+    setUploadError('Optimizing image before upload...');
 
     try {
+      const optimization = await optimizeImageBeforeUpload(file);
+
+      if (optimization.file.size > maxUploadBytes) {
+        setUploadError('Image must be 5 MB or smaller after optimization.');
+        return;
+      }
+
+      const formData = new FormData();
+      formData.append('file', optimization.file);
+      formData.append('code', form.code.trim() || editingItem?.code || 'draft');
+      formData.append('sourceArea', 'catalog');
+      formData.append('originalFilename', optimization.originalFile.name);
+      formData.append('originalSize', String(optimization.originalSize));
+      formData.append('optimized', String(optimization.optimized));
+      if (optimization.width) {
+        formData.append('width', String(optimization.width));
+      }
+      if (optimization.height) {
+        formData.append('height', String(optimization.height));
+      }
+
       const response = await fetch('/api/admin/catalog-images', {
         method: 'POST',
         body: formData,
@@ -615,7 +594,7 @@ export default function CatalogManagement() {
       }
 
       addUploadedImageUrl(payload.data.url);
-      setPendingUploadedImageUrls((urls) => [...urls, payload.data.url]);
+      setUploadError(optimization.message);
     } catch {
       setUploadError('Upload failed. Please try again.');
     } finally {
@@ -659,7 +638,7 @@ export default function CatalogManagement() {
 
     if (result.ok) {
       writeSavedCatalogItems(result.data);
-      closeCatalogModal(false);
+      closeCatalogModal();
     } else {
       setFormError(result.error);
     }
@@ -691,6 +670,17 @@ export default function CatalogManagement() {
   const editingProjectedItem = editingItem
     ? projectedItems.find((item) => item.id === editingItem.id) ?? null
     : null;
+
+  const selectLibraryImage = (url: string) => {
+    const slotIndex = pickerTarget;
+
+    if (slotIndex === null || slotIndex === 'append') {
+      addUploadedImageUrl(url);
+      return;
+    }
+
+    setImageUrl(slotIndex, url);
+  };
 
   return (
     <div className="mx-auto flex w-full max-w-7xl flex-col gap-5 px-4 py-5 sm:px-6 sm:py-6 lg:px-8 lg:py-8">
@@ -1186,6 +1176,14 @@ export default function CatalogManagement() {
                         {imgErrors[index] && url.trim() && (
                           <p className="mt-0.5 text-[10px] text-red-500">URL tidak valid</p>
                         )}
+                        <button
+                          type="button"
+                          onClick={() => setPickerTarget(index)}
+                          className="mt-1 inline-flex items-center gap-1.5 border border-neutral-200 bg-neutral-50 px-2 py-1 text-[10px] font-semibold text-neutral-600 transition-colors hover:bg-white hover:text-neutral-900"
+                        >
+                          <Images className="h-3 w-3" />
+                          Choose
+                        </button>
                       </div>
 
                       <div className="flex shrink-0 flex-col gap-0.5">
@@ -1221,6 +1219,14 @@ export default function CatalogManagement() {
                     Add URL field
                   </button>
                 )}
+                <button
+                  type="button"
+                  onClick={() => setPickerTarget('append')}
+                  className="mt-2 flex w-full items-center justify-center gap-1.5 border border-neutral-200 bg-white py-2 text-xs font-semibold text-neutral-600 transition-colors hover:bg-neutral-50 hover:text-neutral-900"
+                >
+                  <Images className="h-3.5 w-3.5" />
+                  Choose from library
+                </button>
               </div>
             </div>
 
@@ -1565,6 +1571,12 @@ export default function CatalogManagement() {
           </div>
         </div>
       )}
+      <MediaLibraryPicker
+        open={pickerTarget !== null}
+        title="Choose product photo"
+        onClose={() => setPickerTarget(null)}
+        onSelect={selectLibraryImage}
+      />
     </div>
   );
 }

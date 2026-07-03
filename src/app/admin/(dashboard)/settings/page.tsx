@@ -5,6 +5,7 @@ import {
   AlertTriangle,
   Check,
   Eye,
+  Images,
   MessageCircle,
   Palette,
   Save,
@@ -12,6 +13,7 @@ import {
   Store,
 } from 'lucide-react';
 
+import MediaLibraryPicker from '@/components/admin/MediaLibraryPicker';
 import { KebayaItem, mockKebayas, SiteSettings } from '@/data/mockData';
 import { fetchSiteSettingsAction, saveSiteSettingsAction } from '@/lib/farsha-actions';
 import {
@@ -31,6 +33,8 @@ type TextField = Extract<
   | 'instagramUrl'
   | 'tiktokUrl'
   | 'mapsUrl'
+  | 'logoUrl'
+  | 'faviconUrl'
 >;
 
 type BooleanField = Extract<
@@ -208,12 +212,27 @@ function cleanPhone(value: string) {
   return value.replace(/\D/g, '');
 }
 
+function isValidOptionalUrl(value: string) {
+  if (!value.trim()) {
+    return true;
+  }
+
+  try {
+    const url = new URL(value);
+    return url.protocol === 'https:' || url.protocol === 'http:';
+  } catch {
+    return false;
+  }
+}
+
 function getValidationErrors(settings: SiteSettings) {
   const errors: Record<string, string> = {};
   const urlFields: Array<{ key: TextField; label: string }> = [
     { key: 'instagramUrl', label: 'Instagram URL' },
     { key: 'tiktokUrl', label: 'TikTok URL' },
     { key: 'mapsUrl', label: 'Google Maps URL' },
+    { key: 'logoUrl', label: 'Logo URL' },
+    { key: 'faviconUrl', label: 'Favicon URL' },
   ];
 
   if (!settings.studioName.trim()) {
@@ -237,14 +256,8 @@ function getValidationErrors(settings: SiteSettings) {
       continue;
     }
 
-    try {
-      const url = new URL(rawValue);
-
-      if (url.protocol !== 'https:' && url.protocol !== 'http:') {
-        errors[field.key] = `${field.label} must start with http or https.`;
-      }
-    } catch {
-      errors[field.key] = `${field.label} must be a valid URL.`;
+    if (!isValidOptionalUrl(rawValue)) {
+      errors[field.key] = `${field.label} must start with http or https.`;
     }
   }
 
@@ -491,6 +504,7 @@ export default function SettingsPage() {
   const [isLoadingSettings, setIsLoadingSettings] = useState(true);
   const [isSavingSettings, setIsSavingSettings] = useState(false);
   const [settingsError, setSettingsError] = useState('');
+  const [pickerTarget, setPickerTarget] = useState<'logoUrl' | 'faviconUrl' | null>(null);
   const settings = settingsDraft ?? savedSettings;
   const previewProduct = mockKebayas[0];
 
@@ -565,6 +579,14 @@ export default function SettingsPage() {
     updateField('borderRadius', Number(event.target.value));
   };
 
+  const selectLibraryImage = (url: string) => {
+    if (!pickerTarget) {
+      return;
+    }
+
+    updateField(pickerTarget, url);
+  };
+
   const saveSettings = async () => {
     if (hasErrors) {
       setSaveState('error');
@@ -615,7 +637,7 @@ export default function SettingsPage() {
           </h1>
           <p className="mt-2 max-w-2xl text-sm leading-relaxed text-neutral-500 sm:text-base">
             Settings here affect the catalog experience, saved contact references, and shared theme
-            tokens. Non-wired logo/favicon utilities were removed from this screen.
+            tokens. Logo and favicon can be selected from the media library.
           </p>
         </div>
 
@@ -734,7 +756,7 @@ export default function SettingsPage() {
                   className="w-full border border-neutral-200 bg-neutral-50 px-4 py-2.5 text-sm transition-all focus:bg-white focus:outline-none focus:ring-2 focus:ring-neutral-900"
                 />
               </div>
-              <div className="md:col-span-2">
+	              <div className="md:col-span-2">
                 <label className="mb-1 block text-sm font-semibold text-neutral-700">
                   Tagline
                 </label>
@@ -744,6 +766,75 @@ export default function SettingsPage() {
                   onChange={updateTextField('tagline')}
                   className="w-full resize-none border border-neutral-200 bg-neutral-50 px-4 py-2.5 text-sm transition-all focus:bg-white focus:outline-none focus:ring-2 focus:ring-neutral-900"
                 />
+	              </div>
+	            </div>
+
+            <div className="mt-5 border-t border-neutral-200 pt-5">
+              <h3 className="text-sm font-semibold text-neutral-950">Brand media</h3>
+              <p className="mt-1 text-sm text-neutral-500">
+                Optional image references saved with site settings.
+              </p>
+              <div className="mt-4 grid gap-4 md:grid-cols-2">
+                <div>
+                  <label className="mb-1 block text-sm font-semibold text-neutral-700">
+                    Logo URL
+                  </label>
+                  <div className="flex gap-2">
+                    <input
+                      type="url"
+                      value={settings.logoUrl}
+                      onChange={updateTextField('logoUrl')}
+                      className="min-w-0 flex-1 border border-neutral-200 bg-neutral-50 px-4 py-2.5 text-sm transition-all focus:bg-white focus:outline-none focus:ring-2 focus:ring-neutral-900"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setPickerTarget('logoUrl')}
+                      aria-label="Choose logo from media library"
+                      className="inline-flex shrink-0 items-center justify-center border border-neutral-200 bg-white px-3 text-neutral-500 transition-colors hover:bg-neutral-50 hover:text-neutral-900"
+                    >
+                      <Images className="h-4 w-4" />
+                    </button>
+                  </div>
+                  <FieldError>{validationErrors.logoUrl}</FieldError>
+                  <div className="mt-3 flex h-20 items-center justify-center border border-neutral-200 bg-neutral-50">
+                    {settings.logoUrl && isValidOptionalUrl(settings.logoUrl) ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={settings.logoUrl} alt="Logo preview" className="max-h-full max-w-full object-contain" />
+                    ) : (
+                      <span className="text-xs font-semibold text-neutral-400">No logo</span>
+                    )}
+                  </div>
+                </div>
+                <div>
+                  <label className="mb-1 block text-sm font-semibold text-neutral-700">
+                    Favicon URL
+                  </label>
+                  <div className="flex gap-2">
+                    <input
+                      type="url"
+                      value={settings.faviconUrl}
+                      onChange={updateTextField('faviconUrl')}
+                      className="min-w-0 flex-1 border border-neutral-200 bg-neutral-50 px-4 py-2.5 text-sm transition-all focus:bg-white focus:outline-none focus:ring-2 focus:ring-neutral-900"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setPickerTarget('faviconUrl')}
+                      aria-label="Choose favicon from media library"
+                      className="inline-flex shrink-0 items-center justify-center border border-neutral-200 bg-white px-3 text-neutral-500 transition-colors hover:bg-neutral-50 hover:text-neutral-900"
+                    >
+                      <Images className="h-4 w-4" />
+                    </button>
+                  </div>
+                  <FieldError>{validationErrors.faviconUrl}</FieldError>
+                  <div className="mt-3 flex h-20 items-center justify-center border border-neutral-200 bg-neutral-50">
+                    {settings.faviconUrl && isValidOptionalUrl(settings.faviconUrl) ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={settings.faviconUrl} alt="Favicon preview" className="h-12 w-12 object-cover" />
+                    ) : (
+                      <span className="text-xs font-semibold text-neutral-400">No favicon</span>
+                    )}
+                  </div>
+                </div>
               </div>
             </div>
 
@@ -1009,14 +1100,20 @@ export default function SettingsPage() {
               What is wired now
             </p>
             <ul className="mt-3 space-y-2 text-sm leading-relaxed text-neutral-600">
-              <li>Catalog card density, visible fields, and grid defaults are live.</li>
-              <li>Theme colors and radius are live through the theme provider.</li>
-              <li>Contact/status values are saved and used by admin readiness surfaces.</li>
-              <li>Logo, favicon, and promo-banner controls were removed because they are not wired.</li>
-            </ul>
-          </section>
-        </aside>
-      </div>
-    </div>
-  );
-}
+	              <li>Catalog card density, visible fields, and grid defaults are live.</li>
+	              <li>Theme colors and radius are live through the theme provider.</li>
+	              <li>Contact/status values are saved and used by admin readiness surfaces.</li>
+	              <li>Logo and favicon URLs are saved and selectable from the media library.</li>
+	            </ul>
+	          </section>
+	        </aside>
+	      </div>
+      <MediaLibraryPicker
+        open={pickerTarget !== null}
+        title="Choose settings image"
+        onClose={() => setPickerTarget(null)}
+        onSelect={selectLibraryImage}
+      />
+	    </div>
+	  );
+	}

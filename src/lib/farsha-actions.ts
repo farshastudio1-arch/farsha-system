@@ -4,18 +4,25 @@ import { revalidatePath } from 'next/cache';
 
 import { auth } from '../../auth';
 import { CMSContent, KebayaItem, SiteSettings } from '@/data/mockData';
-import { deleteCatalogImageByUrl } from '@/lib/catalog-images';
 import {
+  deleteMediaAlbum,
+  deleteMediaAssetRecord,
   deleteCatalogItem,
+  ensureMediaAssetForUrl,
   findCatalogItemByCode,
-  findCatalogItemById,
+  findMediaAssetById,
   getCmsContent,
   getSiteSettings,
   listCatalogItems,
+  listMediaAlbums,
+  listMediaAssets,
   updateCmsContent,
+  updateMediaAssetMetadata,
   updateSiteSettings,
+  upsertMediaAlbum,
   upsertCatalogItem,
 } from '@/lib/farsha-db';
+import { MediaAlbum, MediaAsset, MediaAssetUpdate, deleteMediaObjectByKey } from '@/lib/media-library';
 
 type ActionResult<T> =
   | {
@@ -49,22 +56,40 @@ function revalidatePublicAndAdmin() {
   revalidatePath('/terms');
 }
 
-async function deleteStoredCatalogImages(urls: string[]) {
-  await Promise.allSettled(urls.map((url) => deleteCatalogImageByUrl(url)));
-}
-
 function getActionErrorMessage(error: unknown, fallback: string) {
   const message = error instanceof Error ? error.message : '';
 
   if (
     message.includes('no such column: categories') ||
     message.includes('no such column: measurements') ||
-    message.includes('no such column: landing_categories')
+    message.includes('no such column: landing_categories') ||
+    message.includes('no such table: media_assets') ||
+    message.includes('no such table: media_albums')
   ) {
     return catalogSchemaError;
   }
 
   return message || fallback;
+}
+
+function getCmsImageUrls(content: CMSContent) {
+  return [
+    content.heroImageUrl,
+    ...content.landingCategories.flatMap((category) => [
+      category.imageUrl,
+      ...category.imageUrls,
+    ]),
+  ].filter(Boolean);
+}
+
+async function ensureMediaAssetsForUrls(
+  urls: string[],
+  sourceArea: 'catalog' | 'cms' | 'settings',
+  title: string,
+) {
+  await Promise.allSettled(
+    Array.from(new Set(urls)).map((url) => ensureMediaAssetForUrl(url, sourceArea, title)),
+  );
 }
 
 export async function fetchAdminCatalogItemsAction(): Promise<ActionResult<KebayaItem[]>> {
@@ -83,19 +108,13 @@ export async function saveCatalogItemAction(item: KebayaItem): Promise<ActionRes
   try {
     await ensureAdmin();
 
-    const existing = await findCatalogItemById(item.id);
     const duplicate = await findCatalogItemByCode(item.code);
     if (duplicate && duplicate.id !== item.id) {
       return { ok: false, error: 'Code already exists. Use a unique inventory code.' };
     }
 
     await upsertCatalogItem(item);
-
-    if (existing) {
-      const nextImageUrls = new Set(item.imageUrls);
-      const removedImageUrls = existing.imageUrls.filter((url) => !nextImageUrls.has(url));
-      await deleteStoredCatalogImages(removedImageUrls);
-    }
+    await ensureMediaAssetsForUrls(item.imageUrls, 'catalog', item.name);
 
     revalidatePublicAndAdmin();
 
@@ -111,9 +130,7 @@ export async function saveCatalogItemAction(item: KebayaItem): Promise<ActionRes
 export async function deleteCatalogItemAction(itemId: string): Promise<ActionResult<KebayaItem[]>> {
   try {
     await ensureAdmin();
-    const existing = await findCatalogItemById(itemId);
     await deleteCatalogItem(itemId);
-    await deleteStoredCatalogImages(existing?.imageUrls ?? []);
     revalidatePublicAndAdmin();
 
     return { ok: true, data: await listCatalogItems() };
@@ -143,6 +160,11 @@ export async function saveSiteSettingsAction(
   try {
     await ensureAdmin();
     await updateSiteSettings(settings);
+    await ensureMediaAssetsForUrls(
+      [settings.logoUrl, settings.faviconUrl].filter(Boolean),
+      'settings',
+      'Site identity image',
+    );
     revalidatePublicAndAdmin();
 
     return { ok: true, data: await getSiteSettings() };
@@ -170,6 +192,7 @@ export async function saveCmsContentAction(content: CMSContent): Promise<ActionR
   try {
     await ensureAdmin();
     await updateCmsContent(content);
+    await ensureMediaAssetsForUrls(getCmsImageUrls(content), 'cms', 'CMS image');
     revalidatePublicAndAdmin();
 
     return { ok: true, data: await getCmsContent() };
@@ -177,6 +200,101 @@ export async function saveCmsContentAction(content: CMSContent): Promise<ActionR
     return {
       ok: false,
       error: getActionErrorMessage(error, 'Failed to save CMS content.'),
+    };
+  }
+}
+
+export async function fetchMediaLibraryAction(): Promise<
+  ActionResult<{ albums: MediaAlbum[]; assets: MediaAsset[] }>
+> {
+  try {
+    await ensureAdmin();
+    const [albums, assets] = await Promise.all([listMediaAlbums(), listMediaAssets()]);
+
+    return { ok: true, data: { albums, assets } };
+  } catch (error) {
+    return {
+      ok: false,
+      error: getActionErrorMessage(error, 'Failed to load media library.'),
+    };
+  }
+}
+
+export async function saveMediaAlbumAction(input: {
+  id?: string;
+  name: string;
+}): Promise<ActionResult<MediaAlbum[]>> {
+  try {
+    await ensureAdmin();
+    const albums = await upsertMediaAlbum(input);
+    revalidatePath('/admin/media');
+
+    return { ok: true, data: albums };
+  } catch (error) {
+    return {
+      ok: false,
+      error: getActionErrorMessage(error, 'Failed to save album.'),
+    };
+  }
+}
+
+export async function deleteMediaAlbumAction(albumId: string): Promise<ActionResult<MediaAlbum[]>> {
+  try {
+    await ensureAdmin();
+    const albums = await deleteMediaAlbum(albumId);
+    revalidatePath('/admin/media');
+
+    return { ok: true, data: albums };
+  } catch (error) {
+    return {
+      ok: false,
+      error: getActionErrorMessage(error, 'Failed to delete album.'),
+    };
+  }
+}
+
+export async function updateMediaAssetAction(
+  input: MediaAssetUpdate,
+): Promise<ActionResult<MediaAsset[]>> {
+  try {
+    await ensureAdmin();
+    const assets = await updateMediaAssetMetadata(input);
+    revalidatePath('/admin/media');
+
+    return { ok: true, data: assets };
+  } catch (error) {
+    return {
+      ok: false,
+      error: getActionErrorMessage(error, 'Failed to update media asset.'),
+    };
+  }
+}
+
+export async function deleteMediaAssetAction(assetId: string): Promise<ActionResult<MediaAsset[]>> {
+  try {
+    await ensureAdmin();
+    const asset = await findMediaAssetById(assetId);
+
+    if (!asset) {
+      return { ok: false, error: 'Media asset not found.' };
+    }
+
+    if ((asset.usage?.length ?? 0) > 0) {
+      return {
+        ok: false,
+        error: 'This image is still used. Remove it from catalog, CMS, or settings first.',
+      };
+    }
+
+    await deleteMediaObjectByKey(asset.key);
+    await deleteMediaAssetRecord(assetId);
+    revalidatePath('/admin/media');
+
+    return { ok: true, data: await listMediaAssets() };
+  } catch (error) {
+    return {
+      ok: false,
+      error: getActionErrorMessage(error, 'Failed to delete media asset.'),
     };
   }
 }

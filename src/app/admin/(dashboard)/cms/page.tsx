@@ -1,14 +1,18 @@
 'use client';
 
 import { ChangeEvent, FormEvent, useEffect, useMemo, useState } from 'react';
-import { AlertTriangle, Check, Image as ImageIcon, Save } from 'lucide-react';
+import { AlertTriangle, Check, Image as ImageIcon, Images, Save } from 'lucide-react';
 
+import MediaLibraryPicker from '@/components/admin/MediaLibraryPicker';
 import { CMSContent, mockCMS } from '@/data/mockData';
 import { fetchCmsContentAction, saveCmsContentAction } from '@/lib/farsha-actions';
 import { maxLandingCategoryImages } from '@/lib/cms-normalization';
 
 type CmsField = Exclude<keyof CMSContent, 'landingCategories'>;
 type LandingCategoryField = keyof CMSContent['landingCategories'][number];
+type PickerTarget =
+  | { type: 'hero' }
+  | { type: 'landing-category'; categoryIndex: number; imageIndex: number };
 
 const inputCls =
   'w-full border border-neutral-200 bg-neutral-50 px-4 py-2.5 text-sm transition-all focus:bg-white focus:outline-none focus:ring-2 focus:ring-neutral-900';
@@ -136,6 +140,7 @@ export default function CMSManagement() {
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [saveState, setSaveState] = useState<'idle' | 'saved' | 'error'>('idle');
+  const [pickerTarget, setPickerTarget] = useState<PickerTarget | null>(null);
 
   useEffect(() => {
     let active = true;
@@ -227,6 +232,45 @@ export default function CMSManagement() {
         }),
       }));
     };
+
+  const selectLibraryImage = (url: string) => {
+    if (!pickerTarget) {
+      return;
+    }
+
+    setSaveState('idle');
+    setSaveError('');
+
+    if (pickerTarget.type === 'hero') {
+      setDraftContent((current) => ({
+        ...current,
+        heroImageUrl: url,
+      }));
+      return;
+    }
+
+    setDraftContent((current) => ({
+      ...current,
+      landingCategories: current.landingCategories.map((category, categoryIndex) => {
+        if (categoryIndex !== pickerTarget.categoryIndex) {
+          return category;
+        }
+
+        const imageUrls = Array.from(
+          { length: maxLandingCategoryImages },
+          (_, slotIndex) => category.imageUrls[slotIndex] ?? '',
+        );
+        imageUrls[pickerTarget.imageIndex] = url;
+        const coverImageUrl = imageUrls.find((entry) => entry.trim()) ?? category.imageUrl;
+
+        return {
+          ...category,
+          imageUrl: coverImageUrl,
+          imageUrls,
+        };
+      }),
+    }));
+  };
 
   const discardChanges = () => {
     setDraftContent(savedContent);
@@ -357,6 +401,14 @@ export default function CMSManagement() {
                 onChange={updateField('heroImageUrl')}
                 className={inputCls}
               />
+              <button
+                type="button"
+                onClick={() => setPickerTarget({ type: 'hero' })}
+                className="mt-2 inline-flex items-center gap-2 border border-neutral-200 bg-white px-3 py-2 text-xs font-semibold text-neutral-600 transition-colors hover:bg-neutral-50 hover:text-neutral-900"
+              >
+                <Images className="h-4 w-4" />
+                Choose from library
+              </button>
               <FieldError>{validationErrors.heroImageUrl}</FieldError>
             </div>
           </SectionPanel>
@@ -511,14 +563,29 @@ export default function CMSManagement() {
                       </div>
                       <div className="grid gap-2">
                         {Array.from({ length: maxLandingCategoryImages }).map((_, imageIndex) => (
-                          <input
-                            key={`${category.slug}-image-${imageIndex}`}
-                            type="url"
-                            value={category.imageUrls[imageIndex] ?? ''}
-                            onChange={updateLandingCategoryImageUrl(index, imageIndex)}
-                            placeholder={`Photo URL ${imageIndex + 1}`}
-                            className={inputCls}
-                          />
+                          <div key={`${category.slug}-image-${imageIndex}`} className="flex gap-2">
+                            <input
+                              type="url"
+                              value={category.imageUrls[imageIndex] ?? ''}
+                              onChange={updateLandingCategoryImageUrl(index, imageIndex)}
+                              placeholder={`Photo URL ${imageIndex + 1}`}
+                              className={inputCls}
+                            />
+                            <button
+                              type="button"
+                              onClick={() =>
+                                setPickerTarget({
+                                  type: 'landing-category',
+                                  categoryIndex: index,
+                                  imageIndex,
+                                })
+                              }
+                              aria-label={`Choose photo ${imageIndex + 1} for ${category.title}`}
+                              className="inline-flex shrink-0 items-center justify-center border border-neutral-200 bg-white px-3 text-neutral-500 transition-colors hover:bg-neutral-50 hover:text-neutral-900"
+                            >
+                              <Images className="h-4 w-4" />
+                            </button>
+                          </div>
                         ))}
                       </div>
                       <FieldError>{categoryErrors.imageUrls}</FieldError>
@@ -665,6 +732,12 @@ export default function CMSManagement() {
           </section>
         </aside>
       </div>
+      <MediaLibraryPicker
+        open={pickerTarget !== null}
+        title="Choose CMS image"
+        onClose={() => setPickerTarget(null)}
+        onSelect={selectLibraryImage}
+      />
     </form>
   );
 }
