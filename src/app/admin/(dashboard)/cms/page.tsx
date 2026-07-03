@@ -6,7 +6,7 @@ import { AlertTriangle, Check, Image as ImageIcon, Images, Save } from 'lucide-r
 import MediaLibraryPicker from '@/components/admin/MediaLibraryPicker';
 import { CMSContent, mockCMS } from '@/data/mockData';
 import { fetchCmsContentAction, saveCmsContentAction } from '@/lib/farsha-actions';
-import { maxLandingCategoryImages } from '@/lib/cms-normalization';
+import { maxLandingCategoryImages, maxTrustPoints } from '@/lib/cms-normalization';
 
 type CmsField = Exclude<keyof CMSContent, 'landingCategories'>;
 type LandingCategoryField = keyof CMSContent['landingCategories'][number];
@@ -43,8 +43,52 @@ function getValidationErrors(content: CMSContent) {
     errors.heroTitle = 'Hero title is required.';
   }
 
+  if (!content.heroEyebrow.trim()) {
+    errors.heroEyebrow = 'Hero eyebrow is required.';
+  }
+
   if (!content.heroSubtitle.trim()) {
     errors.heroSubtitle = 'Hero subtitle is required.';
+  }
+
+  if (!content.primaryCtaLabel.trim()) {
+    errors.primaryCtaLabel = 'Primary CTA label is required.';
+  }
+
+  if (!content.whatsappCtaLabel.trim()) {
+    errors.whatsappCtaLabel = 'WhatsApp CTA label is required.';
+  }
+
+  if (!content.tiktokCtaLabel.trim()) {
+    errors.tiktokCtaLabel = 'TikTok CTA label is required.';
+  }
+
+  if (!content.heroMetaText.trim()) {
+    errors.heroMetaText = 'Hero side note is required.';
+  }
+
+  if (!content.reminderLabel.trim()) {
+    errors.reminderLabel = 'Reminder label is required.';
+  }
+
+  if (!content.categoryEyebrow.trim()) {
+    errors.categoryEyebrow = 'Category eyebrow is required.';
+  }
+
+  if (!content.categoryTitle.trim()) {
+    errors.categoryTitle = 'Category title is required.';
+  }
+
+  if (content.trustPoints.some((point) => !point.trim())) {
+    errors.trustPoints = 'All trust strip items are required.';
+  }
+
+  if (!content.finalEyebrow.trim()) {
+    errors.finalEyebrow = 'Final section eyebrow is required.';
+  }
+
+  if (!content.finalCtaLabel.trim()) {
+    errors.finalCtaLabel = 'Final CTA label is required.';
   }
 
   if (!isValidOptionalUrl(content.heroImageUrl)) {
@@ -233,6 +277,24 @@ export default function CMSManagement() {
       }));
     };
 
+  const updateTrustPoint =
+    (index: number) => (event: ChangeEvent<HTMLInputElement>) => {
+      setSaveState('idle');
+      setSaveError('');
+      setDraftContent((current) => {
+        const trustPoints = Array.from(
+          { length: maxTrustPoints },
+          (_, pointIndex) => current.trustPoints[pointIndex] ?? '',
+        );
+        trustPoints[index] = event.target.value;
+
+        return {
+          ...current,
+          trustPoints,
+        };
+      });
+    };
+
   const selectLibraryImage = (url: string) => {
     if (!pickerTarget) {
       return;
@@ -369,6 +431,21 @@ export default function CMSManagement() {
           >
             <div>
               <label className="mb-1 block text-sm font-semibold text-neutral-700">
+                Hero eyebrow
+              </label>
+              <input
+                type="text"
+                value={draftContent.heroEyebrow}
+                onChange={updateField('heroEyebrow')}
+                className={inputCls}
+              />
+              <p className="mt-1 text-xs text-neutral-400">
+                Use {'{location}'} to insert the location from settings.
+              </p>
+              <FieldError>{validationErrors.heroEyebrow}</FieldError>
+            </div>
+            <div>
+              <label className="mb-1 block text-sm font-semibold text-neutral-700">
                 Hero title
               </label>
               <input
@@ -411,12 +488,77 @@ export default function CMSManagement() {
               </button>
               <FieldError>{validationErrors.heroImageUrl}</FieldError>
             </div>
+            <div>
+              <label className="mb-1 block text-sm font-semibold text-neutral-700">
+                Hero side note
+              </label>
+              <input
+                type="text"
+                value={draftContent.heroMetaText}
+                onChange={updateField('heroMetaText')}
+                className={inputCls}
+              />
+              <p className="mt-1 text-xs text-neutral-400">
+                Use {'{location}'} to insert the location from settings.
+              </p>
+              <FieldError>{validationErrors.heroMetaText}</FieldError>
+            </div>
+            <div className="grid gap-4 sm:grid-cols-3">
+              <div>
+                <label className="mb-1 block text-sm font-semibold text-neutral-700">
+                  Primary CTA
+                </label>
+                <input
+                  type="text"
+                  value={draftContent.primaryCtaLabel}
+                  onChange={updateField('primaryCtaLabel')}
+                  className={inputCls}
+                />
+                <FieldError>{validationErrors.primaryCtaLabel}</FieldError>
+              </div>
+              <div>
+                <label className="mb-1 block text-sm font-semibold text-neutral-700">
+                  WhatsApp CTA
+                </label>
+                <input
+                  type="text"
+                  value={draftContent.whatsappCtaLabel}
+                  onChange={updateField('whatsappCtaLabel')}
+                  className={inputCls}
+                />
+                <FieldError>{validationErrors.whatsappCtaLabel}</FieldError>
+              </div>
+              <div>
+                <label className="mb-1 block text-sm font-semibold text-neutral-700">
+                  TikTok CTA
+                </label>
+                <input
+                  type="text"
+                  value={draftContent.tiktokCtaLabel}
+                  onChange={updateField('tiktokCtaLabel')}
+                  className={inputCls}
+                />
+                <FieldError>{validationErrors.tiktokCtaLabel}</FieldError>
+              </div>
+            </div>
           </SectionPanel>
 
           <SectionPanel
             title="Promotion and about copy"
             description="These fields feed the homepage reminder strip and final catalog section."
           >
+            <div>
+              <label className="mb-1 block text-sm font-semibold text-neutral-700">
+                Reminder label
+              </label>
+              <input
+                type="text"
+                value={draftContent.reminderLabel}
+                onChange={updateField('reminderLabel')}
+                className={inputCls}
+              />
+              <FieldError>{validationErrors.reminderLabel}</FieldError>
+            </div>
             <div>
               <label className="mb-1 block text-sm font-semibold text-neutral-700">
                 Promo text
@@ -427,6 +569,65 @@ export default function CMSManagement() {
                 onChange={updateField('promoText')}
                 className={inputCls}
               />
+            </div>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div>
+                <label className="mb-1 block text-sm font-semibold text-neutral-700">
+                  Category eyebrow
+                </label>
+                <input
+                  type="text"
+                  value={draftContent.categoryEyebrow}
+                  onChange={updateField('categoryEyebrow')}
+                  className={inputCls}
+                />
+                <FieldError>{validationErrors.categoryEyebrow}</FieldError>
+              </div>
+              <div>
+                <label className="mb-1 block text-sm font-semibold text-neutral-700">
+                  Category title
+                </label>
+                <input
+                  type="text"
+                  value={draftContent.categoryTitle}
+                  onChange={updateField('categoryTitle')}
+                  className={inputCls}
+                />
+                <FieldError>{validationErrors.categoryTitle}</FieldError>
+              </div>
+            </div>
+            <div>
+              <label className="mb-2 block text-sm font-semibold text-neutral-700">
+                Trust strip
+              </label>
+              <div className="grid gap-2">
+                {Array.from({ length: maxTrustPoints }).map((_, index) => (
+                  <input
+                    key={`trust-point-${index}`}
+                    type="text"
+                    value={draftContent.trustPoints[index] ?? ''}
+                    onChange={updateTrustPoint(index)}
+                    placeholder={`Trust item ${index + 1}`}
+                    className={inputCls}
+                  />
+                ))}
+              </div>
+              <p className="mt-1 text-xs text-neutral-400">
+                Use {'{location}'} to insert the location from settings.
+              </p>
+              <FieldError>{validationErrors.trustPoints}</FieldError>
+            </div>
+            <div>
+              <label className="mb-1 block text-sm font-semibold text-neutral-700">
+                Final section eyebrow
+              </label>
+              <input
+                type="text"
+                value={draftContent.finalEyebrow}
+                onChange={updateField('finalEyebrow')}
+                className={inputCls}
+              />
+              <FieldError>{validationErrors.finalEyebrow}</FieldError>
             </div>
             <div>
               <label className="mb-1 block text-sm font-semibold text-neutral-700">
@@ -451,6 +652,18 @@ export default function CMSManagement() {
                 className={`${inputCls} resize-none`}
               />
               <FieldError>{validationErrors.aboutText}</FieldError>
+            </div>
+            <div>
+              <label className="mb-1 block text-sm font-semibold text-neutral-700">
+                Final CTA
+              </label>
+              <input
+                type="text"
+                value={draftContent.finalCtaLabel}
+                onChange={updateField('finalCtaLabel')}
+                className={inputCls}
+              />
+              <FieldError>{validationErrors.finalCtaLabel}</FieldError>
             </div>
           </SectionPanel>
 

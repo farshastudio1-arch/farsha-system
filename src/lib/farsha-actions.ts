@@ -63,6 +63,10 @@ function getActionErrorMessage(error: unknown, fallback: string) {
     message.includes('no such column: categories') ||
     message.includes('no such column: measurements') ||
     message.includes('no such column: landing_categories') ||
+    message.includes('no such column: hero_eyebrow') ||
+    message.includes('no such column: primary_cta_label') ||
+    message.includes('no such column: trust_points') ||
+    message.includes('no such column: final_cta_label') ||
     message.includes('no such table: media_assets') ||
     message.includes('no such table: media_albums')
   ) {

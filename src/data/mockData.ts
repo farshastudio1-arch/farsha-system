@@ -27,12 +27,23 @@ export interface KebayaItem {
 }
 
 export interface CMSContent {
+  heroEyebrow: string;
   heroTitle: string;
   heroSubtitle: string;
   heroImageUrl: string;
+  primaryCtaLabel: string;
+  whatsappCtaLabel: string;
+  tiktokCtaLabel: string;
+  heroMetaText: string;
+  reminderLabel: string;
   promoText: string;
+  categoryEyebrow: string;
+  categoryTitle: string;
+  trustPoints: string[];
+  finalEyebrow: string;
   aboutTitle: string;
   aboutText: string;
+  finalCtaLabel: string;
   studioAddress: string;
   studioPhone: string;
   landingCategories: LandingCategoryContent[];
@@ -361,16 +372,31 @@ export const defaultLandingCategories: LandingCategoryContent[] = [
 ];
 
 export const mockCMS: CMSContent = {
+  heroEyebrow: 'Sewa Kebaya & Dress / {location}',
   heroTitle: 'Sewa Kebaya Premium untuk Momen Istimewamu',
   heroSubtitle:
     'Temukan koleksi kebaya modern dan klasik terbaik di Farsha Studio. Pilihan elegan, ukuran lengkap, dan siap membuat penampilanmu memukau.',
   heroImageUrl:
     'https://images.unsplash.com/photo-1583391733956-3750e0ff4e8b?w=1600&auto=format&fit=crop&q=80',
+  primaryCtaLabel: 'LIHAT KATALOG',
+  whatsappCtaLabel: 'Hubungi WhatsApp',
+  tiktokCtaLabel: 'Tiktok Studio',
+  heroMetaText: 'walk in studio / {location}',
+  reminderLabel: 'REMINDER',
   promoText:
     '✨ Dapatkan diskon sewa 10% untuk penyewaan di hari kerja (Senin - Kamis)! Hubungi admin sekarang. ✨',
+  categoryEyebrow: 'Sort by occasion',
+  categoryTitle: 'Pilih momen spesial kamu',
+  trustPoints: [
+    'datang langsung tanpa appointment',
+    'banyak pilihan model',
+    'studio di {location}',
+  ],
+  finalEyebrow: 'full catalog',
   aboutTitle: 'Tentang Farsha Studio',
   aboutText:
     'Farsha Studio adalah destinasi utama penyewaan kebaya premium yang berfokus pada kualitas jahatan, detail payet yang indah, dan kecocokan fitting yang sempurna. Koleksi kami berkisar dari kebaya tradisional klasik hingga desain modern kontemporer untuk wisuda, pernikahan, pertunangan, dan acara formal lainnya. Kami percaya bahwa setiap wanita berhak tampil anggun dan percaya diri di hari spesialnya.',
+  finalCtaLabel: 'LIHAT KATALOG',
   studioAddress: 'Jl. Kebon Jeruk Raya No. 45, Jakarta Barat, DKI Jakarta 11530',
   studioPhone: '+62 812-3456-7890',
   landingCategories: defaultLandingCategories,

@@ -1,0 +1,11 @@
+ALTER TABLE cms_content ADD COLUMN hero_eyebrow TEXT NOT NULL DEFAULT 'Sewa Kebaya & Dress / {location}';
+ALTER TABLE cms_content ADD COLUMN primary_cta_label TEXT NOT NULL DEFAULT 'LIHAT KATALOG';
+ALTER TABLE cms_content ADD COLUMN whatsapp_cta_label TEXT NOT NULL DEFAULT 'Hubungi WhatsApp';
+ALTER TABLE cms_content ADD COLUMN tiktok_cta_label TEXT NOT NULL DEFAULT 'Tiktok Studio';
+ALTER TABLE cms_content ADD COLUMN hero_meta_text TEXT NOT NULL DEFAULT 'walk in studio / {location}';
+ALTER TABLE cms_content ADD COLUMN reminder_label TEXT NOT NULL DEFAULT 'REMINDER';
+ALTER TABLE cms_content ADD COLUMN category_eyebrow TEXT NOT NULL DEFAULT 'Sort by occasion';
+ALTER TABLE cms_content ADD COLUMN category_title TEXT NOT NULL DEFAULT 'Pilih momen spesial kamu';
+ALTER TABLE cms_content ADD COLUMN trust_points TEXT NOT NULL DEFAULT '["datang langsung tanpa appointment","banyak pilihan model","studio di {location}"]';
+ALTER TABLE cms_content ADD COLUMN final_eyebrow TEXT NOT NULL DEFAULT 'full catalog';
+ALTER TABLE cms_content ADD COLUMN final_cta_label TEXT NOT NULL DEFAULT 'LIHAT KATALOG';

@@ -32,12 +32,23 @@ type CatalogRow = {
 };
 
 type CmsRow = {
+  hero_eyebrow?: string | null;
   hero_title: string;
   hero_subtitle: string;
   hero_image_url: string;
+  primary_cta_label?: string | null;
+  whatsapp_cta_label?: string | null;
+  tiktok_cta_label?: string | null;
+  hero_meta_text?: string | null;
+  reminder_label?: string | null;
   promo_text: string;
+  category_eyebrow?: string | null;
+  category_title?: string | null;
+  trust_points?: string | null;
+  final_eyebrow?: string | null;
   about_title: string;
   about_text: string;
+  final_cta_label?: string | null;
   studio_address: string;
   studio_phone: string;
   landing_categories?: string | null;
@@ -142,12 +153,23 @@ function catalogRowToItem(row: CatalogRow, index: number): KebayaItem | null {
 
 function cmsRowToContent(row: CmsRow): CMSContent {
   return normalizeCmsContent({
+    heroEyebrow: row.hero_eyebrow ?? undefined,
     heroTitle: row.hero_title,
     heroSubtitle: row.hero_subtitle,
     heroImageUrl: row.hero_image_url,
+    primaryCtaLabel: row.primary_cta_label ?? undefined,
+    whatsappCtaLabel: row.whatsapp_cta_label ?? undefined,
+    tiktokCtaLabel: row.tiktok_cta_label ?? undefined,
+    heroMetaText: row.hero_meta_text ?? undefined,
+    reminderLabel: row.reminder_label ?? undefined,
     promoText: row.promo_text,
+    categoryEyebrow: row.category_eyebrow ?? undefined,
+    categoryTitle: row.category_title ?? undefined,
+    trustPoints: parseJson<CMSContent['trustPoints']>(row.trust_points, mockCMS.trustPoints),
+    finalEyebrow: row.final_eyebrow ?? undefined,
     aboutTitle: row.about_title,
     aboutText: row.about_text,
+    finalCtaLabel: row.final_cta_label ?? undefined,
     studioAddress: row.studio_address,
     studioPhone: row.studio_phone,
     landingCategories: parseJson<CMSContent['landingCategories']>(row.landing_categories, []),
@@ -428,8 +450,10 @@ export async function getCmsContent(): Promise<CMSContent> {
     const db = await getD1Database();
     const row = await db
       .prepare(
-        `SELECT hero_title, hero_subtitle, hero_image_url, promo_text, about_title,
-          about_text, studio_address, studio_phone, landing_categories
+        `SELECT hero_eyebrow, hero_title, hero_subtitle, hero_image_url, primary_cta_label,
+          whatsapp_cta_label, tiktok_cta_label, hero_meta_text, reminder_label, promo_text,
+          category_eyebrow, category_title, trust_points, final_eyebrow, about_title,
+          about_text, final_cta_label, studio_address, studio_phone, landing_categories
          FROM cms_content
          WHERE id = 'main'
          LIMIT 1`,
@@ -449,29 +473,53 @@ export async function updateCmsContent(content: CMSContent): Promise<void> {
   await db
     .prepare(
       `INSERT INTO cms_content (
-        id, hero_title, hero_subtitle, hero_image_url, promo_text, about_title,
-        about_text, studio_address, studio_phone, landing_categories
+        id, hero_eyebrow, hero_title, hero_subtitle, hero_image_url, primary_cta_label,
+        whatsapp_cta_label, tiktok_cta_label, hero_meta_text, reminder_label, promo_text,
+        category_eyebrow, category_title, trust_points, final_eyebrow, about_title,
+        about_text, final_cta_label, studio_address, studio_phone, landing_categories
       )
-      VALUES ('main', ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      VALUES ('main', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       ON CONFLICT(id) DO UPDATE SET
+        hero_eyebrow = excluded.hero_eyebrow,
         hero_title = excluded.hero_title,
         hero_subtitle = excluded.hero_subtitle,
         hero_image_url = excluded.hero_image_url,
+        primary_cta_label = excluded.primary_cta_label,
+        whatsapp_cta_label = excluded.whatsapp_cta_label,
+        tiktok_cta_label = excluded.tiktok_cta_label,
+        hero_meta_text = excluded.hero_meta_text,
+        reminder_label = excluded.reminder_label,
         promo_text = excluded.promo_text,
+        category_eyebrow = excluded.category_eyebrow,
+        category_title = excluded.category_title,
+        trust_points = excluded.trust_points,
+        final_eyebrow = excluded.final_eyebrow,
         about_title = excluded.about_title,
         about_text = excluded.about_text,
+        final_cta_label = excluded.final_cta_label,
         studio_address = excluded.studio_address,
         studio_phone = excluded.studio_phone,
         landing_categories = excluded.landing_categories,
         updated_at = CURRENT_TIMESTAMP`,
     )
     .bind(
+      normalized.heroEyebrow,
       normalized.heroTitle,
       normalized.heroSubtitle,
       normalized.heroImageUrl,
+      normalized.primaryCtaLabel,
+      normalized.whatsappCtaLabel,
+      normalized.tiktokCtaLabel,
+      normalized.heroMetaText,
+      normalized.reminderLabel,
       normalized.promoText,
+      normalized.categoryEyebrow,
+      normalized.categoryTitle,
+      JSON.stringify(normalized.trustPoints),
+      normalized.finalEyebrow,
       normalized.aboutTitle,
       normalized.aboutText,
+      normalized.finalCtaLabel,
       normalized.studioAddress,
       normalized.studioPhone,
       JSON.stringify(normalized.landingCategories),

@@ -2,12 +2,13 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Images, LayoutDashboard, Megaphone, ShoppingBag, Settings } from 'lucide-react';
+import { FileText, Images, LayoutDashboard, Megaphone, ShoppingBag, Settings } from 'lucide-react';
 import LogoutButton from '@/components/admin/LogoutButton';
 
 const navItems = [
   { name: 'Dashboard', href: '/admin', icon: LayoutDashboard },
   { name: 'Catalog', href: '/admin/catalog', icon: ShoppingBag },
+  { name: 'CMS', href: '/admin/cms', icon: FileText },
   { name: 'Media', href: '/admin/media', icon: Images },
   { name: 'Marketing', href: '/admin/marketing', icon: Megaphone },
   { name: 'Settings', href: '/admin/settings', icon: Settings },
