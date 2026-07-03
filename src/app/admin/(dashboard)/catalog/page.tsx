@@ -404,6 +404,8 @@ export default function CatalogManagement() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [editingItem, setEditingItem] = useState<KebayaItem | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<KebayaItem | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
   const [form, setForm] = useState<CatalogFormState>(emptyForm);
   const [inventoryCodeDate, setInventoryCodeDate] = useState(() => new Date());
   const [formError, setFormError] = useState('');
@@ -756,15 +758,36 @@ export default function CatalogManagement() {
     setIsSaving(false);
   };
 
-  const deleteItem = async (itemId: string) => {
-    const result = await deleteCatalogItemAction(itemId);
+  const requestDeleteItem = (item: KebayaItem) => {
+    setCatalogError('');
+    setDeleteTarget(item);
+  };
+
+  const closeDeleteConfirm = () => {
+    if (isDeleting) {
+      return;
+    }
+
+    setDeleteTarget(null);
+  };
+
+  const confirmDeleteItem = async () => {
+    if (!deleteTarget || isDeleting) {
+      return;
+    }
+
+    setIsDeleting(true);
+    const result = await deleteCatalogItemAction(deleteTarget.id);
 
     if (result.ok) {
       writeSavedCatalogItems(result.data);
       setCatalogError('');
+      setDeleteTarget(null);
     } else {
       setCatalogError(result.error);
     }
+
+    setIsDeleting(false);
   };
 
   const resetFilters = () => {
@@ -1088,7 +1111,7 @@ export default function CatalogManagement() {
                         </button>
                         <button
                           type="button"
-                          onClick={() => deleteItem(item.id)}
+                          onClick={() => requestDeleteItem(item)}
                           aria-label={`Delete ${item.name}`}
                           className="p-2 text-neutral-400 transition-colors hover:bg-red-50 hover:text-red-600"
                         >
@@ -1183,7 +1206,7 @@ export default function CatalogManagement() {
                   </button>
                   <button
                     type="button"
-                    onClick={() => deleteItem(item.id)}
+                    onClick={() => requestDeleteItem(item)}
                     className="inline-flex items-center justify-center gap-2 border border-red-200 bg-red-50 px-3 py-2.5 text-sm font-semibold text-red-700 transition-colors hover:bg-red-100"
                   >
                     <Trash2 className="h-4 w-4" />
@@ -1205,6 +1228,52 @@ export default function CatalogManagement() {
           </div>
         )}
       </section>
+
+      {deleteTarget && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm">
+          <div className="w-full max-w-md border border-red-100 bg-white p-5 shadow-2xl">
+            <div className="flex items-start gap-3">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center bg-red-50 text-red-600">
+                <AlertTriangle className="h-5 w-5" />
+              </div>
+              <div>
+                <p className="font-mono text-[10px] font-bold uppercase tracking-widest text-red-500">
+                  Confirm delete
+                </p>
+                <h2 className="mt-1 text-lg font-semibold text-neutral-950">
+                  Delete {deleteTarget.name}?
+                </h2>
+                <p className="mt-2 text-sm leading-relaxed text-neutral-500">
+                  This removes the kebaya item from the catalog. Use this confirmation to avoid
+                  accidental trash-button presses.
+                </p>
+                <p className="mt-3 font-mono text-xs font-semibold text-neutral-500">
+                  {deleteTarget.code} / {deleteTarget.color} / Fit {deleteTarget.size}
+                </p>
+              </div>
+            </div>
+
+            <div className="mt-5 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+              <button
+                type="button"
+                onClick={closeDeleteConfirm}
+                disabled={isDeleting}
+                className="border border-neutral-200 bg-white px-4 py-2.5 text-sm font-semibold text-neutral-700 transition-colors hover:bg-neutral-50 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={confirmDeleteItem}
+                disabled={isDeleting}
+                className="bg-red-600 px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {isDeleting ? 'Deleting...' : 'Delete item'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {isModalOpen && (
         <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 p-0 backdrop-blur-sm sm:items-center sm:p-4">
