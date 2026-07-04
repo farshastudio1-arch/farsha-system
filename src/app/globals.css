@@ -385,6 +385,10 @@ select {
     animation: landing-visit-blink-closed 2.5s ease-in-out infinite;
   }
 
+  .product-detail-scroll-cue {
+    animation: product-detail-scroll-cue 1.8s ease-in-out infinite;
+  }
+
   @keyframes landing-visit-blink {
     0%,
     100% {
@@ -511,12 +515,26 @@ select {
     }
   }
 
+  @keyframes product-detail-scroll-cue {
+    0%,
+    100% {
+      opacity: 0.84;
+      transform: translateY(0);
+    }
+
+    50% {
+      opacity: 1;
+      transform: translateY(4px);
+    }
+  }
+
   @media (prefers-reduced-motion: reduce) {
     .landing-reminder-strip::before,
     .landing-reminder-strip::after,
     .landing-reminder-label,
     .landing-reminder-label [aria-hidden='true'],
-    .landing-reminder-quote {
+    .landing-reminder-quote,
+    .product-detail-scroll-cue {
       animation: none;
     }
   }

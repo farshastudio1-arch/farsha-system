@@ -19,8 +19,11 @@ export default function ProductDetailModal({
     productId: string;
     index: number;
   } | null>(null);
+  const [hasScrolledDetails, setHasScrolledDetails] = useState(false);
 
   const mobileCarouselRef = useRef<HTMLDivElement>(null);
+  const detailScrollRef = useRef<HTMLDivElement>(null);
+  const productId = product?.id;
 
   // Lock body scroll when modal is open
   useEffect(() => {
@@ -33,6 +36,17 @@ export default function ProductDetailModal({
       document.body.style.overflow = 'unset';
     };
   }, [product]);
+
+  useEffect(() => {
+    if (!productId) return;
+
+    const resetFrame = window.requestAnimationFrame(() => {
+      setHasScrolledDetails(false);
+      detailScrollRef.current?.scrollTo({ top: 0, behavior: 'auto' });
+    });
+
+    return () => window.cancelAnimationFrame(resetFrame);
+  }, [productId]);
 
   const selectedImageIndex =
     activeImageSelection && activeImageSelection.productId === product?.id
@@ -61,6 +75,12 @@ export default function ProductDetailModal({
     const index = Math.round(container.scrollLeft / container.clientWidth);
     if (index !== activeImgIndex && product) {
       setActiveImageSelection({ productId: product.id, index });
+    }
+  };
+
+  const handleDetailScroll = (e: React.UIEvent<HTMLDivElement>) => {
+    if (!hasScrolledDetails && e.currentTarget.scrollTop > 12) {
+      setHasScrolledDetails(true);
     }
   };
 
@@ -184,7 +204,11 @@ export default function ProductDetailModal({
         </button>
 
         {/* Scrollable container wrapping both panels together */}
-        <div className="flex-1 overflow-y-auto flex flex-col md:flex-row min-h-0 no-scrollbar">
+        <div
+          ref={detailScrollRef}
+          onScroll={handleDetailScroll}
+          className="flex-1 overflow-y-auto flex flex-col md:flex-row min-h-0 no-scrollbar"
+        >
           {/* LEFT PANEL: Media Gallery */}
           <div className="theme-soft-surface theme-border w-full md:w-1/2 shrink-0 flex flex-col p-3 sm:p-4 md:p-6 relative justify-center border-b md:border-b-0 md:border-r">
             {/* Desktop Visual */}
@@ -229,7 +253,7 @@ export default function ProductDetailModal({
 
               {/* Mobile Carousel Dot Indicators */}
               {product.imageUrls.length > 1 && (
-                <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex items-center gap-1.5 bg-[color-mix(in_srgb,var(--theme-text)_60%,transparent)] backdrop-blur-xs px-2.5 py-1 rounded-full z-10">
+                <div className="absolute bottom-4 left-4 flex items-center gap-1.5 bg-[color-mix(in_srgb,var(--theme-text)_60%,transparent)] backdrop-blur-xs px-2.5 py-1 rounded-full z-10">
                   {product.imageUrls.map((_, index) => (
                     <button
                       key={index}
@@ -251,6 +275,31 @@ export default function ProductDetailModal({
                     />
                   ))}
                 </div>
+              )}
+
+              {!hasScrolledDetails && (
+                <>
+                  <div
+                    aria-hidden="true"
+                    className="pointer-events-none absolute inset-x-0 bottom-0 z-[9] h-24 bg-gradient-to-t from-black/38 via-black/12 to-transparent"
+                  />
+                  <div
+                    aria-hidden="true"
+                    className="product-detail-scroll-cue pointer-events-none absolute bottom-12 right-4 z-[11] flex flex-col items-end gap-1 rounded-full bg-[color-mix(in_srgb,var(--theme-text)_72%,transparent)] px-3 py-2 text-[var(--theme-surface)] shadow-sm backdrop-blur-xs"
+                  >
+                    <span className="whitespace-nowrap text-[10px] font-semibold uppercase tracking-[0.16em]">
+                      Geser bawah untuk detail
+                    </span>
+                    <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth="2.4"
+                        d="M6 9l6 6 6-6"
+                      />
+                    </svg>
+                  </div>
+                </>
               )}
             </div>
 
@@ -292,7 +341,7 @@ export default function ProductDetailModal({
                   </span>
                 </div>
 
-                <h2 className="font-serif text-2xl sm:text-3xl text-[var(--theme-text)] font-semibold leading-tight">
+                <h2 className="font-serif text-xl sm:text-2xl md:text-3xl text-[var(--theme-text)] font-semibold leading-tight">
                   {product.name}
                 </h2>
               </div>
