@@ -29,17 +29,17 @@ export default async function Home() {
         <section className="landing-hero-satin relative overflow-hidden">
           <div className="relative z-10 mx-auto max-w-7xl px-4 py-7 sm:px-6 sm:py-9 lg:px-8">
             <div className="landing-hero-grid">
-              <div className="theme-border border-b pb-6 lg:border-b-0 lg:border-r lg:pb-0 lg:pr-8">
+              <div className="theme-border border-b pb-6 lg:border-b-0 lg:border-r lg:pb-0 lg:pr-8 md:text-center lg:text-left">
                 <span className="theme-muted-strong font-mono text-xs font-bold uppercase tracking-widest">
                   {applyLocation(cmsContent.heroEyebrow)}
                 </span>
-                <h1 className="mt-3 max-w-xl font-serif text-4xl font-semibold leading-tight tracking-tight text-[var(--theme-text)] sm:text-5xl">
+                <h1 className="mt-3 max-w-xl font-serif text-4xl font-semibold leading-tight tracking-tight text-[var(--theme-text)] sm:text-5xl md:mx-auto lg:mx-0">
                   {cmsContent.heroTitle}
                 </h1>
-                <p className="theme-muted-strong mt-4 max-w-md text-sm leading-relaxed sm:text-base">
+                <p className="theme-muted-strong mt-4 max-w-md text-sm leading-relaxed sm:text-base md:mx-auto lg:mx-0">
                   {cmsContent.heroSubtitle}
                 </p>
-                <div className="mt-6 flex flex-col gap-2.5 w-full sm:max-w-[280px]">
+                <div className="mt-6 flex flex-col gap-2.5 w-full sm:max-w-[420px] md:mx-auto lg:mx-0">
                   <Link
                     href="/catalog?view=all"
                     className="theme-primary-action flex items-center justify-center gap-3 px-6 py-4 text-xs font-semibold uppercase tracking-widest transition-all w-full text-center"

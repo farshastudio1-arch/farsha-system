@@ -33,11 +33,11 @@ export function LandingPageSkeleton() {
         <section className="landing-hero-satin relative overflow-hidden">
           <div className="relative z-10 mx-auto max-w-7xl px-4 py-7 sm:px-6 sm:py-9 lg:px-8">
             <div className="landing-hero-grid">
-              <div className="theme-border border-b pb-6 lg:border-b-0 lg:border-r lg:pb-0 lg:pr-8">
-                <SkeletonBlock className="h-3 w-40" />
-                <SkeletonBlock className="mt-4 h-10 w-full max-w-lg sm:h-12" />
-                <SkeletonBlock className="mt-3 h-10 w-5/6 max-w-md" />
-                <div className="mt-6 flex w-full flex-col gap-2.5 sm:max-w-[280px]">
+              <div className="theme-border border-b pb-6 lg:border-b-0 lg:border-r lg:pb-0 lg:pr-8 md:text-center lg:text-left">
+                <SkeletonBlock className="h-3 w-40 md:mx-auto lg:mx-0" />
+                <SkeletonBlock className="mt-4 h-10 w-full max-w-lg sm:h-12 md:mx-auto lg:mx-0" />
+                <SkeletonBlock className="mt-3 h-10 w-5/6 max-w-md md:mx-auto lg:mx-0" />
+                <div className="mt-6 flex w-full flex-col gap-2.5 sm:max-w-[420px] md:mx-auto lg:mx-0">
                   <SkeletonBlock className="h-12 w-full" />
                   <SkeletonBlock className="h-12 w-full" />
                   <SkeletonBlock className="h-12 w-full" />
