@@ -43,6 +43,7 @@ import { addPreviewDays, previewMaintenanceBlockDays } from '@/lib/booking-previ
 type PosTab = 'rent' | 'return' | 'maintenance';
 type CatalogStatusFilter = 'all' | 'available' | 'rented' | 'maintenance';
 type PendingRentalAction = 'print' | 'cancel';
+type PendingPosAction = 'return' | 'maintenance';
 
 const extraReturnDayPenalty = 100000;
 const defaultSecurityDeposit = 100000;
@@ -150,6 +151,7 @@ export default function PosWorkspaceClient({ initialLedger }: PosWorkspaceClient
   const [rentalNotes, setRentalNotes] = useState('');
   const [paymentMethod, setPaymentMethod] = useState<PosPaymentMethod>('cash');
   const [pendingRentalAction, setPendingRentalAction] = useState<PendingRentalAction | null>(null);
+  const [pendingPosAction, setPendingPosAction] = useState<PendingPosAction | null>(null);
 
   // Flow 2: Return Form States
   const [returnDate, setReturnDate] = useState(new Date().toISOString().slice(0, 10));
@@ -457,6 +459,7 @@ export default function PosWorkspaceClient({ initialLedger }: PosWorkspaceClient
     setPenaltyAmount('0');
     setReturnAdjustmentAmount('0');
     setStatusMessage('');
+    setPendingPosAction(null);
   };
 
   const handleCompleteMaintenanceSubmit = async (holdId: string) => {
@@ -467,6 +470,7 @@ export default function PosWorkspaceClient({ initialLedger }: PosWorkspaceClient
     setMaintenanceNote('');
     setSelectedItemId('');
     setSelectedMaintenanceId('');
+    setPendingPosAction(null);
   };
 
   const triggerInvoiceModal = (trx: PosTransaction) => {
@@ -1189,7 +1193,7 @@ export default function PosWorkspaceClient({ initialLedger }: PosWorkspaceClient
 
                 <div className="flex flex-col gap-2">
                   <button
-                    onClick={handleReturnSubmit}
+                    onClick={() => setPendingPosAction('return')}
                     className="w-full bg-neutral-900 hover:bg-neutral-800 text-white py-3 text-xs font-semibold uppercase tracking-wider flex items-center justify-center gap-2"
                   >
                     <CheckCircle2 className="h-4 w-4" /> Proses Pengembalian
@@ -1259,7 +1263,7 @@ export default function PosWorkspaceClient({ initialLedger }: PosWorkspaceClient
                   </label>
 
                   <button
-                    onClick={() => handleCompleteMaintenanceSubmit(selectedMaintenance.id)}
+                    onClick={() => setPendingPosAction('maintenance')}
                     className="w-full bg-neutral-900 hover:bg-neutral-800 text-white py-3 text-xs font-semibold uppercase tracking-wider flex items-center justify-center gap-2"
                   >
                     <CheckCircle2 className="h-4 w-4" /> Tandai Selesai Cuci & Siap Sewa
@@ -1356,6 +1360,102 @@ export default function PosWorkspaceClient({ initialLedger }: PosWorkspaceClient
                 }`}
               >
                 {pendingRentalAction === 'print' ? 'Ya, Cetak Sewa' : 'Ya, Batal'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {pendingPosAction && (selectedTransaction || selectedMaintenance) && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="w-full max-w-md border border-neutral-200 bg-white p-5 shadow-xl">
+            <div className="flex items-start justify-between gap-4 border-b border-neutral-100 pb-4">
+              <div>
+                <p className="font-mono text-[10px] font-bold uppercase tracking-widest text-neutral-400">
+                  Konfirmasi
+                </p>
+                <h3 className="mt-1 font-serif text-xl font-semibold text-neutral-950">
+                  {pendingPosAction === 'return'
+                    ? 'Proses pengembalian?'
+                    : 'Tandai cuci selesai?'}
+                </h3>
+              </div>
+              <button
+                onClick={() => setPendingPosAction(null)}
+                className="p-1 text-neutral-400 hover:text-neutral-900"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            {pendingPosAction === 'return' && selectedTransaction ? (
+              <div className="space-y-3 py-4 text-sm text-neutral-600">
+                <p>
+                  Transaksi <strong className="text-neutral-950">{selectedTransaction.transactionNumber}</strong> akan
+                  ditutup dan item masuk status cuci/laundry.
+                </p>
+                <div className="border border-neutral-200 bg-neutral-50 p-3 text-xs">
+                  <div className="flex justify-between">
+                    <span>Kebaya</span>
+                    <span className="font-semibold text-neutral-950">{selectedTransaction.itemName}</span>
+                  </div>
+                  <div className="mt-1 flex justify-between">
+                    <span>Tanggal kembali</span>
+                    <span className="font-mono text-neutral-950">{formatDate(returnDate)}</span>
+                  </div>
+                  <div className="mt-1 flex justify-between">
+                    <span>Deposit dikembalikan</span>
+                    <span className="text-emerald-700">-{formatCurrency(Number(refundAmount) || 0)}</span>
+                  </div>
+                  <div className="mt-1 flex justify-between">
+                    <span>Denda/adjustment</span>
+                    <span className="text-red-600">
+                      +{formatCurrency((Number(penaltyAmount) || 0) + (Number(returnAdjustmentAmount) || 0))}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            ) : selectedMaintenance ? (
+              <div className="space-y-3 py-4 text-sm text-neutral-600">
+                <p>
+                  <strong className="text-neutral-950">{selectedMaintenance.itemName}</strong> akan ditandai selesai
+                  cuci dan kembali tersedia untuk disewa.
+                </p>
+                <div className="border border-neutral-200 bg-neutral-50 p-3 text-xs">
+                  <div className="flex justify-between">
+                    <span>Kode</span>
+                    <span className="font-mono text-neutral-950">{selectedMaintenance.itemCode}</span>
+                  </div>
+                  <div className="mt-1 flex justify-between">
+                    <span>Maintenance</span>
+                    <span className="font-mono text-neutral-950">{selectedMaintenance.maintenanceNumber}</span>
+                  </div>
+                  <div className="mt-1 flex justify-between">
+                    <span>Mulai cuci</span>
+                    <span>{formatDate(selectedMaintenance.openedAt)}</span>
+                  </div>
+                </div>
+              </div>
+            ) : null}
+
+            <div className="flex gap-2">
+              <button
+                onClick={() => setPendingPosAction(null)}
+                className="flex-1 border border-neutral-300 bg-white px-4 py-3 text-xs font-semibold uppercase tracking-wider text-neutral-700 hover:bg-neutral-50"
+              >
+                Kembali
+              </button>
+              <button
+                onClick={() => {
+                  if (pendingPosAction === 'return') {
+                    void handleReturnSubmit();
+                  } else if (selectedMaintenance) {
+                    void handleCompleteMaintenanceSubmit(selectedMaintenance.id);
+                  }
+                }}
+                className="flex-1 bg-neutral-900 px-4 py-3 text-xs font-semibold uppercase tracking-wider text-white hover:bg-neutral-800"
+              >
+                {pendingPosAction === 'return' ? 'Ya, Proses' : 'Ya, Selesai'}
               </button>
             </div>
           </div>
