@@ -43,7 +43,8 @@ import {
   matchesLandingCategory,
   occasionCategories,
 } from '@/lib/landing-categories';
-import { projectCatalogItems, useSavedPosLedger, writeSavedPosLedger } from '@/lib/pos-ledger';
+import { projectCatalogItems, writeSavedPosLedger } from '@/lib/pos-ledger';
+import { useSavedPosLedger } from '@/lib/pos-ledger-client';
 
 type CatalogFormState = {
   name: string;

@@ -22,11 +22,11 @@ import Link from 'next/link';
 
 import {
   getLedgerMetrics,
-  useSavedPosLedger,
   type PosLedgerState,
   type PosPaymentMethod,
   type PosTransaction,
 } from '@/lib/pos-ledger';
+import { useSavedPosLedger } from '@/lib/pos-ledger-client';
 
 type DashboardLogTab = 'receipts' | 'transactions';
 

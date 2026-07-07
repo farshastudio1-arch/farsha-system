@@ -1,13 +1,4 @@
-'use client';
-
-import { useEffect, useMemo, useSyncExternalStore } from 'react';
-
 import { type KebayaItem } from '@/data/mockData';
-import {
-  dispatchBrowserEvent,
-  readLocalStorageItem,
-  writeLocalStorageItem,
-} from '@/lib/browser-storage';
 
 export type PosTransactionKind = 'rental' | 'sale';
 export type PosTransactionStatus = 'open' | 'closed' | 'void';
@@ -223,6 +214,43 @@ function normalizeSignedNumber(value: unknown, fallback = 0) {
 
 function normalizeText(value: unknown, fallback = '') {
   return typeof value === 'string' ? value.trim() : fallback;
+}
+
+function readBrowserStorageItem(key: string) {
+  if (typeof window === 'undefined') {
+    return null;
+  }
+
+  try {
+    return window.localStorage.getItem(key);
+  } catch {
+    return null;
+  }
+}
+
+function writeBrowserStorageItem(key: string, value: string) {
+  if (typeof window === 'undefined') {
+    return false;
+  }
+
+  try {
+    window.localStorage.setItem(key, value);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function dispatchPosLedgerEvent() {
+  if (typeof window === 'undefined') {
+    return;
+  }
+
+  try {
+    window.dispatchEvent(new Event(storageChangeEvent));
+  } catch {
+    // POS should keep working even when custom events are blocked.
+  }
 }
 
 function normalizeTransactionStatus(value: unknown): PosTransactionStatus {
@@ -500,7 +528,7 @@ function readLedgerSnapshot() {
     return serverLedgerSnapshot;
   }
 
-  const storedValue = readLocalStorageItem(storageKey);
+  const storedValue = readBrowserStorageItem(storageKey);
 
   if (storedValue === cachedStoredValue && cachedLedger) {
     return cachedLedger;
@@ -524,17 +552,17 @@ function readLedgerSnapshot() {
 
 function writeLedgerSnapshot(nextLedger: PosLedgerState) {
   const serialized = JSON.stringify(nextLedger);
-  writeLocalStorageItem(storageKey, serialized);
+  writeBrowserStorageItem(storageKey, serialized);
   cachedStoredValue = serialized;
   cachedLedger = nextLedger;
-  dispatchBrowserEvent(storageChangeEvent);
+  dispatchPosLedgerEvent();
 }
 
 export function writeSavedPosLedger(nextLedger: PosLedgerState) {
   writeLedgerSnapshot(normalizePosLedger(nextLedger));
 }
 
-function subscribeToLedger(onStoreChange: () => void) {
+export function subscribeToPosLedger(onStoreChange: () => void) {
   if (typeof window === 'undefined') {
     return () => {};
   }
@@ -548,16 +576,12 @@ function subscribeToLedger(onStoreChange: () => void) {
   };
 }
 
-export function useSavedPosLedger(initialLedger?: PosLedgerState) {
-  const serverSnapshot = initialLedger ? normalizePosLedger(initialLedger) : serverLedgerSnapshot;
+export function readSavedPosLedgerSnapshot() {
+  return readLedgerSnapshot();
+}
 
-  useEffect(() => {
-    if (initialLedger) {
-      writeSavedPosLedger(initialLedger);
-    }
-  }, [initialLedger]);
-
-  return useSyncExternalStore(subscribeToLedger, readLedgerSnapshot, () => serverSnapshot);
+export function getServerPosLedgerSnapshot(initialLedger?: PosLedgerState) {
+  return initialLedger ? normalizePosLedger(initialLedger) : serverLedgerSnapshot;
 }
 
 function getTransactionCharge(transaction: PosTransaction) {
@@ -1266,10 +1290,4 @@ export function applyAvailabilityProjection(
 export function projectCatalogItems(items: KebayaItem[], ledger: PosLedgerState) {
   const projections = deriveAvailabilityProjection(items, ledger);
   return items.map((item) => applyAvailabilityProjection(item, projections[item.id]));
-}
-
-export function useAvailabilityProjection(items: KebayaItem[]) {
-  const ledger = useSavedPosLedger();
-
-  return useMemo(() => deriveAvailabilityProjection(items, ledger), [items, ledger]);
 }

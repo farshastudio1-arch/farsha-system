@@ -15,7 +15,7 @@ import {
   readStoredPreviewBookings,
 } from '@/lib/booking-preview';
 import { matchesLandingCategory, occasionCategories } from '@/lib/landing-categories';
-import { useSavedPosLedger } from '@/lib/pos-ledger';
+import { useSavedPosLedger } from '@/lib/pos-ledger-client';
 
 interface ProductDetailModalProps {
   product: KebayaItem | null;

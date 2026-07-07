@@ -24,11 +24,11 @@ import { landingCategories, matchesLandingCategory } from '@/lib/landing-categor
 import { useSavedCatalogItems, writeSavedCatalogItems } from '@/lib/catalog-storage';
 import { useSavedSiteSettings, writeSavedSiteSettings } from '@/lib/site-settings';
 import {
-  useSavedPosLedger,
   writeSavedPosLedger,
   projectCatalogItems,
   getOverdueTransactions,
 } from '@/lib/pos-ledger';
+import { useSavedPosLedger } from '@/lib/pos-ledger-client';
 
 type StatusTone = 'good' | 'warning' | 'neutral';
 

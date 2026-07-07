@@ -32,12 +32,12 @@ import {
   deriveAvailabilityProjection,
   getOpenMaintenanceHolds,
   getOverdueTransactions,
-  useSavedPosLedger,
   writeSavedPosLedger,
   type PosLedgerState,
   type PosPaymentMethod,
   type PosTransaction,
 } from '@/lib/pos-ledger';
+import { useSavedPosLedger } from '@/lib/pos-ledger-client';
 import { addPreviewDays, previewMaintenanceBlockDays } from '@/lib/booking-preview';
 
 type PosTab = 'rent' | 'return' | 'maintenance';
