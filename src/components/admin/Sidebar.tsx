@@ -2,7 +2,15 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { FileText, Images, LayoutDashboard, Megaphone, ShoppingBag, Settings } from 'lucide-react';
+import {
+  FileText,
+  Images,
+  LayoutDashboard,
+  Megaphone,
+  ShoppingBag,
+  Sparkles,
+  Settings,
+} from 'lucide-react';
 import LogoutButton from '@/components/admin/LogoutButton';
 
 const navItems = [
@@ -11,6 +19,7 @@ const navItems = [
   { name: 'CMS', href: '/admin/cms', icon: FileText },
   { name: 'Media', href: '/admin/media', icon: Images },
   { name: 'Marketing', href: '/admin/marketing', icon: Megaphone },
+  { name: 'Name Generator', href: '/admin/name-generator', icon: Sparkles },
   { name: 'Settings', href: '/admin/settings', icon: Settings },
 ];
 

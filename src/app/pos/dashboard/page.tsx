@@ -3,10 +3,8 @@
 import { useMemo, useState } from 'react';
 import {
   AlertTriangle,
-  BadgeDollarSign,
   CalendarCheck,
   Clock3,
-  FileText,
   Filter,
   History,
   Receipt,
@@ -19,13 +17,10 @@ import {
   Store,
   MapPin,
   Phone,
-  BarChart3,
 } from 'lucide-react';
 import Link from 'next/link';
 
-import { useSavedCatalogItems } from '@/lib/catalog-storage';
 import {
-  deriveAvailabilityProjection,
   getLedgerMetrics,
   useSavedPosLedger,
   type PosPaymentMethod,
@@ -67,14 +62,9 @@ function paymentMethodLabel(value: PosPaymentMethod) {
 }
 
 export default function PosDashboardPage() {
-  const catalogItems = useSavedCatalogItems();
   const ledger = useSavedPosLedger();
 
-  // Metrics and projections
-  const projections = useMemo(
-    () => deriveAvailabilityProjection(catalogItems, ledger),
-    [catalogItems, ledger]
-  );
+  // Metrics
   const metrics = useMemo(() => getLedgerMetrics(ledger), [ledger]);
 
   // Tab & Selection States
@@ -281,6 +271,7 @@ export default function PosDashboardPage() {
             <p className="text-sm font-semibold text-red-600">{formatCurrency(metrics.paymentOut)}</p>
           </div>
         </div>
+
       </section>
 
       {/* Main split dashboard view */}

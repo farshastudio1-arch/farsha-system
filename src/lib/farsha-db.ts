@@ -171,6 +171,48 @@ type MediaAssetRow = {
   updated_at: string;
 };
 
+export type NameGeneratorTableKey = 'table_1' | 'table_2';
+
+export type NameGeneratorPoolEntry = {
+  id: string;
+  tableKey: NameGeneratorTableKey;
+  value: string;
+  normalizedValue: string;
+  usageCount: number;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type NameGeneratorUsedName = {
+  id: string;
+  name: string;
+  normalizedName: string;
+  source: 'catalog' | 'manual';
+  sourceId: string | null;
+  createdAt: string;
+  updatedAt: string;
+};
+
+type NameGeneratorPoolEntryRow = {
+  id: string;
+  table_key: NameGeneratorTableKey;
+  value: string;
+  normalized_value: string;
+  usage_count?: number | null;
+  created_at: string;
+  updated_at: string;
+};
+
+type NameGeneratorUsedNameRow = {
+  id: string;
+  name: string;
+  normalized_name: string;
+  source: 'catalog' | 'manual';
+  source_id: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
 function parseJson<T>(value: string | null | undefined, fallback: T): T {
   if (!value) {
     return fallback;
@@ -391,6 +433,53 @@ function mediaAssetRowToAsset(row: MediaAssetRow): MediaAsset {
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
+}
+
+export function normalizeGeneratedNamePart(value: string) {
+  return value.trim().replace(/\s+/g, ' ');
+}
+
+export function normalizeGeneratedName(value: string) {
+  return normalizeGeneratedNamePart(value).toLowerCase();
+}
+
+function nameGeneratorPoolEntryRowToEntry(row: NameGeneratorPoolEntryRow): NameGeneratorPoolEntry {
+  return {
+    id: row.id,
+    tableKey: row.table_key,
+    value: row.value,
+    normalizedValue: row.normalized_value,
+    usageCount: row.usage_count ?? 0,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+  };
+}
+
+function nameGeneratorUsedNameRowToName(row: NameGeneratorUsedNameRow): NameGeneratorUsedName {
+  return {
+    id: row.id,
+    name: row.name,
+    normalizedName: row.normalized_name,
+    source: row.source,
+    sourceId: row.source_id,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+  };
+}
+
+function getNameGeneratorPoolEntryUsageCount(
+  entry: NameGeneratorPoolEntry,
+  usedNames: NameGeneratorUsedName[],
+) {
+  if (entry.tableKey === 'table_1') {
+    return usedNames.filter((usedName) =>
+      usedName.normalizedName.startsWith(`${entry.normalizedValue} `),
+    ).length;
+  }
+
+  return usedNames.filter((usedName) =>
+    usedName.normalizedName.endsWith(` ${entry.normalizedValue}`),
+  ).length;
 }
 
 function isSchemaMissing(error: unknown, tableName: string) {
@@ -1049,6 +1138,220 @@ export async function updateMediaAssetMetadata(input: MediaAssetUpdate): Promise
 export async function deleteMediaAssetRecord(assetId: string): Promise<void> {
   const db = await getD1Database();
   await db.prepare('DELETE FROM media_assets WHERE id = ?').bind(assetId).run();
+}
+
+export async function listNameGeneratorPoolEntries(): Promise<NameGeneratorPoolEntry[]> {
+  try {
+    const db = await getD1Database();
+    const result = await db
+      .prepare(
+        `SELECT id, table_key, value, normalized_value, created_at, updated_at
+         FROM name_generator_pool_entries
+         ORDER BY table_key ASC, value COLLATE NOCASE ASC`,
+      )
+      .all<NameGeneratorPoolEntryRow>();
+
+    const usedNames = await listNameGeneratorUsedNames();
+    const entries = result.results.map(nameGeneratorPoolEntryRowToEntry);
+
+    return entries.map((entry) => ({
+      ...entry,
+      usageCount: getNameGeneratorPoolEntryUsageCount(entry, usedNames),
+    }));
+  } catch (error) {
+    if (isSchemaMissing(error, 'name_generator_pool_entries')) {
+      return [];
+    }
+
+    throw error;
+  }
+}
+
+export async function upsertNameGeneratorPoolEntry(input: {
+  id?: string;
+  tableKey: NameGeneratorTableKey;
+  value: string;
+}): Promise<NameGeneratorPoolEntry[]> {
+  const db = await getD1Database();
+  const value = normalizeGeneratedNamePart(input.value);
+  const normalizedValue = normalizeGeneratedName(value);
+
+  if (!value) {
+    throw new Error('Pool entry cannot be empty.');
+  }
+
+  if (!['table_1', 'table_2'].includes(input.tableKey)) {
+    throw new Error('Pool table is invalid.');
+  }
+
+  await db
+    .prepare(
+      `INSERT INTO name_generator_pool_entries (
+        id, table_key, value, normalized_value
+      )
+      VALUES (?, ?, ?, ?)
+      ON CONFLICT(id) DO UPDATE SET
+        table_key = excluded.table_key,
+        value = excluded.value,
+        normalized_value = excluded.normalized_value,
+        updated_at = CURRENT_TIMESTAMP`,
+    )
+    .bind(input.id ?? `name-pool-${crypto.randomUUID()}`, input.tableKey, value, normalizedValue)
+    .run();
+
+  return listNameGeneratorPoolEntries();
+}
+
+export async function bulkCreateNameGeneratorPoolEntries(input: {
+  tableKey: NameGeneratorTableKey;
+  values: string[];
+}): Promise<{
+  entries: NameGeneratorPoolEntry[];
+  addedCount: number;
+  skippedCount: number;
+}> {
+  const db = await getD1Database();
+
+  if (!['table_1', 'table_2'].includes(input.tableKey)) {
+    throw new Error('Pool table is invalid.');
+  }
+
+  const normalizedInput = input.values
+    .map((value) => normalizeGeneratedNamePart(value))
+    .filter(Boolean);
+  const uniqueValues = new Map<string, string>();
+
+  normalizedInput.forEach((value) => {
+    const normalizedValue = normalizeGeneratedName(value);
+
+    if (!uniqueValues.has(normalizedValue)) {
+      uniqueValues.set(normalizedValue, value);
+    }
+  });
+
+  if (uniqueValues.size === 0) {
+    throw new Error('Add at least one pool entry.');
+  }
+
+  const existingResult = await db
+    .prepare(
+      `SELECT normalized_value
+       FROM name_generator_pool_entries
+       WHERE table_key = ?`,
+    )
+    .bind(input.tableKey)
+    .all<{ normalized_value: string }>();
+  const existingValues = new Set(existingResult.results.map((row) => row.normalized_value));
+  const entriesToInsert = Array.from(uniqueValues.entries()).filter(
+    ([normalizedValue]) => !existingValues.has(normalizedValue),
+  );
+
+  if (entriesToInsert.length > 0) {
+    await db.batch(
+      entriesToInsert.map(([normalizedValue, value]) =>
+        db
+          .prepare(
+            `INSERT INTO name_generator_pool_entries (
+              id, table_key, value, normalized_value
+            )
+            VALUES (?, ?, ?, ?)`,
+          )
+          .bind(`name-pool-${crypto.randomUUID()}`, input.tableKey, value, normalizedValue),
+      ),
+    );
+  }
+
+  return {
+    entries: await listNameGeneratorPoolEntries(),
+    addedCount: entriesToInsert.length,
+    skippedCount: normalizedInput.length - entriesToInsert.length,
+  };
+}
+
+export async function deleteNameGeneratorPoolEntry(entryId: string): Promise<NameGeneratorPoolEntry[]> {
+  const db = await getD1Database();
+  await db.prepare('DELETE FROM name_generator_pool_entries WHERE id = ?').bind(entryId).run();
+
+  return listNameGeneratorPoolEntries();
+}
+
+export async function listNameGeneratorUsedNames(): Promise<NameGeneratorUsedName[]> {
+  try {
+    const db = await getD1Database();
+    const result = await db
+      .prepare(
+        `SELECT id, name, normalized_name, source, source_id, created_at, updated_at
+         FROM name_generator_used_names
+         ORDER BY created_at DESC, name COLLATE NOCASE ASC`,
+      )
+      .all<NameGeneratorUsedNameRow>();
+
+    return result.results.map(nameGeneratorUsedNameRowToName);
+  } catch (error) {
+    if (isSchemaMissing(error, 'name_generator_used_names')) {
+      return [];
+    }
+
+    throw error;
+  }
+}
+
+export async function findNameGeneratorUsedNameByName(
+  name: string,
+): Promise<NameGeneratorUsedName | null> {
+  const db = await getD1Database();
+  const normalizedName = normalizeGeneratedName(name);
+
+  if (!normalizedName) {
+    return null;
+  }
+
+  const row = await db
+    .prepare(
+      `SELECT id, name, normalized_name, source, source_id, created_at, updated_at
+       FROM name_generator_used_names
+       WHERE normalized_name = ?
+       LIMIT 1`,
+    )
+    .bind(normalizedName)
+    .first<NameGeneratorUsedNameRow>();
+
+  return row ? nameGeneratorUsedNameRowToName(row) : null;
+}
+
+export async function recordNameGeneratorUsedName(input: {
+  name: string;
+  source: NameGeneratorUsedName['source'];
+  sourceId?: string | null;
+}): Promise<void> {
+  const db = await getD1Database();
+  const name = normalizeGeneratedNamePart(input.name);
+  const normalizedName = normalizeGeneratedName(name);
+
+  if (!name) {
+    return;
+  }
+
+  await db
+    .prepare(
+      `INSERT INTO name_generator_used_names (
+        id, name, normalized_name, source, source_id
+      )
+      VALUES (?, ?, ?, ?, ?)
+      ON CONFLICT(normalized_name) DO UPDATE SET
+        name = excluded.name,
+        source = excluded.source,
+        source_id = excluded.source_id,
+        updated_at = CURRENT_TIMESTAMP`,
+    )
+    .bind(
+      `${input.source}-${input.sourceId ?? normalizedName}`,
+      name,
+      normalizedName,
+      input.source,
+      input.sourceId ?? null,
+    )
+    .run();
 }
 
 export async function ensureMediaAssetForUrl(

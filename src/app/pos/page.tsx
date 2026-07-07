@@ -4,11 +4,8 @@ import { useMemo, useState, useEffect } from 'react';
 import {
   AlertTriangle,
   CalendarCheck,
-  Clock3,
   Filter,
-  Plus,
   Receipt,
-  RotateCcw,
   Search,
   CheckCircle2,
   Printer,
@@ -22,7 +19,8 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 
-import { useSavedCatalogItems } from '@/lib/catalog-storage';
+import { fetchAdminCatalogItemsAction } from '@/lib/farsha-actions';
+import { useSavedCatalogItems, writeSavedCatalogItems } from '@/lib/catalog-storage';
 import {
   closeRentalTransaction,
   createRentalTransaction,
@@ -67,13 +65,11 @@ function formatDate(value: string | null) {
   }).format(date);
 }
 
-function paymentMethodLabel(value: PosPaymentMethod) {
-  return paymentMethods.find((method) => method.value === value)?.label ?? 'Cash';
-}
-
 export default function PosDashboard() {
   const catalogItems = useSavedCatalogItems();
   const ledger = useSavedPosLedger();
+  const [isLoadingCatalog, setIsLoadingCatalog] = useState(true);
+  const [catalogError, setCatalogError] = useState('');
 
   // Projections and Metrics
   const projections = useMemo(
@@ -120,6 +116,34 @@ export default function PosDashboard() {
   const [isInvoiceOpen, setIsInvoiceOpen] = useState(false);
   const [invoiceTransaction, setInvoiceTransaction] = useState<PosTransaction | null>(null);
 
+  useEffect(() => {
+    let active = true;
+
+    async function loadCatalogItems() {
+      setIsLoadingCatalog(true);
+      const result = await fetchAdminCatalogItemsAction();
+
+      if (!active) {
+        return;
+      }
+
+      if (result.ok) {
+        writeSavedCatalogItems(result.data);
+        setCatalogError('');
+      } else {
+        setCatalogError(result.error);
+      }
+
+      setIsLoadingCatalog(false);
+    }
+
+    loadCatalogItems();
+
+    return () => {
+      active = false;
+    };
+  }, []);
+
   // Auto-calculated defaults when selecting items or transactions
   const selectedItem = useMemo(
     () => catalogItems.find((item) => item.id === selectedItemId) ?? null,
@@ -153,6 +177,7 @@ export default function PosDashboard() {
       const projection = projections[selectedItem.id];
       if (projection?.effectiveStatus === 'available') {
         // Prefill Rental details
+        // eslint-disable-next-line react-hooks/set-state-in-effect
         setPriceOverride(selectedItem.rentalPrice.toString());
         setDepositReceived('50000');
         // Prefill default 3 days return due date
@@ -521,7 +546,9 @@ export default function PosDashboard() {
 
                   {filteredCatalog.length === 0 && (
                     <div className="col-span-2 border border-dashed border-neutral-300 p-8 text-center text-xs text-neutral-500">
-                      Tidak ada kebaya dalam filter pencarian ini.
+                      {isLoadingCatalog
+                        ? 'Memuat katalog kebaya...'
+                        : catalogError || 'Tidak ada kebaya dalam filter pencarian ini.'}
                     </div>
                   )}
                 </div>
