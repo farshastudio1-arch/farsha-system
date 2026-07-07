@@ -1,8 +1,8 @@
 'use client';
 
-import { useMemo, useSyncExternalStore } from 'react';
+import { useEffect, useMemo, useSyncExternalStore } from 'react';
 
-import { mockKebayas, type KebayaItem } from '@/data/mockData';
+import { type KebayaItem } from '@/data/mockData';
 import {
   dispatchBrowserEvent,
   readLocalStorageItem,
@@ -428,119 +428,26 @@ function normalizeMaintenanceHold(
   };
 }
 
-function createLegacySeedLedger(): PosLedgerState {
-  const transactions: PosTransaction[] = [];
-  const receipts: PosReceipt[] = [];
-  const history: PosAuditEntry[] = [];
-
-  mockKebayas.forEach((item, index) => {
-    if (item.status !== 'rented') {
-      return;
-    }
-
-    const transaction = normalizeTransaction(
-      {
-        id: `legacy-trx-${item.id}`,
-        transactionNumber: formatReference('TRX', index + 1),
-        kind: 'rental',
-        status: 'open',
-        itemId: item.id,
-        itemCode: item.code,
-        itemName: item.name,
-        itemPrice: item.rentalPrice,
-        customerName: 'Legacy rental',
-        customerPhone: '',
-        startDate: item.rentalEndDate ?? nowIso().slice(0, 10),
-        dueDate: item.rentalEndDate,
-        closedAt: null,
-        depositReceived: 0,
-        refundedAmount: 0,
-        penaltyAmount: 0,
-        adjustmentAmount: 0,
-        paymentMethod: 'cash',
-        notes: 'Seeded from legacy item status.',
-        revision: 1,
-        createdAt: nowIso(),
-        updatedAt: nowIso(),
-      },
-      index + 1,
-    );
-
-    if (!transaction) {
-      return;
-    }
-
-    transactions.push(transaction);
-    receipts.push(
-      normalizeReceipt(
-        {
-          id: `legacy-rcp-${item.id}`,
-          receiptNumber: formatReference('RCP', index + 1),
-          transactionId: transaction.id,
-          transactionNumber: transaction.transactionNumber,
-          action: 'create',
-          title: 'Legacy rental seeded',
-          itemId: item.id,
-          itemCode: item.code,
-          itemName: item.name,
-          customerName: 'Legacy rental',
-          customerPhone: '',
-          kind: 'rental',
-          status: 'open',
-          baseAmount: item.rentalPrice,
-          depositReceived: 0,
-          refundedAmount: 0,
-          penaltyAmount: 0,
-          adjustmentAmount: 0,
-          eventAmount: item.rentalPrice,
-          paymentMethod: 'cash',
-          totalCollected: item.rentalPrice,
-          balanceDue: item.rentalPrice,
-          createdAt: nowIso(),
-          note: 'Seeded from existing catalog status.',
-          revision: 1,
-        },
-        index + 1,
-      )!,
-    );
-
-    history.push(
-      normalizeAuditEntry(
-        {
-          id: `legacy-hst-${item.id}`,
-          transactionId: transaction.id,
-          transactionNumber: transaction.transactionNumber,
-          action: 'create',
-          summary: 'Seeded from legacy item status',
-          reason: 'Imported from legacy catalog rental status.',
-          before: null,
-          after: transaction,
-          createdAt: nowIso(),
-        },
-        index + 1,
-      )!,
-    );
-  });
-
+function createEmptyLedger(): PosLedgerState {
   return {
-    transactions,
-    receipts,
-    history,
+    transactions: [],
+    receipts: [],
+    history: [],
     maintenanceHolds: [],
     counters: {
-      transaction: transactions.length,
-      receipt: receipts.length,
-      history: history.length,
+      transaction: 0,
+      receipt: 0,
+      history: 0,
       maintenance: 0,
     },
   };
 }
 
-const serverLedgerSnapshot = createLegacySeedLedger();
+const serverLedgerSnapshot = createEmptyLedger();
 
-function normalizeLedger(value: unknown): PosLedgerState {
+export function normalizePosLedger(value: unknown): PosLedgerState {
   if (!value || typeof value !== 'object') {
-    return createLegacySeedLedger();
+    return createEmptyLedger();
   }
 
   const raw = value as Partial<PosLedgerState> & {
@@ -574,15 +481,6 @@ function normalizeLedger(value: unknown): PosLedgerState {
         .filter((entry): entry is PosMaintenanceHold => Boolean(entry))
     : [];
 
-  if (
-    transactions.length === 0 &&
-    receipts.length === 0 &&
-    history.length === 0 &&
-    maintenanceHolds.length === 0
-  ) {
-    return createLegacySeedLedger();
-  }
-
   return {
     transactions,
     receipts,
@@ -611,14 +509,14 @@ function readLedgerSnapshot() {
   cachedStoredValue = storedValue;
 
   if (!storedValue) {
-    cachedLedger = createLegacySeedLedger();
+    cachedLedger = createEmptyLedger();
     return cachedLedger;
   }
 
   try {
-    cachedLedger = normalizeLedger(JSON.parse(storedValue));
+    cachedLedger = normalizePosLedger(JSON.parse(storedValue));
   } catch {
-    cachedLedger = createLegacySeedLedger();
+    cachedLedger = createEmptyLedger();
   }
 
   return cachedLedger;
@@ -630,6 +528,10 @@ function writeLedgerSnapshot(nextLedger: PosLedgerState) {
   cachedStoredValue = serialized;
   cachedLedger = nextLedger;
   dispatchBrowserEvent(storageChangeEvent);
+}
+
+export function writeSavedPosLedger(nextLedger: PosLedgerState) {
+  writeLedgerSnapshot(normalizePosLedger(nextLedger));
 }
 
 function subscribeToLedger(onStoreChange: () => void) {
@@ -646,8 +548,16 @@ function subscribeToLedger(onStoreChange: () => void) {
   };
 }
 
-export function useSavedPosLedger() {
-  return useSyncExternalStore(subscribeToLedger, readLedgerSnapshot, () => serverLedgerSnapshot);
+export function useSavedPosLedger(initialLedger?: PosLedgerState) {
+  const serverSnapshot = initialLedger ? normalizePosLedger(initialLedger) : serverLedgerSnapshot;
+
+  useEffect(() => {
+    if (initialLedger) {
+      writeSavedPosLedger(initialLedger);
+    }
+  }, [initialLedger]);
+
+  return useSyncExternalStore(subscribeToLedger, readLedgerSnapshot, () => serverSnapshot);
 }
 
 function getTransactionCharge(transaction: PosTransaction) {

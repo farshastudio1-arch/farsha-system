@@ -34,6 +34,8 @@ import {
   deleteNameGeneratorPoolEntry,
 } from '@/lib/farsha-db';
 import { MediaAlbum, MediaAsset, MediaAssetUpdate, deleteMediaObjectByKey } from '@/lib/media-library';
+import { listPosLedger, savePosLedgerSnapshot } from '@/lib/pos-db';
+import { PosLedgerState } from '@/lib/pos-ledger';
 
 type ActionResult<T> =
   | {
@@ -120,6 +122,41 @@ export async function fetchAdminCatalogItemsAction(): Promise<ActionResult<Kebay
     return {
       ok: false,
       error: getActionErrorMessage(error, 'Failed to load catalog items.'),
+    };
+  }
+}
+
+export async function fetchPosLedgerAction(): Promise<ActionResult<PosLedgerState>> {
+  try {
+    await ensureAdmin();
+    return { ok: true, data: await listPosLedger() };
+  } catch (error) {
+    return {
+      ok: false,
+      error: getActionErrorMessage(error, 'Failed to load POS ledger.'),
+    };
+  }
+}
+
+export async function savePosLedgerAction(
+  ledger: PosLedgerState,
+): Promise<ActionResult<PosLedgerState>> {
+  try {
+    await ensureAdmin();
+    const savedLedger = await savePosLedgerSnapshot(ledger);
+
+    revalidatePath('/');
+    revalidatePath('/catalog');
+    revalidatePath('/admin');
+    revalidatePath('/admin/catalog');
+    revalidatePath('/pos');
+    revalidatePath('/pos/dashboard');
+
+    return { ok: true, data: savedLedger };
+  } catch (error) {
+    return {
+      ok: false,
+      error: getActionErrorMessage(error, 'Failed to save POS ledger.'),
     };
   }
 }

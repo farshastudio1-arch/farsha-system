@@ -9,7 +9,7 @@ import ProductCard from './ProductCard';
 import ProductDetailModal from './ProductDetailModal';
 import { useSavedCatalogItems } from '@/lib/catalog-storage';
 import { useSavedSiteSettings } from '@/lib/site-settings';
-import { useSavedPosLedger, projectCatalogItems } from '@/lib/pos-ledger';
+import { useSavedPosLedger, projectCatalogItems, type PosLedgerState } from '@/lib/pos-ledger';
 import { readLocalStorageItem, writeLocalStorageItem } from '@/lib/browser-storage';
 import {
   getLandingCategory,
@@ -38,6 +38,7 @@ const sortOptions: Array<{ value: SortOption; label: string }> = [
 interface CatalogProps {
   cmsContent: CMSContent;
   initialItems: KebayaItem[];
+  initialLedger?: PosLedgerState;
   siteSettings: SiteSettings;
   initialCategory?: LandingCategorySlug | null;
 }
@@ -58,12 +59,13 @@ function readSavedMobileGrid(): MobileGridColumns | null {
 export default function Catalog({
   cmsContent,
   initialItems,
+  initialLedger,
   siteSettings: initialSiteSettings,
   initialCategory = null,
 }: CatalogProps) {
   const router = useRouter();
   const catalogItems = useSavedCatalogItems(initialItems);
-  const ledger = useSavedPosLedger();
+  const ledger = useSavedPosLedger(initialLedger);
   const siteSettings = useSavedSiteSettings(initialSiteSettings);
   const landingCategory = getLandingCategory(initialCategory);
   const activeCategoryLabel = initialCategory

@@ -33,6 +33,7 @@ import { optimizeImageBeforeUpload } from '@/lib/client-image-optimizer';
 import {
   deleteCatalogItemAction,
   fetchAdminCatalogItemsAction,
+  fetchPosLedgerAction,
   saveCatalogItemAction,
 } from '@/lib/farsha-actions';
 import { getPreviewBookingSummaryForItem } from '@/lib/booking-preview';
@@ -42,7 +43,7 @@ import {
   matchesLandingCategory,
   occasionCategories,
 } from '@/lib/landing-categories';
-import { projectCatalogItems, useSavedPosLedger } from '@/lib/pos-ledger';
+import { projectCatalogItems, useSavedPosLedger, writeSavedPosLedger } from '@/lib/pos-ledger';
 
 type CatalogFormState = {
   name: string;
@@ -491,6 +492,7 @@ export default function CatalogManagement() {
     async function loadCatalogItems() {
       setIsLoadingCatalog(true);
       const result = await fetchAdminCatalogItemsAction();
+      const ledgerResult = await fetchPosLedgerAction();
 
       if (!active) {
         return;
@@ -501,6 +503,10 @@ export default function CatalogManagement() {
         setCatalogError('');
       } else {
         setCatalogError(result.error);
+      }
+
+      if (ledgerResult.ok) {
+        writeSavedPosLedger(ledgerResult.data);
       }
 
       setIsLoadingCatalog(false);

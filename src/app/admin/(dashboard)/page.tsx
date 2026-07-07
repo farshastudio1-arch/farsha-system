@@ -15,11 +15,20 @@ import {
 } from 'lucide-react';
 
 import { KebayaItem } from '@/data/mockData';
-import { fetchAdminCatalogItemsAction, fetchSiteSettingsAction } from '@/lib/farsha-actions';
+import {
+  fetchAdminCatalogItemsAction,
+  fetchPosLedgerAction,
+  fetchSiteSettingsAction,
+} from '@/lib/farsha-actions';
 import { landingCategories, matchesLandingCategory } from '@/lib/landing-categories';
 import { useSavedCatalogItems, writeSavedCatalogItems } from '@/lib/catalog-storage';
 import { useSavedSiteSettings, writeSavedSiteSettings } from '@/lib/site-settings';
-import { useSavedPosLedger, projectCatalogItems, getOverdueTransactions } from '@/lib/pos-ledger';
+import {
+  useSavedPosLedger,
+  writeSavedPosLedger,
+  projectCatalogItems,
+  getOverdueTransactions,
+} from '@/lib/pos-ledger';
 
 type StatusTone = 'good' | 'warning' | 'neutral';
 
@@ -231,9 +240,10 @@ export default function AdminDashboard() {
 
     async function loadDashboardData() {
       setIsLoadingDatabase(true);
-      const [catalogResult, settingsResult] = await Promise.all([
+      const [catalogResult, settingsResult, ledgerResult] = await Promise.all([
         fetchAdminCatalogItemsAction(),
         fetchSiteSettingsAction(),
+        fetchPosLedgerAction(),
       ]);
 
       if (!active) {
@@ -248,9 +258,14 @@ export default function AdminDashboard() {
         writeSavedSiteSettings(settingsResult.data);
       }
 
+      if (ledgerResult.ok) {
+        writeSavedPosLedger(ledgerResult.data);
+      }
+
       const errors = [
         catalogResult.ok ? '' : catalogResult.error,
         settingsResult.ok ? '' : settingsResult.error,
+        ledgerResult.ok ? '' : ledgerResult.error,
       ].filter(Boolean);
 
       setDatabaseError(errors.join(' '));

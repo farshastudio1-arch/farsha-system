@@ -3,6 +3,8 @@ import PublicFooter from '@/components/PublicFooter';
 import PublicHeader from '@/components/PublicHeader';
 import { getCmsContent, getSiteSettings, listCatalogItems } from '@/lib/farsha-db';
 import { isOccasionCategory } from '@/lib/landing-categories';
+import { listPosLedger } from '@/lib/pos-db';
+import { projectCatalogItems } from '@/lib/pos-ledger';
 
 interface CatalogPageProps {
   searchParams: Promise<{
@@ -18,11 +20,13 @@ export default async function CatalogPage({ searchParams }: CatalogPageProps) {
   const shouldShowAll = viewParam === 'all';
   const initialCategory =
     !shouldShowAll && categoryParam && isOccasionCategory(categoryParam) ? categoryParam : null;
-  const [catalogItems, cmsContent, siteSettings] = await Promise.all([
+  const [catalogItems, cmsContent, siteSettings, posLedger] = await Promise.all([
     listCatalogItems(),
     getCmsContent(),
     getSiteSettings(),
+    listPosLedger(),
   ]);
+  const projectedCatalogItems = projectCatalogItems(catalogItems, posLedger);
 
   return (
     <div className="theme-surface min-h-screen flex flex-col font-sans antialiased">
@@ -32,7 +36,8 @@ export default async function CatalogPage({ searchParams }: CatalogPageProps) {
         <Catalog
           key={initialCategory ?? 'all'}
           cmsContent={cmsContent}
-          initialItems={catalogItems}
+          initialItems={projectedCatalogItems}
+          initialLedger={posLedger}
           siteSettings={siteSettings}
           initialCategory={initialCategory}
         />
