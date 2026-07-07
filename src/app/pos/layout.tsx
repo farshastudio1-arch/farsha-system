@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
-import { Store } from 'lucide-react';
+import { CalendarCheck, Store } from 'lucide-react';
 import LogoutButton from '@/components/admin/LogoutButton';
 import { auth } from '../../../auth';
 
@@ -41,9 +41,22 @@ export default async function PosLayout({ children }: { children: React.ReactNod
                 >
                   Dashboard
                 </Link>
+                <Link
+                  href="/pos/bookings"
+                  className="text-sm font-medium text-gray-700 hover:text-indigo-600 transition-colors"
+                >
+                  Bookings
+                </Link>
               </nav>
             </div>
             <div className="flex items-center space-x-4">
+              <Link
+                href="/pos/bookings"
+                className="hidden items-center gap-1.5 text-sm font-medium text-gray-500 transition-colors hover:text-gray-900 sm:flex md:hidden"
+              >
+                <CalendarCheck className="h-4 w-4" />
+                Bookings
+              </Link>
               <Link
                 href="/"
                 className="text-sm font-medium text-gray-500 hover:text-gray-900 flex items-center transition-colors"

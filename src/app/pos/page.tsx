@@ -3,6 +3,7 @@
 import { useMemo, useState, useEffect } from 'react';
 import {
   AlertTriangle,
+  CalendarCheck,
   Clock3,
   Filter,
   Plus,
@@ -33,6 +34,7 @@ import {
   type PosPaymentMethod,
   type PosTransaction,
 } from '@/lib/pos-ledger';
+import { addPreviewDays, previewMaintenanceBlockDays } from '@/lib/booking-preview';
 
 type PosTab = 'rent' | 'return' | 'maintenance';
 type CatalogStatusFilter = 'all' | 'available' | 'rented' | 'maintenance';
@@ -352,6 +354,12 @@ export default function PosDashboard() {
               className="inline-flex items-center gap-2 border border-neutral-300 bg-white hover:bg-neutral-50 px-4 py-2.5 text-xs font-semibold uppercase tracking-widest text-neutral-700 transition-all"
             >
               <BarChart3 className="h-4 w-4" /> Lihat Dashboard
+            </Link>
+            <Link
+              href="/pos/bookings"
+              className="inline-flex items-center gap-2 bg-neutral-900 hover:bg-neutral-800 px-4 py-2.5 text-xs font-semibold uppercase tracking-widest text-white transition-all"
+            >
+              <CalendarCheck className="h-4 w-4" /> Booking Preview
             </Link>
           </div>
         </div>
@@ -1053,7 +1061,16 @@ export default function PosDashboard() {
 
                     <p className="text-neutral-500">Mulai Masuk:</p>
                     <p className="font-semibold text-neutral-950 text-right">{formatDate(selectedMaintenance.openedAt)}</p>
+
+                    <p className="text-neutral-500">Blokir Kalender:</p>
+                    <p className="font-semibold text-neutral-950 text-right">
+                      Sampai {formatDate(addPreviewDays(selectedMaintenance.openedAt.slice(0, 10), previewMaintenanceBlockDays - 1))}
+                    </p>
                   </div>
+                  <p className="text-[11px] leading-relaxed text-neutral-500">
+                    Selama status masih Dicuci, cek tanggal customer otomatis tertutup {previewMaintenanceBlockDays} hari.
+                    Tandai selesai untuk membuat kebaya tersedia lebih cepat.
+                  </p>
                 </div>
 
                 <div className="space-y-3 pt-3">

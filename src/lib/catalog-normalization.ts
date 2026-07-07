@@ -2,6 +2,7 @@ import {
   kebayaModelOptions,
   kebayaOccasions,
   kebayaRentalCategoryOptions,
+  kebayaRentalIncludeOptions,
   kebayaSizeOptions,
   kebayaWearStyleOptions,
   KebayaItem,
@@ -16,11 +17,21 @@ const validModels = new Set<KebayaItem['model']>(kebayaModelOptions);
 const validCategories = new Set<NonNullable<KebayaItem['categories']>[number]>(kebayaOccasions);
 const validRentalCategories = new Set<string>(kebayaRentalCategoryOptions);
 const validWearStyles = new Set<KebayaItem['wearStyles'][number]>(kebayaWearStyleOptions);
+const validRentalIncludes = new Set<NonNullable<KebayaItem['rentalIncludes']>[number]>(
+  kebayaRentalIncludeOptions,
+);
 const validStatuses = new Set<KebayaItem['status']>([
   'available',
   'rented',
   'maintenance',
 ]);
+const defaultRentalIncludes: NonNullable<KebayaItem['rentalIncludes']> = [
+  'Skirt',
+  'Kebaya',
+  'Hijab',
+  'Manset',
+  'Bustier',
+];
 
 export function normalizeText(value: unknown, fallback = '') {
   return typeof value === 'string' ? value.trim() : fallback;
@@ -31,6 +42,10 @@ function normalizeSize(value: unknown): KebayaItem['size'] {
 
   if (validSizes.has(size as KebayaItem['size'])) {
     return size as KebayaItem['size'];
+  }
+
+  if (size === 'M' || size === 'M-L') {
+    return 'M-L';
   }
 
   if (size === 'L' || size === 'XL' || size === 'Custom') {
@@ -121,6 +136,19 @@ export function normalizeWearStyles(value: unknown): KebayaItem['wearStyles'] {
   return wearStyles.length > 0 ? wearStyles : ['Hijab', 'Non-Hijab'];
 }
 
+export function normalizeRentalIncludes(value: unknown): NonNullable<KebayaItem['rentalIncludes']> {
+  if (!Array.isArray(value)) {
+    return defaultRentalIncludes;
+  }
+
+  const rentalIncludes = value.filter(
+    (item): item is NonNullable<KebayaItem['rentalIncludes']>[number] =>
+      validRentalIncludes.has(item as NonNullable<KebayaItem['rentalIncludes']>[number]),
+  );
+
+  return rentalIncludes.length > 0 ? rentalIncludes : defaultRentalIncludes;
+}
+
 export function normalizeCatalogItem(value: Partial<KebayaItem>, index: number): KebayaItem | null {
   const name = normalizeText(value.name);
   const code = normalizeText(value.code);
@@ -142,6 +170,7 @@ export function normalizeCatalogItem(value: Partial<KebayaItem>, index: number):
     model: normalizeModel(value.model),
     rentalPrice: normalizeNumber(value.rentalPrice, 0),
     compareAtRentalPrice: normalizeOptionalNumber(value.compareAtRentalPrice),
+    canResize: value.canResize === true,
     status: validStatuses.has(value.status as KebayaItem['status'])
       ? (value.status as KebayaItem['status'])
       : 'available',
@@ -149,6 +178,7 @@ export function normalizeCatalogItem(value: Partial<KebayaItem>, index: number):
     imageUrls: imageUrls.length > 0 ? imageUrls : [defaultImageUrl],
     description: normalizeText(value.description),
     wearStyles: normalizeWearStyles(value.wearStyles),
+    rentalIncludes: normalizeRentalIncludes(value.rentalIncludes),
     categories: normalizeCategories(value.categories),
     measurements: normalizeMeasurements(value.measurements),
   };

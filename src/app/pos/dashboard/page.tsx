@@ -4,6 +4,7 @@ import { useMemo, useState } from 'react';
 import {
   AlertTriangle,
   BadgeDollarSign,
+  CalendarCheck,
   Clock3,
   FileText,
   Filter,
@@ -163,6 +164,12 @@ export default function PosDashboardPage() {
           </div>
 
           <div className="flex gap-2">
+            <Link
+              href="/pos/bookings"
+              className="inline-flex items-center gap-2 border border-neutral-300 bg-white px-4 py-2.5 text-xs font-semibold uppercase tracking-widest text-neutral-700 transition-all hover:bg-neutral-50"
+            >
+              <CalendarCheck className="h-4 w-4" /> Bookings
+            </Link>
             <Link
               href="/pos"
               className="inline-flex items-center gap-2 bg-neutral-900 px-4 py-2.5 text-xs font-semibold uppercase tracking-widest text-white transition-all hover:bg-neutral-800"

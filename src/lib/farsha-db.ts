@@ -24,15 +24,20 @@ type CatalogRow = {
   model: KebayaItem['model'];
   rental_price: number;
   compare_at_rental_price?: number | null;
+  can_resize?: number | null;
   status: KebayaItem['status'];
   rental_end_date: string | null;
   image_urls: string;
   description: string;
   wear_styles?: string | null;
+  rental_includes?: string | null;
   categories?: string | null;
   measurements?: string | null;
 };
 
+const catalogSelectFieldsCurrent =
+  `id, code, name, color, size, model, rental_price, compare_at_rental_price, can_resize, status, rental_end_date,
+  image_urls, description, wear_styles, rental_includes, categories, measurements`;
 const catalogSelectFieldsWithComparePrice =
   `id, code, name, color, size, model, rental_price, compare_at_rental_price, status, rental_end_date,
   image_urls, description, wear_styles, categories, measurements`;
@@ -44,13 +49,37 @@ function isMissingComparePriceColumnError(error: unknown) {
   return String(error).includes('no such column: compare_at_rental_price');
 }
 
-async function hasCatalogComparePriceColumn(db: D1Database) {
+function isMissingCatalogItemDetailColumnError(error: unknown) {
+  const message = String(error);
+  return (
+    message.includes('no such column: can_resize') ||
+    message.includes('no such column: rental_includes')
+  );
+}
+
+async function getCatalogColumnNames(db: D1Database) {
   try {
     const result = await db.prepare('PRAGMA table_info(kebaya_items)').all<{ name: string }>();
-    return result.results.some((column) => column.name === 'compare_at_rental_price');
+    return new Set(result.results.map((column) => column.name));
   } catch {
-    return false;
+    return new Set<string>();
   }
+}
+
+async function getCatalogSelectFields(db: D1Database) {
+  const columns = await getCatalogColumnNames(db);
+  const hasCompareAtRentalPrice = columns.has('compare_at_rental_price');
+  const hasCatalogItemDetails = columns.has('can_resize') && columns.has('rental_includes');
+
+  if (hasCompareAtRentalPrice && hasCatalogItemDetails) {
+    return catalogSelectFieldsCurrent;
+  }
+
+  if (hasCompareAtRentalPrice) {
+    return catalogSelectFieldsWithComparePrice;
+  }
+
+  return catalogSelectFieldsLegacy;
 }
 
 type CmsRow = {
@@ -165,11 +194,13 @@ function catalogRowToItem(row: CatalogRow, index: number): KebayaItem | null {
       model: row.model,
       rentalPrice: row.rental_price,
       compareAtRentalPrice: row.compare_at_rental_price ?? null,
+      canResize: row.can_resize === 1,
       status: row.status,
       rentalEndDate: row.rental_end_date,
       imageUrls: parseJson<string[]>(row.image_urls, []),
       description: row.description,
       wearStyles: parseJson<KebayaItem['wearStyles']>(row.wear_styles, []),
+      rentalIncludes: parseJson<KebayaItem['rentalIncludes']>(row.rental_includes, undefined),
       categories: parseJson<KebayaItem['categories']>(row.categories, undefined),
       measurements: parseJson<KebayaItem['measurements']>(row.measurements, undefined),
     },
@@ -178,9 +209,7 @@ function catalogRowToItem(row: CatalogRow, index: number): KebayaItem | null {
 }
 
 async function listCatalogRows(db: D1Database) {
-  const selectFields = (await hasCatalogComparePriceColumn(db))
-    ? catalogSelectFieldsWithComparePrice
-    : catalogSelectFieldsLegacy;
+  const selectFields = await getCatalogSelectFields(db);
 
   try {
     return await db
@@ -192,7 +221,7 @@ async function listCatalogRows(db: D1Database) {
       )
       .all<CatalogRow>();
   } catch (error) {
-    if (!isMissingComparePriceColumnError(error)) {
+    if (!isMissingComparePriceColumnError(error) && !isMissingCatalogItemDetailColumnError(error)) {
       throw error;
     }
 
@@ -208,9 +237,7 @@ async function listCatalogRows(db: D1Database) {
 }
 
 async function findCatalogRowByCode(db: D1Database, code: string) {
-  const selectFields = (await hasCatalogComparePriceColumn(db))
-    ? catalogSelectFieldsWithComparePrice
-    : catalogSelectFieldsLegacy;
+  const selectFields = await getCatalogSelectFields(db);
 
   try {
     return await db
@@ -223,7 +250,7 @@ async function findCatalogRowByCode(db: D1Database, code: string) {
       .bind(code)
       .first<CatalogRow>();
   } catch (error) {
-    if (!isMissingComparePriceColumnError(error)) {
+    if (!isMissingComparePriceColumnError(error) && !isMissingCatalogItemDetailColumnError(error)) {
       throw error;
     }
 
@@ -240,9 +267,7 @@ async function findCatalogRowByCode(db: D1Database, code: string) {
 }
 
 async function findCatalogRowById(db: D1Database, itemId: string) {
-  const selectFields = (await hasCatalogComparePriceColumn(db))
-    ? catalogSelectFieldsWithComparePrice
-    : catalogSelectFieldsLegacy;
+  const selectFields = await getCatalogSelectFields(db);
 
   try {
     return await db
@@ -255,7 +280,7 @@ async function findCatalogRowById(db: D1Database, itemId: string) {
       .bind(itemId)
       .first<CatalogRow>();
   } catch (error) {
-    if (!isMissingComparePriceColumnError(error)) {
+    if (!isMissingComparePriceColumnError(error) && !isMissingCatalogItemDetailColumnError(error)) {
       throw error;
     }
 
@@ -500,10 +525,10 @@ export async function upsertCatalogItem(item: KebayaItem): Promise<void> {
     await db
       .prepare(
         `INSERT INTO kebaya_items (
-          id, code, name, color, size, model, rental_price, compare_at_rental_price, status, rental_end_date,
-          image_urls, description, wear_styles, categories, measurements
+          id, code, name, color, size, model, rental_price, compare_at_rental_price, can_resize, status, rental_end_date,
+          image_urls, description, wear_styles, rental_includes, categories, measurements
         )
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ON CONFLICT(id) DO UPDATE SET
           code = excluded.code,
           name = excluded.name,
@@ -512,11 +537,13 @@ export async function upsertCatalogItem(item: KebayaItem): Promise<void> {
           model = excluded.model,
           rental_price = excluded.rental_price,
           compare_at_rental_price = excluded.compare_at_rental_price,
+          can_resize = excluded.can_resize,
           status = excluded.status,
           rental_end_date = excluded.rental_end_date,
           image_urls = excluded.image_urls,
           description = excluded.description,
           wear_styles = excluded.wear_styles,
+          rental_includes = excluded.rental_includes,
           categories = excluded.categories,
           measurements = excluded.measurements,
           updated_at = CURRENT_TIMESTAMP`,
@@ -530,23 +557,35 @@ export async function upsertCatalogItem(item: KebayaItem): Promise<void> {
         normalized.model,
         normalized.rentalPrice,
         normalized.compareAtRentalPrice ?? null,
+        normalized.canResize ? 1 : 0,
         normalized.status,
         normalized.rentalEndDate,
         JSON.stringify(normalized.imageUrls),
         normalized.description,
         JSON.stringify(normalized.wearStyles),
+        JSON.stringify(normalized.rentalIncludes ?? []),
         JSON.stringify(normalized.categories ?? []),
         JSON.stringify(normalized.measurements ?? {}),
       )
       .run();
   } catch (error) {
-    if (!isMissingComparePriceColumnError(error)) {
+    if (!isMissingComparePriceColumnError(error) && !isMissingCatalogItemDetailColumnError(error)) {
       throw error;
     }
 
     if (normalized.compareAtRentalPrice !== null) {
       throw new Error(
         'Compare price cannot be saved until migration 0009_catalog_compare_price.sql is applied.',
+      );
+    }
+
+    const hasCustomRentalIncludes =
+      JSON.stringify(normalized.rentalIncludes ?? []) !==
+      JSON.stringify(['Skirt', 'Kebaya', 'Hijab', 'Manset', 'Bustier']);
+
+    if (normalized.canResize || hasCustomRentalIncludes) {
+      throw new Error(
+        'Resize and rental include details cannot be saved until the latest catalog migration is applied.',
       );
     }
 

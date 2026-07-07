@@ -16,11 +16,13 @@ import {
   Wrench,
   X,
 } from 'lucide-react';
+import Link from 'next/link';
 
 import MediaLibraryPicker from '@/components/admin/MediaLibraryPicker';
 import {
   kebayaModelOptions,
   kebayaRentalCategoryOptions,
+  kebayaRentalIncludeOptions,
   kebayaSizeOptions,
   kebayaWearStyleOptions,
   KebayaCategory,
@@ -33,6 +35,7 @@ import {
   fetchAdminCatalogItemsAction,
   saveCatalogItemAction,
 } from '@/lib/farsha-actions';
+import { getPreviewBookingSummaryForItem } from '@/lib/booking-preview';
 import { useSavedCatalogItems, writeSavedCatalogItems } from '@/lib/catalog-storage';
 import {
   getOccasionLabel,
@@ -50,7 +53,9 @@ type CatalogFormState = {
   model: KebayaItem['model'];
   size: KebayaItem['size'];
   color: string;
+  canResize: boolean;
   wearStyles: KebayaItem['wearStyles'];
+  rentalIncludes: NonNullable<KebayaItem['rentalIncludes']>;
   imageUrls: string[];
   description: string;
   categories: KebayaCategory[];
@@ -90,7 +95,9 @@ const emptyForm: CatalogFormState = {
   model: 'Kebaya Modern',
   size: 'S-M',
   color: '',
+  canResize: false,
   wearStyles: ['Hijab', 'Non-Hijab'],
+  rentalIncludes: ['Skirt', 'Kebaya', 'Hijab', 'Manset', 'Bustier'],
   imageUrls: [''],
   description: '',
   categories: [],
@@ -118,6 +125,7 @@ const modelOptions = kebayaModelOptions;
 const sizeOptions = kebayaSizeOptions;
 const rentalCategoryOptions = kebayaRentalCategoryOptions;
 const wearStyleOptions = kebayaWearStyleOptions;
+const rentalIncludeOptions = kebayaRentalIncludeOptions;
 const modelCodePrefixes: Record<KebayaItem['model'], string> = {
   'Kebaya Modern': 'KB',
   'Kebaya Kutubaru': 'KK',
@@ -243,7 +251,12 @@ function itemToForm(item: KebayaItem): CatalogFormState {
     model: item.model,
     size: item.size,
     color: item.color,
+    canResize: item.canResize ?? false,
     wearStyles: item.wearStyles,
+    rentalIncludes:
+      item.rentalIncludes && item.rentalIncludes.length > 0
+        ? item.rentalIncludes
+        : ['Skirt', 'Kebaya', 'Hijab', 'Manset', 'Bustier'],
     imageUrls: item.imageUrls.length > 0 ? [...item.imageUrls] : [''],
     description: item.description,
     categories: item.categories ?? [],
@@ -276,7 +289,9 @@ function createItemFromForm(form: CatalogFormState, id: string): KebayaItem {
     code: form.code.trim(),
     name: form.name.trim(),
     color: form.color.trim() || 'Neutral',
+    canResize: form.canResize,
     wearStyles: form.wearStyles,
+    rentalIncludes: form.rentalIncludes,
     size: form.size,
     model: form.model,
     rentalPrice: parsePrice(form.rentalPrice),
@@ -382,6 +397,62 @@ function ProductImages({ item }: { item: KebayaItem }) {
           +{item.imageUrls.length - 3}
         </div>
       )}
+    </div>
+  );
+}
+
+function BookingVisibility({ item, compact = false }: { item: KebayaItem; compact?: boolean }) {
+  const summary = getPreviewBookingSummaryForItem(item);
+
+  if (!summary.hasBookingPressure) {
+    return compact ? (
+      <span className="text-[10px] font-semibold uppercase tracking-wider text-neutral-400">
+        No upcoming booking
+      </span>
+    ) : (
+      <div className="border border-neutral-200 bg-neutral-50 px-3 py-2 text-xs text-neutral-500">
+        No upcoming booking
+      </div>
+    );
+  }
+
+  const pressureLabel =
+    summary.confirmedCount > 1
+      ? 'Multiple future bookings'
+      : summary.confirmedCount > 0
+        ? 'Booked soon'
+        : 'Request conflict';
+
+  return (
+    <div className={`space-y-2 ${compact ? 'text-xs' : ''}`}>
+      <div className="border border-amber-200 bg-amber-50 p-2 text-amber-800">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <span className="text-[10px] font-bold uppercase tracking-wider">{pressureLabel}</span>
+          <span className="text-[10px] font-semibold">
+            {summary.confirmedCount} confirmed / {summary.requestedCount} request
+          </span>
+        </div>
+        {summary.nextPickupDate && (
+          <div className="mt-1 grid grid-cols-2 gap-x-3 gap-y-1 text-[11px] text-amber-900">
+            <span>Pickup: {formatDate(summary.nextPickupDate)}</span>
+            <span>Return: {formatDate(summary.nextReturnDate)}</span>
+            <span className="col-span-2">
+              Next available: {formatDate(summary.nextAvailableDate)}
+            </span>
+          </div>
+        )}
+        {summary.conflictingRequests.length > 0 && (
+          <p className="mt-1 text-[11px] font-medium">
+            {summary.conflictingRequests.length} requested booking has a preview conflict.
+          </p>
+        )}
+      </div>
+      <Link
+        href={{ pathname: '/pos/bookings', query: { itemId: item.id } }}
+        className="inline-flex w-full items-center justify-center border border-neutral-300 bg-white px-3 py-2 text-[10px] font-bold uppercase tracking-wider text-neutral-700 transition-colors hover:bg-neutral-50"
+      >
+        View in POS
+      </Link>
     </div>
   );
 }
@@ -719,6 +790,11 @@ export default function CatalogManagement() {
       return;
     }
 
+    if (form.rentalIncludes.length === 0) {
+      setFormError('Choose at least one item included in the rent.');
+      return;
+    }
+
     if (!editingItem && (!Number.isFinite(codeNumber) || codeNumber <= 0)) {
       setFormError('Manual number is required and must be greater than 0.');
       return;
@@ -802,6 +878,9 @@ export default function CatalogManagement() {
   const canAddImageSlot = form.imageUrls.length < maxImageSlots;
   const editingProjectedItem = editingItem
     ? projectedItems.find((item) => item.id === editingItem.id) ?? null
+    : null;
+  const editingBookingSummary = editingProjectedItem
+    ? getPreviewBookingSummaryForItem(editingProjectedItem)
     : null;
 
   const selectLibraryImage = (url: string) => {
@@ -1020,6 +1099,7 @@ export default function CatalogManagement() {
                 <th className="px-5 py-4 font-semibold">Price</th>
                 <th className="px-5 py-4 font-semibold">Status</th>
                 <th className="px-5 py-4 font-semibold">Data Quality</th>
+                <th className="px-5 py-4 font-semibold">Booking Preview</th>
                 <th className="px-5 py-4 text-right font-semibold">Actions</th>
               </tr>
             </thead>
@@ -1098,6 +1178,11 @@ export default function CatalogManagement() {
                           Ready
                         </span>
                       )}
+                    </td>
+                    <td className="px-5 py-4">
+                      <div className="max-w-[260px]">
+                        <BookingVisibility item={item} />
+                      </div>
                     </td>
                     <td className="px-5 py-4 text-right">
                       <div className="flex items-center justify-end gap-2">
@@ -1192,6 +1277,10 @@ export default function CatalogManagement() {
                         ))}
                       </div>
                     )}
+
+                    <div className="mt-3">
+                      <BookingVisibility item={item} compact />
+                    </div>
                   </div>
                 </div>
 
@@ -1433,6 +1522,20 @@ export default function CatalogManagement() {
 
               <form onSubmit={saveItem} className="flex min-h-0 flex-1 flex-col overflow-hidden">
                 <div className="flex-1 overflow-y-auto px-4 py-5 sm:px-6">
+                  {editingProjectedItem && editingBookingSummary?.hasBookingPressure && (
+                    <div className="mb-5 border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
+                      <div className="flex items-start gap-3">
+                        <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-700" />
+                        <div>
+                          <p className="font-semibold">Upcoming booking preview on this item.</p>
+                          <p className="mt-1 text-xs leading-relaxed">
+                            This catalog edit can change what a booked customer expects. Booking actions stay in POS;
+                            use the POS link from the item list to review dates and DP state.
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
                   <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_280px]">
                     <div className="space-y-5">
                       <section className="border border-neutral-200 bg-white p-4">
@@ -1511,6 +1614,48 @@ export default function CatalogManagement() {
                               ))}
                             </select>
                           </FieldLabel>
+                          <div className="flex items-end">
+                            <label
+                              className={`flex min-h-[46px] w-full cursor-pointer select-none items-center justify-between gap-3 border px-3 py-2 text-sm transition-colors ${
+                                form.canResize
+                                  ? 'border-neutral-900 bg-neutral-900 text-white'
+                                  : 'border-neutral-200 bg-neutral-50 text-neutral-700 hover:border-neutral-400'
+                              }`}
+                            >
+                              <span>
+                                <span className="block font-medium">Bisa Resize</span>
+                                <span
+                                  className={`block text-[10px] ${
+                                    form.canResize ? 'text-neutral-300' : 'text-neutral-400'
+                                  }`}
+                                >
+                                  Tampil di detail produk
+                                </span>
+                              </span>
+                              <input
+                                type="checkbox"
+                                className="sr-only"
+                                checked={form.canResize}
+                                onChange={(event) =>
+                                  updateFormField('canResize', event.target.checked)
+                                }
+                              />
+                              <span
+                                aria-hidden="true"
+                                className={`relative h-5 w-9 shrink-0 rounded-full transition-colors ${
+                                  form.canResize ? 'bg-white' : 'bg-neutral-300'
+                                }`}
+                              >
+                                <span
+                                  className={`absolute top-0.5 h-4 w-4 rounded-full transition-transform ${
+                                    form.canResize
+                                      ? 'translate-x-4 bg-neutral-900'
+                                      : 'translate-x-0.5 bg-white'
+                                  }`}
+                                />
+                              </span>
+                            </label>
+                          </div>
                           <div className="md:col-span-2">
                             <FieldLabel label="Color">
                               <input
@@ -1555,6 +1700,43 @@ export default function CatalogManagement() {
                                 );
                               })}
                             </div>
+                          </div>
+                          <div className="md:col-span-2">
+                            <span className="mb-1 block text-sm font-medium text-neutral-700">
+                              Included in rent
+                            </span>
+                            <div className="flex flex-wrap gap-2">
+                              {rentalIncludeOptions.map((item) => {
+                                const checked = form.rentalIncludes.includes(item);
+
+                                return (
+                                  <label
+                                    key={item}
+                                    className={`flex cursor-pointer select-none items-center gap-2 border px-3 py-2 text-sm transition-colors ${
+                                      checked
+                                        ? 'border-neutral-900 bg-neutral-900 text-white'
+                                        : 'border-neutral-200 bg-neutral-50 text-neutral-700 hover:border-neutral-400'
+                                    }`}
+                                  >
+                                    <input
+                                      type="checkbox"
+                                      className="sr-only"
+                                      checked={checked}
+                                      onChange={() => {
+                                        const next = checked
+                                          ? form.rentalIncludes.filter((entry) => entry !== item)
+                                          : [...form.rentalIncludes, item];
+                                        updateFormField('rentalIncludes', next);
+                                      }}
+                                    />
+                                    <span className="font-medium">{item}</span>
+                                  </label>
+                                );
+                              })}
+                            </div>
+                            <p className="mt-2 text-xs text-neutral-400">
+                              Show what the customer receives with this specific rental item.
+                            </p>
                           </div>
                           <div className="md:col-span-2">
                             <span className="mb-1 block text-sm font-medium text-neutral-700">
@@ -1773,6 +1955,11 @@ export default function CatalogManagement() {
                           <span className="border border-neutral-200 bg-white px-2 py-1 text-xs font-semibold text-neutral-600">
                             Fit {form.size}
                           </span>
+                          {form.canResize && (
+                            <span className="border border-emerald-200 bg-emerald-50 px-2 py-1 text-xs font-semibold text-emerald-700">
+                              Bisa Resize
+                            </span>
+                          )}
                           {form.wearStyles.map((style) => (
                             <span
                               key={style}
@@ -1803,6 +1990,16 @@ export default function CatalogManagement() {
                           {form.measurements.otherDetails ||
                             'Detail lainnya will appear as an extra note on the public modal.'}
                         </p>
+                        <div className="border border-neutral-200 bg-white p-3">
+                          <p className="font-mono text-[10px] font-semibold uppercase tracking-widest text-neutral-400">
+                            Included in rent
+                          </p>
+                          <p className="mt-2 text-xs font-semibold leading-relaxed text-neutral-900">
+                            {form.rentalIncludes.length > 0
+                              ? form.rentalIncludes.join(' / ')
+                              : '-'}
+                          </p>
+                        </div>
                       </div>
                     </aside>
                   </div>

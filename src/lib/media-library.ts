@@ -9,7 +9,12 @@ const allowedImageTypes = new Map([
   ['image/webp', 'webp'],
 ]);
 
-export type MediaSourceArea = 'media-library' | 'catalog' | 'cms' | 'settings';
+export type MediaSourceArea =
+  | 'media-library'
+  | 'catalog'
+  | 'cms'
+  | 'settings'
+  | 'booking-payments';
 
 export type MediaAlbum = {
   id: string;
@@ -110,7 +115,9 @@ export function createMediaAssetKey(
 
 export function isMediaAssetKey(key: string) {
   return (
-    (key.startsWith('media/') || key.startsWith('catalog/')) &&
+    (key.startsWith('media/') ||
+      key.startsWith('catalog/') ||
+      key.startsWith('booking-payment-proofs/')) &&
     !key.includes('..') &&
     !key.includes('\\') &&
     key.split('/').every(Boolean)
@@ -190,7 +197,10 @@ export function normalizeMediaTags(value: unknown) {
 }
 
 export function normalizeMediaSourceArea(value: unknown): MediaSourceArea {
-  return value === 'catalog' || value === 'cms' || value === 'settings'
+  return value === 'catalog' ||
+    value === 'cms' ||
+    value === 'settings' ||
+    value === 'booking-payments'
     ? value
     : 'media-library';
 }

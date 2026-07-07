@@ -11,12 +11,14 @@ export const kebayaModelOptions = [
 ] as const;
 export type KebayaModel = (typeof kebayaModelOptions)[number];
 
-export const kebayaSizeOptions = ['S-M', 'L-XL'] as const;
+export const kebayaSizeOptions = ['S-M', 'M-L', 'L-XL'] as const;
 export type KebayaSize = (typeof kebayaSizeOptions)[number];
 
 export const kebayaRentalCategoryOptions = ['Makassar Only', 'Bisa Luar Kota'] as const;
 export const kebayaWearStyleOptions = ['Hijab', 'Non-Hijab'] as const;
 export type KebayaWearStyle = (typeof kebayaWearStyleOptions)[number];
+export const kebayaRentalIncludeOptions = ['Skirt', 'Kebaya', 'Hijab', 'Manset', 'Bustier'] as const;
+export type KebayaRentalInclude = (typeof kebayaRentalIncludeOptions)[number];
 
 export interface KebayaMeasurements {
   bust: string;
@@ -37,11 +39,13 @@ export interface KebayaItem {
   model: KebayaModel;
   rentalPrice: number;
   compareAtRentalPrice?: number | null;
+  canResize?: boolean;
   status: 'available' | 'rented' | 'maintenance';
   rentalEndDate: string | null;
   imageUrls: string[];
   description: string;
   wearStyles: KebayaWearStyle[];
+  rentalIncludes?: KebayaRentalInclude[];
   categories?: KebayaCategory[];
   measurements?: Partial<KebayaMeasurements>;
 }
