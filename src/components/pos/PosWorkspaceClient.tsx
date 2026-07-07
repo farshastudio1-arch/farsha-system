@@ -42,6 +42,10 @@ import { addPreviewDays, previewMaintenanceBlockDays } from '@/lib/booking-previ
 
 type PosTab = 'rent' | 'return' | 'maintenance';
 type CatalogStatusFilter = 'all' | 'available' | 'rented' | 'maintenance';
+type PendingRentalAction = 'print' | 'cancel';
+
+const extraReturnDayPenalty = 100000;
+const defaultSecurityDeposit = 100000;
 
 const paymentMethods: { value: PosPaymentMethod; label: string }[] = [
   { value: 'cash', label: 'Cash' },
@@ -69,6 +73,42 @@ function formatDate(value: string | null) {
     month: 'short',
     year: 'numeric',
   }).format(date);
+}
+
+function getTodayInputValue() {
+  return new Date().toISOString().slice(0, 10);
+}
+
+function parseCurrencyInput(value: string) {
+  const digits = value.replace(/\D/g, '');
+  return digits ? Number(digits) : 0;
+}
+
+function formatCurrencyInput(value: string | number) {
+  const amount = typeof value === 'number' ? value : parseCurrencyInput(value);
+  return amount ? new Intl.NumberFormat('id-ID').format(amount) : '';
+}
+
+function addDaysToInputDate(value: string, days: number) {
+  const date = new Date(`${value}T00:00:00`);
+
+  if (Number.isNaN(date.getTime())) {
+    return '';
+  }
+
+  date.setDate(date.getDate() + days);
+  return date.toISOString().slice(0, 10);
+}
+
+function getDayDiff(startValue: string, endValue: string) {
+  const start = new Date(`${startValue}T00:00:00`);
+  const end = new Date(`${endValue}T00:00:00`);
+
+  if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) {
+    return 0;
+  }
+
+  return Math.round((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
 }
 
 interface PosWorkspaceClientProps {
@@ -103,12 +143,13 @@ export default function PosWorkspaceClient({ initialLedger }: PosWorkspaceClient
   // Flow 1: Rental Form States
   const [customerName, setCustomerName] = useState('');
   const [customerPhone, setCustomerPhone] = useState('');
-  const [startDate, setStartDate] = useState(new Date().toISOString().slice(0, 10));
+  const [startDate, setStartDate] = useState(getTodayInputValue());
   const [dueDate, setDueDate] = useState('');
   const [priceOverride, setPriceOverride] = useState('');
-  const [depositReceived, setDepositReceived] = useState('50000');
+  const [depositReceived, setDepositReceived] = useState(formatCurrencyInput(defaultSecurityDeposit));
   const [rentalNotes, setRentalNotes] = useState('');
   const [paymentMethod, setPaymentMethod] = useState<PosPaymentMethod>('cash');
+  const [pendingRentalAction, setPendingRentalAction] = useState<PendingRentalAction | null>(null);
 
   // Flow 2: Return Form States
   const [returnDate, setReturnDate] = useState(new Date().toISOString().slice(0, 10));
@@ -127,6 +168,13 @@ export default function PosWorkspaceClient({ initialLedger }: PosWorkspaceClient
   // Invoice Modal State
   const [isInvoiceOpen, setIsInvoiceOpen] = useState(false);
   const [invoiceTransaction, setInvoiceTransaction] = useState<PosTransaction | null>(null);
+  const baseRentalPrice = parseCurrencyInput(priceOverride);
+  const securityDepositAmount = parseCurrencyInput(depositReceived);
+  const defaultDueDate = startDate ? addDaysToInputDate(startDate, 3) : '';
+  const extraReturnDays =
+    startDate && dueDate ? Math.max(getDayDiff(defaultDueDate || startDate, dueDate), 0) : 0;
+  const extraReturnPenalty = extraReturnDays * extraReturnDayPenalty;
+  const rentTotalDue = baseRentalPrice + securityDepositAmount + extraReturnPenalty;
 
   useEffect(() => {
     let active = true;
@@ -231,11 +279,11 @@ export default function PosWorkspaceClient({ initialLedger }: PosWorkspaceClient
       if (projection?.effectiveStatus === 'available') {
         // Prefill Rental details
         // eslint-disable-next-line react-hooks/set-state-in-effect
-        setPriceOverride(selectedItem.rentalPrice.toString());
-        setDepositReceived('50000');
+        setPriceOverride(formatCurrencyInput(selectedItem.rentalPrice));
+        setDepositReceived(formatCurrencyInput(defaultSecurityDeposit));
         // Prefill default 3 days return due date
-        const defaultDue = new Date(Date.now() + 3 * 24 * 60 * 60 * 1000);
-        setDueDate(defaultDue.toISOString().slice(0, 10));
+        setStartDate(getTodayInputValue());
+        setDueDate(addDaysToInputDate(getTodayInputValue(), 3));
         setCustomerName('');
         setCustomerPhone('');
         setRentalNotes('');
@@ -324,6 +372,13 @@ export default function PosWorkspaceClient({ initialLedger }: PosWorkspaceClient
   );
 
   // FLOW ACTIONS
+  const clearRentalSelection = () => {
+    setSelectedItemId('');
+    setSelectedTransactionId('');
+    setSelectedMaintenanceId('');
+    setPendingRentalAction(null);
+  };
+
   const handleRentSubmit = async () => {
     if (!selectedItem) return;
 
@@ -337,7 +392,7 @@ export default function PosWorkspaceClient({ initialLedger }: PosWorkspaceClient
       return;
     }
 
-    const price = priceOverride ? Number(priceOverride) : selectedItem.rentalPrice;
+    const price = baseRentalPrice || selectedItem.rentalPrice;
 
     const nextLedger = createRentalTransaction({
       item: selectedItem,
@@ -345,10 +400,15 @@ export default function PosWorkspaceClient({ initialLedger }: PosWorkspaceClient
       customerPhone: customerPhone.trim(),
       startDate,
       dueDate,
-      depositReceived: Number(depositReceived) || 0,
+      depositReceived: securityDepositAmount,
       paymentMethod,
-      notes: rentalNotes,
-      itemPrice: price,
+      notes: [
+        rentalNotes,
+        extraReturnDays > 0
+          ? `Tambahan return ${extraReturnDays} hari: ${formatCurrency(extraReturnPenalty)}.`
+          : '',
+      ].filter(Boolean).join('\n'),
+      itemPrice: price + extraReturnPenalty,
     });
 
     // Auto-open receipt modal of the newly created transaction
@@ -365,6 +425,7 @@ export default function PosWorkspaceClient({ initialLedger }: PosWorkspaceClient
     setRentalNotes('');
     setSelectedItemId('');
     setStatusMessage('');
+    setPendingRentalAction(null);
   };
 
   const handleReturnSubmit = async () => {
@@ -874,7 +935,17 @@ export default function PosWorkspaceClient({ initialLedger }: PosWorkspaceClient
                       <input
                         type="date"
                         value={startDate}
-                        onChange={(e) => setStartDate(e.target.value)}
+                        min={getTodayInputValue()}
+                        onChange={(e) => {
+                          const nextStartDate = e.target.value;
+                          const nextDefaultDueDate = addDaysToInputDate(nextStartDate, 3);
+                          setStartDate(nextStartDate);
+                          setDueDate((currentDueDate) =>
+                            !currentDueDate || currentDueDate < nextDefaultDueDate
+                              ? nextDefaultDueDate
+                              : currentDueDate,
+                          );
+                        }}
                         className="w-full border border-[var(--theme-border)] bg-white px-3 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-neutral-900 font-mono"
                       />
                     </label>
@@ -884,9 +955,13 @@ export default function PosWorkspaceClient({ initialLedger }: PosWorkspaceClient
                       <input
                         type="date"
                         value={dueDate}
+                        min={defaultDueDate}
                         onChange={(e) => setDueDate(e.target.value)}
                         className="w-full border border-[var(--theme-border)] bg-white px-3 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-neutral-900 font-mono"
                       />
+                      <span className="block text-[10px] leading-relaxed text-neutral-400">
+                        Default 3 hari. Tambahan {formatCurrency(extraReturnDayPenalty)} per hari setelah {formatDate(defaultDueDate)}.
+                      </span>
                     </label>
                   </div>
 
@@ -894,9 +969,9 @@ export default function PosWorkspaceClient({ initialLedger }: PosWorkspaceClient
                     <label className="block space-y-1">
                       <span className="text-xs font-semibold text-neutral-600">Harga Sewa (Override)</span>
                       <input
-                        type="number"
+                        inputMode="numeric"
                         value={priceOverride}
-                        onChange={(e) => setPriceOverride(e.target.value)}
+                        onChange={(e) => setPriceOverride(formatCurrencyInput(e.target.value))}
                         className="w-full border border-[var(--theme-border)] bg-white px-3 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-neutral-900 font-mono"
                       />
                     </label>
@@ -904,9 +979,9 @@ export default function PosWorkspaceClient({ initialLedger }: PosWorkspaceClient
                     <label className="block space-y-1">
                       <span className="text-xs font-semibold text-neutral-600">Uang Jaminan (Deposit)</span>
                       <input
-                        type="number"
+                        inputMode="numeric"
                         value={depositReceived}
-                        onChange={(e) => setDepositReceived(e.target.value)}
+                        onChange={(e) => setDepositReceived(formatCurrencyInput(e.target.value))}
                         className="w-full border border-[var(--theme-border)] bg-white px-3 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-neutral-900 font-mono"
                       />
                     </label>
@@ -943,33 +1018,35 @@ export default function PosWorkspaceClient({ initialLedger }: PosWorkspaceClient
                 <div className="border border-neutral-900 bg-neutral-900 p-4 text-white space-y-2 mt-4">
                   <div className="flex justify-between text-xs text-neutral-300">
                     <span>Biaya Sewa Pakaian</span>
-                    <span>{formatCurrency(Number(priceOverride) || 0)}</span>
+                    <span>{formatCurrency(baseRentalPrice)}</span>
                   </div>
+                  {extraReturnDays > 0 && (
+                    <div className="flex justify-between text-xs text-amber-200">
+                      <span>Tambahan return ({extraReturnDays} hari)</span>
+                      <span>{formatCurrency(extraReturnPenalty)}</span>
+                    </div>
+                  )}
                   <div className="flex justify-between text-xs text-neutral-300 border-b border-white/10 pb-1.5">
                     <span>Security Deposit</span>
-                    <span>{formatCurrency(Number(depositReceived) || 0)}</span>
+                    <span>{formatCurrency(securityDepositAmount)}</span>
                   </div>
                   <div className="flex justify-between font-semibold">
                     <span className="text-sm">TOTAL HARUS BAYAR</span>
                     <span className="text-base text-amber-400">
-                      {formatCurrency((Number(priceOverride) || 0) + (Number(depositReceived) || 0))}
+                      {formatCurrency(rentTotalDue)}
                     </span>
                   </div>
                 </div>
 
                 <div className="flex gap-2 pt-2">
                   <button
-                    onClick={() => {
-                      setSelectedItemId('');
-                      setSelectedTransactionId('');
-                      setSelectedMaintenanceId('');
-                    }}
+                    onClick={() => setPendingRentalAction('cancel')}
                     className="flex-grow border border-neutral-300 bg-white hover:bg-neutral-50 px-4 py-3 text-xs font-semibold uppercase tracking-wider text-neutral-700"
                   >
                     Batal
                   </button>
                   <button
-                    onClick={handleRentSubmit}
+                    onClick={() => setPendingRentalAction('print')}
                     className="flex-grow bg-neutral-900 hover:bg-neutral-800 text-white px-4 py-3 text-xs font-semibold uppercase tracking-wider flex items-center justify-center gap-2"
                   >
                     <Receipt className="h-4 w-4" /> Cetak Sewa
@@ -1203,6 +1280,87 @@ export default function PosWorkspaceClient({ initialLedger }: PosWorkspaceClient
         </aside>
 
       </div>
+
+      {pendingRentalAction && selectedItem && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="w-full max-w-md border border-neutral-200 bg-white p-5 shadow-xl">
+            <div className="flex items-start justify-between gap-4 border-b border-neutral-100 pb-4">
+              <div>
+                <p className="font-mono text-[10px] font-bold uppercase tracking-widest text-neutral-400">
+                  Konfirmasi
+                </p>
+                <h3 className="mt-1 font-serif text-xl font-semibold text-neutral-950">
+                  {pendingRentalAction === 'print' ? 'Cetak Sewa?' : 'Batalkan input sewa?'}
+                </h3>
+              </div>
+              <button
+                onClick={() => setPendingRentalAction(null)}
+                className="p-1 text-neutral-400 hover:text-neutral-900"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            {pendingRentalAction === 'print' ? (
+              <div className="space-y-3 py-4 text-sm text-neutral-600">
+                <p>
+                  Transaksi untuk <strong className="text-neutral-950">{selectedItem.name}</strong> akan dibuat dan
+                  langsung masuk ledger POS.
+                </p>
+                <div className="border border-neutral-200 bg-neutral-50 p-3 text-xs">
+                  <div className="flex justify-between">
+                    <span>Tanggal sewa</span>
+                    <span className="font-mono text-neutral-950">{formatDate(startDate)}</span>
+                  </div>
+                  <div className="mt-1 flex justify-between">
+                    <span>Tanggal pengembalian</span>
+                    <span className="font-mono text-neutral-950">{formatDate(dueDate)}</span>
+                  </div>
+                  {extraReturnDays > 0 && (
+                    <div className="mt-1 flex justify-between text-amber-700">
+                      <span>Tambahan return</span>
+                      <span>{formatCurrency(extraReturnPenalty)}</span>
+                    </div>
+                  )}
+                  <div className="mt-2 flex justify-between border-t border-neutral-200 pt-2 font-semibold text-neutral-950">
+                    <span>Total dibayar</span>
+                    <span>{formatCurrency(rentTotalDue)}</span>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <p className="py-4 text-sm leading-relaxed text-neutral-600">
+                Data yang sedang diisi untuk transaksi ini akan dibersihkan dari form. Tidak ada data POS yang dibuat.
+              </p>
+            )}
+
+            <div className="flex gap-2">
+              <button
+                onClick={() => setPendingRentalAction(null)}
+                className="flex-1 border border-neutral-300 bg-white px-4 py-3 text-xs font-semibold uppercase tracking-wider text-neutral-700 hover:bg-neutral-50"
+              >
+                Kembali
+              </button>
+              <button
+                onClick={() => {
+                  if (pendingRentalAction === 'print') {
+                    void handleRentSubmit();
+                  } else {
+                    clearRentalSelection();
+                  }
+                }}
+                className={`flex-1 px-4 py-3 text-xs font-semibold uppercase tracking-wider text-white ${
+                  pendingRentalAction === 'print'
+                    ? 'bg-neutral-900 hover:bg-neutral-800'
+                    : 'bg-red-600 hover:bg-red-700'
+                }`}
+              >
+                {pendingRentalAction === 'print' ? 'Ya, Cetak Sewa' : 'Ya, Batal'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* 2. PRINTABLE RECEIPT MODAL SYSTEM */}
       {isInvoiceOpen && invoiceTransaction && (
