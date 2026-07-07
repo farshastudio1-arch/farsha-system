@@ -6,11 +6,11 @@ import { auth } from '../../auth';
 import { CMSContent, KebayaItem, SiteSettings } from '@/data/mockData';
 import {
   bulkCreateNameGeneratorPoolEntries,
+  createCatalogItemWithGeneratedCode,
   deleteMediaAlbum,
   deleteMediaAssetRecord,
   deleteCatalogItem,
   ensureMediaAssetForUrl,
-  findCatalogItemByCode,
   findMediaAssetById,
   findNameGeneratorUsedNameByName,
   getCmsContent,
@@ -30,7 +30,6 @@ import {
   updateSiteSettings,
   upsertNameGeneratorPoolEntry,
   upsertMediaAlbum,
-  upsertCatalogItem,
   deleteNameGeneratorPoolEntry,
 } from '@/lib/farsha-db';
 import { MediaAlbum, MediaAsset, MediaAssetUpdate, deleteMediaObjectByKey } from '@/lib/media-library';
@@ -165,23 +164,18 @@ export async function saveCatalogItemAction(item: KebayaItem): Promise<ActionRes
   try {
     await ensureAdmin();
 
-    const duplicate = await findCatalogItemByCode(item.code);
-    if (duplicate && duplicate.id !== item.id) {
-      return { ok: false, error: 'Code already exists. Use a unique inventory code.' };
-    }
-
     const duplicateName = await findNameGeneratorUsedNameByName(item.name);
     if (duplicateName && duplicateName.sourceId !== item.id) {
       return { ok: false, error: 'Name already exists. Use a unique item name.' };
     }
 
-    await upsertCatalogItem(item);
+    const savedItem = await createCatalogItemWithGeneratedCode(item);
     await recordNameGeneratorUsedName({
-      name: item.name,
+      name: savedItem.name,
       source: 'catalog',
-      sourceId: item.id,
+      sourceId: savedItem.id,
     });
-    await ensureMediaAssetsForUrls(item.imageUrls, 'catalog', item.name);
+    await ensureMediaAssetsForUrls(savedItem.imageUrls, 'catalog', savedItem.name);
 
     revalidatePublicAndAdmin();
 

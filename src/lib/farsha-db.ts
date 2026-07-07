@@ -45,6 +45,15 @@ const catalogSelectFieldsLegacy =
   `id, code, name, color, size, model, rental_price, status, rental_end_date,
   image_urls, description, wear_styles, categories, measurements`;
 
+const catalogModelCodePrefixes: Record<KebayaItem['model'], string> = {
+  'Kebaya Modern': 'KB',
+  'Kebaya Kutubaru': 'KK',
+  'Kebaya Janggan': 'KJ',
+  'Dress Premium': 'DP',
+  'Bajubodo Modern': 'BM',
+  'Kurung Melayu': 'KM',
+};
+
 function isMissingComparePriceColumnError(error: unknown) {
   return String(error).includes('no such column: compare_at_rental_price');
 }
@@ -55,6 +64,30 @@ function isMissingCatalogItemDetailColumnError(error: unknown) {
     message.includes('no such column: can_resize') ||
     message.includes('no such column: rental_includes')
   );
+}
+
+function formatInventoryDate(date: Date) {
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Asia/Jakarta',
+    day: '2-digit',
+    month: '2-digit',
+    year: '2-digit',
+  }).formatToParts(date);
+  const day = parts.find((part) => part.type === 'day')?.value ?? '01';
+  const month = parts.find((part) => part.type === 'month')?.value ?? '01';
+  const year = parts.find((part) => part.type === 'year')?.value ?? '00';
+
+  return `${day}${month}${year}`;
+}
+
+function formatCatalogSequence(value: number) {
+  return String(Math.max(1, value)).padStart(3, '0');
+}
+
+function buildCatalogInventoryCode(model: KebayaItem['model'], catalogSequence: number) {
+  return `FC${formatCatalogSequence(catalogSequence)}${catalogModelCodePrefixes[model]}${formatInventoryDate(
+    new Date(),
+  )}`;
 }
 
 async function getCatalogColumnNames(db: D1Database) {
@@ -600,6 +633,36 @@ export async function findCatalogItemById(itemId: string): Promise<KebayaItem | 
   const row = await findCatalogRowById(db, itemId);
 
   return row ? catalogRowToItem(row, 0) : null;
+}
+
+export async function createCatalogItemWithGeneratedCode(item: KebayaItem): Promise<KebayaItem> {
+  const db = await getD1Database();
+  const existing = await findCatalogRowById(db, item.id);
+
+  if (existing) {
+    await upsertCatalogItem({
+      ...item,
+      code: existing.code,
+    });
+
+    return {
+      ...item,
+      code: existing.code,
+    };
+  }
+
+  const countResult = await db
+    .prepare(`SELECT COUNT(*) AS count FROM kebaya_items WHERE status != 'archived'`)
+    .first<{ count: number }>();
+  const nextSequence = Number(countResult?.count ?? 0) + 1;
+  const generatedItem = {
+    ...item,
+    code: buildCatalogInventoryCode(item.model, nextSequence),
+  };
+
+  await upsertCatalogItem(generatedItem);
+
+  return generatedItem;
 }
 
 export async function upsertCatalogItem(item: KebayaItem): Promise<void> {
