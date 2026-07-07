@@ -49,7 +49,6 @@ import { useSavedPosLedger } from '@/lib/pos-ledger-client';
 type CatalogFormState = {
   name: string;
   code: string;
-  codeNumber: string;
   rentalPrice: string;
   compareAtRentalPrice: string;
   model: KebayaItem['model'];
@@ -91,7 +90,6 @@ type MediaUploadResponse =
 const emptyForm: CatalogFormState = {
   name: '',
   code: '',
-  codeNumber: '',
   rentalPrice: '',
   compareAtRentalPrice: '',
   model: 'Kebaya Modern',
@@ -184,30 +182,18 @@ function formatInventoryDate(date: Date) {
   return `${day}${month}${year}`;
 }
 
-function formatManualNumber(value: string) {
-  const digits = value.replace(/\D/g, '');
-
-  if (!digits) {
-    return '';
-  }
-
-  return digits.length > 3 ? digits : digits.padStart(3, '0');
+function formatCatalogSequence(value: number) {
+  return String(Math.max(1, value)).padStart(3, '0');
 }
 
-function buildInventoryCode(model: KebayaItem['model'], date: Date, manualNumber: string) {
-  const formattedNumber = formatManualNumber(manualNumber);
-
-  if (!formattedNumber) {
-    return '';
-  }
-
-  return `${getModelPrefix(model)}${formatInventoryDate(date)}${formattedNumber}`;
+function buildInventoryCode(model: KebayaItem['model'], date: Date, catalogSequence: number) {
+  return `FC${formatCatalogSequence(catalogSequence)}${getModelPrefix(model)}${formatInventoryDate(date)}`;
 }
 
-function createEmptyForm(date = new Date()): CatalogFormState {
+function createEmptyForm(date = new Date(), catalogSequence = 1): CatalogFormState {
   return {
     ...emptyForm,
-    code: buildInventoryCode(emptyForm.model, date, emptyForm.codeNumber),
+    code: buildInventoryCode(emptyForm.model, date, catalogSequence),
   };
 }
 
@@ -247,7 +233,6 @@ function itemToForm(item: KebayaItem): CatalogFormState {
   return {
     name: item.name,
     code: item.code,
-    codeNumber: '',
     rentalPrice: String(item.rentalPrice),
     compareAtRentalPrice: item.compareAtRentalPrice ? String(item.compareAtRentalPrice) : '',
     model: item.model,
@@ -486,6 +471,7 @@ export default function CatalogManagement() {
   const [isUploadingImage, setIsUploadingImage] = useState(false);
   const [uploadError, setUploadError] = useState('');
   const [pickerTarget, setPickerTarget] = useState<number | 'append' | null>(null);
+  const nextCatalogSequence = catalogItems.length + 1;
 
   useEffect(() => {
     let active = true;
@@ -578,7 +564,7 @@ export default function CatalogManagement() {
     const codeDate = new Date();
     setInventoryCodeDate(codeDate);
     setEditingItem(null);
-    setForm(createEmptyForm(codeDate));
+    setForm(createEmptyForm(codeDate, nextCatalogSequence));
     setFormError('');
     setImgErrors({});
     setUploadError('');
@@ -606,7 +592,7 @@ export default function CatalogManagement() {
   const closeCatalogModal = () => {
     setIsModalOpen(false);
     setEditingItem(null);
-    setForm(createEmptyForm(inventoryCodeDate));
+    setForm(createEmptyForm(inventoryCodeDate, nextCatalogSequence));
     setFormError('');
     setImgErrors({});
     setUploadError('');
@@ -625,14 +611,10 @@ export default function CatalogManagement() {
     setForm((current) => {
       const next = { ...current, [key]: value };
 
-      if (!editingItem && (key === 'model' || key === 'codeNumber')) {
+      if (!editingItem && key === 'model') {
         return {
           ...next,
-          code: buildInventoryCode(
-            next.model,
-            inventoryCodeDate,
-            key === 'codeNumber' ? String(value) : next.codeNumber,
-          ),
+          code: buildInventoryCode(next.model, inventoryCodeDate, nextCatalogSequence),
         };
       }
 
@@ -781,7 +763,6 @@ export default function CatalogManagement() {
     const price = parsePrice(form.rentalPrice);
     const compareAtPrice = parseOptionalPrice(form.compareAtRentalPrice);
     const code = form.code.trim();
-    const codeNumber = Number(form.codeNumber);
     const name = form.name.trim();
     const duplicateCode = catalogItems.some(
       (item) => item.code.toLowerCase() === code.toLowerCase() && item.id !== editingItem?.id,
@@ -799,11 +780,6 @@ export default function CatalogManagement() {
 
     if (form.rentalIncludes.length === 0) {
       setFormError('Choose at least one item included in the rent.');
-      return;
-    }
-
-    if (!editingItem && (!Number.isFinite(codeNumber) || codeNumber <= 0)) {
-      setFormError('Manual number is required and must be greater than 0.');
       return;
     }
 
@@ -1562,35 +1538,17 @@ export default function CatalogManagement() {
                               type="text"
                               value={form.code}
                               readOnly
-                              placeholder={buildInventoryCode(form.model, new Date(), '1')}
+                              placeholder={buildInventoryCode(form.model, new Date(), nextCatalogSequence)}
                               className={`${inputCls} bg-neutral-100 font-mono text-neutral-700`}
                             />
                             <p className="mt-1 text-[10px] text-neutral-400">
                               {editingItem
                                 ? 'Saved code is kept when editing an existing item.'
-                                : 'Generated from model, today, and manual number.'}
+                                : `Generated from FC, next catalog number ${formatCatalogSequence(
+                                    nextCatalogSequence,
+                                  )}, model, and today.`}
                             </p>
                           </FieldLabel>
-                          {!editingItem && (
-                            <FieldLabel label="Manual number">
-                              <input
-                                type="text"
-                                inputMode="numeric"
-                                value={form.codeNumber}
-                                onChange={(event) =>
-                                  updateFormField(
-                                    'codeNumber',
-                                    event.target.value.replace(/\D/g, ''),
-                                  )
-                                }
-                                placeholder="001"
-                                className={inputCls}
-                              />
-                              <p className="mt-1 text-[10px] text-neutral-400">
-                                1 becomes 001, 12 becomes 012, 1234 stays 1234.
-                              </p>
-                            </FieldLabel>
-                          )}
                           <FieldLabel label="Model">
                             <select
                               value={form.model}
