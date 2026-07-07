@@ -831,12 +831,6 @@ export default function PosWorkspaceClient({ initialLedger }: PosWorkspaceClient
                         >
                           Catatan
                         </button>
-                        <button
-                          onClick={() => handleCompleteMaintenanceSubmit(hold.id)}
-                          className="bg-neutral-900 hover:bg-neutral-800 text-white px-3 py-1.5 text-xs font-semibold"
-                        >
-                          Siap Sewa
-                        </button>
                       </div>
                     </div>
                   ))}
