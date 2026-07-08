@@ -31,7 +31,7 @@ export default function BackToTop() {
   return (
     <button
       onClick={scrollToTop}
-      className="fixed bottom-6 right-6 z-40 p-3 rounded-full theme-surface theme-border border shadow-lg hover:shadow-xl text-[var(--theme-text)] transition-all duration-300 hover:scale-110 hover:-translate-y-1 animate-in fade-in slide-in-from-bottom-5 cursor-pointer backdrop-blur-md bg-[color-mix(in_srgb,var(--theme-surface)_88%,transparent)]"
+      className="fixed bottom-6 right-6 z-40 hidden rounded-full border p-3 theme-surface theme-border bg-[color-mix(in_srgb,var(--theme-surface)_88%,transparent)] text-[var(--theme-text)] shadow-lg backdrop-blur-md transition-all duration-300 animate-in fade-in slide-in-from-bottom-5 hover:-translate-y-1 hover:scale-110 hover:shadow-xl md:flex"
       aria-label="Kembali ke atas"
     >
       <ArrowUp className="w-5 h-5" strokeWidth={2.2} />

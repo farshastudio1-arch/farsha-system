@@ -87,6 +87,7 @@ export default function ProductDetailModal({
 
   const mobileCarouselRef = useRef<HTMLDivElement>(null);
   const detailScrollRef = useRef<HTMLDivElement>(null);
+  const availabilitySectionRef = useRef<HTMLDivElement>(null);
   const productId = product?.id;
 
   // Lock body scroll when modal is open
@@ -307,6 +308,16 @@ export default function ProductDetailModal({
     }
   };
 
+  const openAvailabilityCheck = () => {
+    setIsBookingCalendarOpen(true);
+    window.setTimeout(() => {
+      availabilitySectionRef.current?.scrollIntoView({
+        behavior: 'smooth',
+        block: 'start',
+      });
+    }, 0);
+  };
+
   const formatPrice = (price: number) => {
     return new Intl.NumberFormat('id-ID', {
       style: 'currency',
@@ -354,6 +365,12 @@ export default function ProductDetailModal({
     product.compareAtRentalPrice && product.compareAtRentalPrice > product.rentalPrice
       ? product.compareAtRentalPrice
       : null;
+  const isBookingBlocked = Boolean(bookingConflict || posAvailabilityBlock || serverAvailabilityBlock);
+  const bookingBlockedLabel =
+    bookingConflict?.bookingNumber ??
+    posAvailabilityBlock?.label ??
+    serverAvailabilityBlock?.label ??
+    'Tanggal tidak tersedia';
 
   const getDefaultMeasurements = (size: string) => {
     switch (size) {
@@ -406,21 +423,40 @@ export default function ProductDetailModal({
     matchesLandingCategory(product, category.value),
   );
   const rentalIncludes = product.rentalIncludes ?? ['Skirt', 'Kebaya', 'Hijab', 'Manset', 'Bustier'];
+  const primaryBadges = [
+    product.model,
+    product.color,
+    `Fit ${product.size}`,
+    product.canResize ? 'Bisa Resize' : '',
+  ].filter(Boolean);
+  const secondaryBadges = [
+    ...product.wearStyles,
+    ...matchedCategories.map((category) => `${category.emoji} ${category.label}`),
+  ];
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-black/60 backdrop-blur-xs transition-opacity duration-300">
+    <div className="fixed inset-0 z-50 bg-[var(--theme-surface)] transition-opacity duration-300 md:flex md:items-center md:justify-center md:bg-black/60 md:p-6 md:backdrop-blur-xs">
       {/* Click outside to close */}
-      <div className="absolute inset-0" onClick={onClose} />
+      <div className="absolute inset-0 hidden md:block" onClick={onClose} />
 
       {/* Modal Container */}
-      <div className="theme-surface theme-border relative w-full max-w-4xl shadow-2xl border flex flex-col md:flex-row overflow-hidden max-h-[92dvh] md:max-h-[90vh] z-10 animate-in fade-in zoom-in-95 duration-200">
+      <div className="theme-surface relative z-10 flex h-[100dvh] w-full flex-col overflow-hidden md:h-auto md:max-h-[90vh] md:max-w-4xl md:flex-row md:border md:theme-border md:shadow-2xl md:animate-in md:fade-in md:zoom-in-95 md:duration-200">
         {/* Unified Static Close Button */}
         <button
           onClick={onClose}
-          className="absolute top-4 right-4 z-40 p-2.5 bg-[color-mix(in_srgb,var(--theme-surface)_88%,transparent)] backdrop-blur-md text-[var(--theme-text)] border theme-border transition-all hover:scale-105 duration-200 shadow-sm hover:bg-[var(--theme-surface)]"
-          aria-label="Tutup"
+          className="absolute left-3 top-3 z-40 inline-flex min-h-10 items-center gap-2 border theme-border bg-[color-mix(in_srgb,var(--theme-surface)_90%,transparent)] px-3 py-2 text-xs font-bold uppercase tracking-wider text-[var(--theme-text)] shadow-sm backdrop-blur-md transition-all duration-200 hover:bg-[var(--theme-surface)] md:left-auto md:right-4 md:top-4 md:min-h-0 md:p-2.5"
+          aria-label="Kembali ke katalog"
         >
-          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg className="h-4 w-4 md:hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth="2.4"
+              d="M15 19l-7-7 7-7"
+            />
+          </svg>
+          <span className="md:hidden">Katalog</span>
+          <svg className="hidden h-5 w-5 md:block" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path
               strokeLinecap="round"
               strokeLinejoin="round"
@@ -434,10 +470,10 @@ export default function ProductDetailModal({
         <div
           ref={detailScrollRef}
           onScroll={handleDetailScroll}
-          className="flex-1 overflow-y-auto flex flex-col md:flex-row min-h-0 no-scrollbar"
+          className="flex min-h-0 flex-1 flex-col overflow-y-auto md:flex-row no-scrollbar"
         >
           {/* LEFT PANEL: Media Gallery */}
-          <div className="theme-soft-surface theme-border w-full md:w-1/2 shrink-0 flex flex-col p-3 sm:p-4 md:p-6 relative justify-center border-b md:border-b-0 md:border-r">
+          <div className="relative flex w-full shrink-0 flex-col justify-center border-b theme-border bg-white md:w-1/2 md:border-b-0 md:border-r md:p-6 md:theme-soft-surface">
             {/* Desktop Visual */}
             <div className="hidden md:block theme-soft-surface relative aspect-[4/5] w-full overflow-hidden shadow-xs">
               {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -449,10 +485,10 @@ export default function ProductDetailModal({
             </div>
 
             {/* Mobile Swipable Visual */}
-            <div className="block md:hidden relative w-full aspect-[4/5] overflow-hidden shadow-xs">
+            <div className="relative block h-[58svh] min-h-[25rem] w-full overflow-hidden md:hidden">
               {/* Mobile Photo Count Badge */}
               {product.imageUrls.length > 1 && (
-                <div className="absolute top-3 left-3 bg-[color-mix(in_srgb,var(--theme-text)_75%,transparent)] text-[var(--theme-surface)] text-[10px] font-mono font-bold px-2.5 py-1 z-10 pointer-events-none shadow-sm rounded-sm">
+                <div className="pointer-events-none absolute right-3 top-3 z-10 bg-[color-mix(in_srgb,var(--theme-text)_75%,transparent)] px-2.5 py-1 font-mono text-[10px] font-bold text-[var(--theme-surface)] shadow-sm">
                   {activeImgIndex + 1}/{product.imageUrls.length}
                 </div>
               )}
@@ -471,7 +507,7 @@ export default function ProductDetailModal({
                     <img
                       src={url}
                       alt={`${product.name} - Foto ${index + 1}`}
-                      className="w-full h-full object-cover"
+                      className="h-full w-full object-cover"
                       loading={index === 0 ? 'eager' : 'lazy'}
                     />
                   </div>
@@ -505,28 +541,10 @@ export default function ProductDetailModal({
               )}
 
               {!hasScrolledDetails && (
-                <>
-                  <div
-                    aria-hidden="true"
-                    className="pointer-events-none absolute inset-x-0 bottom-0 z-[9] h-24 bg-gradient-to-t from-black/38 via-black/12 to-transparent"
-                  />
-                  <div
-                    aria-hidden="true"
-                    className="product-detail-scroll-cue pointer-events-none absolute bottom-12 right-4 z-[11] flex flex-col items-end gap-1 rounded-full bg-[color-mix(in_srgb,var(--theme-text)_72%,transparent)] px-3 py-2 text-[var(--theme-surface)] shadow-sm backdrop-blur-xs"
-                  >
-                    <span className="whitespace-nowrap text-[10px] font-semibold uppercase tracking-[0.16em]">
-                      Geser bawah untuk detail
-                    </span>
-                    <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth="2.4"
-                        d="M6 9l6 6 6-6"
-                      />
-                    </svg>
-                  </div>
-                </>
+                <div
+                  aria-hidden="true"
+                  className="pointer-events-none absolute inset-x-0 bottom-0 z-[9] h-20 bg-gradient-to-t from-black/25 via-black/8 to-transparent"
+                />
               )}
             </div>
 
@@ -552,11 +570,11 @@ export default function ProductDetailModal({
           </div>
 
           {/* RIGHT PANEL: Details & CTA */}
-          <div className="w-full md:w-1/2 flex flex-col min-h-0 relative">
+          <div className="relative flex min-h-0 w-full flex-col md:w-1/2">
             {/* Details Content Area */}
-            <div className="flex-1 p-5 sm:p-6 md:p-8 pb-4">
+            <div className="flex-1 p-5 pb-6 sm:p-6 md:p-8">
               {/* Product Header */}
-              <div className="mb-3">
+              <div className="mb-4">
                 <div className="flex flex-wrap gap-2 items-center mb-2">
                   <span className="text-[10px] uppercase tracking-widest bg-[var(--theme-text)] text-[var(--theme-surface)] px-2 py-0.5 font-mono font-semibold">
                     {product.code}
@@ -571,43 +589,48 @@ export default function ProductDetailModal({
                 <h2 className="font-serif text-xl sm:text-2xl md:text-3xl text-[var(--theme-text)] font-semibold leading-tight">
                   {product.name}
                 </h2>
+                <div className="mt-3 flex items-baseline gap-1.5 flex-wrap md:hidden">
+                  {visibleCompareAtRentalPrice && (
+                    <span className="theme-muted-strong text-sm font-mono line-through">
+                      {formatPrice(visibleCompareAtRentalPrice)}
+                    </span>
+                  )}
+                  <span className="font-mono text-2xl font-semibold text-[var(--theme-text)]">
+                    {formatPrice(product.rentalPrice)}
+                  </span>
+                  <span className="theme-muted-strong font-mono text-xs font-normal">
+                    /3 hari
+                  </span>
+                </div>
               </div>
 
-              {/* Sizing & Kategori Badges (Competitor Layout element) */}
-              <div className="flex flex-wrap gap-2 mb-5">
-                <span className="theme-soft-surface theme-border border px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider font-mono text-[var(--theme-text)]">
-                  {product.model}
-                </span>
-                <span className="theme-soft-surface theme-border border px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider font-mono text-[var(--theme-text)]">
-                  {product.color}
-                </span>
-                <span className="theme-soft-surface theme-border border px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider font-mono text-[var(--theme-text)]">
-                  Fit {product.size}
-                </span>
-                {product.canResize && (
-                  <span className="border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider font-mono text-emerald-700">
-                    Bisa Resize
-                  </span>
+              <div className="mb-5 space-y-3">
+                <div className="flex flex-wrap gap-2">
+                  {primaryBadges.map((badge) => (
+                    <span
+                      key={badge}
+                      className={`border px-2.5 py-1 font-mono text-[10px] font-semibold uppercase tracking-wider ${
+                        badge === 'Bisa Resize'
+                          ? 'border-emerald-200 bg-emerald-50 text-emerald-700'
+                          : 'theme-soft-surface theme-border text-[var(--theme-text)]'
+                      }`}
+                    >
+                      {badge}
+                    </span>
+                  ))}
+                </div>
+                {secondaryBadges.length > 0 && (
+                  <div className="flex flex-wrap gap-1.5">
+                    {secondaryBadges.map((badge) => (
+                      <span
+                        key={badge}
+                        className="bg-[color-mix(in_srgb,var(--theme-border)_22%,var(--theme-surface))] px-2 py-1 font-mono text-[10px] font-semibold uppercase tracking-wider text-neutral-700"
+                      >
+                        {badge}
+                      </span>
+                    ))}
+                  </div>
                 )}
-                {product.wearStyles.map((style) => (
-                  <span
-                    key={style}
-                    className={`px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider font-mono text-neutral-900 ${
-                      style === 'Hijab' ? 'bg-[#f8edeb]' : 'bg-[#f5ebe0]'
-                    }`}
-                  >
-                    {style}
-                  </span>
-                ))}
-                {matchedCategories.map((cat, idx) => (
-                  <span
-                    key={idx}
-                    className="bg-[color-mix(in_srgb,var(--theme-accent)_10%,transparent)] border border-[color-mix(in_srgb,var(--theme-accent)_20%,transparent)] px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider font-mono text-[var(--theme-text)] flex items-center gap-1"
-                  >
-                    <span>{cat.emoji}</span>
-                    <span>{cat.label}</span>
-                  </span>
-                ))}
               </div>
 
               {/* Description */}
@@ -721,20 +744,20 @@ export default function ProductDetailModal({
                 </ul>
               </div>
 
-              <div className="mb-6 border theme-border theme-soft-surface p-4 lg:p-5">
+              <div ref={availabilitySectionRef} className="mb-6 border theme-border theme-soft-surface p-4 lg:p-5">
                 <div className="border-b theme-border pb-4">
                   <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-start">
                     <div>
                       <h4 className="max-w-[34rem] text-base font-semibold leading-snug text-[var(--theme-text)]">
-                        Acara kamu masih nanti? Amankan tanggal dulu biar bajunya nda diambil orang
+                        Cek ketersediaan tanggal
                       </h4>
                       <p className="mt-1 text-xs theme-muted-strong leading-relaxed">
-                        Pilih bulan, tahun, lalu tanggal acara yang masih tersedia.
+                        Pilih tanggal pickup. Sistem akan menandai hari acara, estimasi return, dan konflik booking.
                       </p>
                     </div>
                     <button
                       type="button"
-                      onClick={() => setIsBookingCalendarOpen((isOpen) => !isOpen)}
+                      onClick={openAvailabilityCheck}
                       aria-expanded={isBookingCalendarOpen}
                       className="inline-flex min-h-10 shrink-0 items-center justify-center gap-2 border border-emerald-200 bg-emerald-50 px-4 py-2 text-xs font-semibold uppercase tracking-wider text-emerald-900 transition-colors hover:border-emerald-500 hover:bg-emerald-100 sm:min-w-44"
                     >
@@ -822,13 +845,13 @@ export default function ProductDetailModal({
                             onClick={() => setBookingEventDate(day.value)}
                             className={`flex aspect-square min-h-10 flex-col items-center justify-center border px-1 text-sm font-semibold leading-none transition-colors sm:min-h-11 ${
                               isPickup
-                                ? 'border-emerald-800 bg-emerald-800 text-white'
+                                ? 'border-neutral-950 bg-neutral-950 text-white'
                                 : isEvent
-                                  ? 'border-sky-300 bg-sky-50 text-sky-900'
+                                  ? 'border-amber-300 bg-amber-50 text-amber-900'
                                   : isReturnEstimate
-                                    ? 'border-teal-300 bg-teal-50 text-teal-900'
+                                    ? 'border-sky-300 bg-sky-50 text-sky-900'
                                     : isCleaningBuffer
-                                      ? 'border-violet-200 bg-violet-50 text-violet-900'
+                                      ? 'border-neutral-300 bg-neutral-100 text-neutral-600'
                                       : day.isBooked
                                         ? 'cursor-not-allowed border-orange-200 bg-orange-50 text-orange-700'
                                         : day.disabled
@@ -857,14 +880,6 @@ export default function ProductDetailModal({
                         <span className="h-2.5 w-2.5 border border-orange-200 bg-orange-50" />
                         Tidak tersedia / ter-booking
                       </span>
-                      <span className="inline-flex items-center gap-1.5">
-                        <span className="h-2.5 w-2.5 border border-sky-300 bg-sky-50" />
-                        Hari acara
-                      </span>
-                      <span className="inline-flex items-center gap-1.5">
-                        <span className="h-2.5 w-2.5 border border-teal-300 bg-teal-50" />
-                        Estimasi return
-                      </span>
                     </div>
 
                     {bookingDates && !bookingConflict && !posAvailabilityBlock && !serverAvailabilityBlock && (
@@ -883,6 +898,12 @@ export default function ProductDetailModal({
                           <RotateCcw className="h-3.5 w-3.5" aria-hidden="true" />
                           Reset tanggal
                         </button>
+                      </div>
+                    )}
+
+                    {bookingDates && isBookingBlocked && (
+                      <div className="mt-4 border border-amber-200 bg-amber-50 p-3 text-xs font-semibold uppercase tracking-wider text-amber-800">
+                        {bookingBlockedLabel}
                       </div>
                     )}
 
@@ -987,34 +1008,45 @@ export default function ProductDetailModal({
 
             {/* Pinned Bottom Rental Price & CTA Bar */}
             <div
-              className={`sticky bottom-0 z-10 theme-border bg-[var(--theme-surface)] py-4 px-5 sm:px-6 md:px-8 border-t shrink-0 ${
+              className={`sticky bottom-0 z-10 theme-border bg-[var(--theme-surface)] px-4 py-3 shadow-[0_-10px_30px_rgba(0,0,0,0.08)] sm:px-6 md:px-8 md:py-4 md:shadow-none border-t shrink-0 ${
                 bookingDates
-                  ? 'grid gap-3 md:grid-cols-2 md:items-stretch'
-                  : 'flex flex-row items-center justify-between gap-4'
+                  ? 'grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2 md:grid-cols-2 md:items-stretch md:gap-3'
+                  : 'grid grid-cols-[minmax(0,1fr)_auto_auto] items-center gap-2 md:flex md:flex-row md:justify-between md:gap-4'
               }`}
             >
-              <div className="flex flex-col md:self-center">
+              <div className="flex min-w-0 flex-col md:self-center">
                 <span className="theme-muted text-[10px] uppercase tracking-wider font-mono">
-                  Harga Sewa
+                  {bookingDates ? 'Biaya Booking' : 'Harga Sewa'}
                 </span>
-                <div className="flex items-baseline gap-1.5 flex-wrap">
-                  {visibleCompareAtRentalPrice && (
-                    <span className="theme-muted-strong text-sm font-mono line-through">
-                      {formatPrice(visibleCompareAtRentalPrice)}
+                {bookingDates ? (
+                  <>
+                    <span className="font-mono text-lg font-semibold text-[var(--theme-text)] md:text-2xl">
+                      {formatPrice(previewDpAmount)}
                     </span>
-                  )}
-                  <span className="text-2xl font-semibold font-mono text-[var(--theme-text)]">
-                    {formatPrice(product.rentalPrice)}
-                  </span>
-                  <span className="theme-muted-strong text-xs font-mono font-normal">
-                    /3 hari
-                  </span>
-                </div>
+                    <span className="truncate text-[10px] font-semibold uppercase tracking-wider text-neutral-500 md:hidden">
+                      {isBookingBlocked ? bookingBlockedLabel : formatDate(bookingDates.pickupDate)}
+                    </span>
+                  </>
+                ) : (
+                  <div className="flex flex-wrap items-baseline gap-1.5">
+                    {visibleCompareAtRentalPrice && (
+                      <span className="theme-muted-strong hidden font-mono text-sm line-through sm:inline">
+                        {formatPrice(visibleCompareAtRentalPrice)}
+                      </span>
+                    )}
+                    <span className="font-mono text-lg font-semibold text-[var(--theme-text)] md:text-2xl">
+                      {formatPrice(product.rentalPrice)}
+                    </span>
+                    <span className="theme-muted-strong font-mono text-xs font-normal">
+                      /3 hari
+                    </span>
+                  </div>
+                )}
               </div>
 
               {bookingDates ? (
                 <>
-                  <div className="flex min-h-[4.25rem] flex-col justify-center border theme-border bg-white px-3 py-2.5">
+                  <div className="hidden min-h-[4.25rem] flex-col justify-center border theme-border bg-white px-3 py-2.5 md:flex">
                     <span className="block text-[10px] font-bold uppercase tracking-wider text-neutral-400">
                       Biaya Booking
                     </span>
@@ -1031,7 +1063,7 @@ export default function ProductDetailModal({
                           eventDate: bookingDates.pickupDate,
                         },
                       }}
-                      className="inline-flex min-h-[4.25rem] w-full items-center justify-center bg-[#25D366] px-5 py-3 text-xs font-semibold uppercase tracking-wider text-white shadow-sm transition-all duration-300 hover:-translate-y-[1px] hover:bg-[#20BA5A] hover:shadow-md md:col-span-2"
+                      className="inline-flex min-h-12 w-full items-center justify-center bg-[#25D366] px-4 py-3 text-xs font-semibold uppercase tracking-wider text-white shadow-sm transition-all duration-300 hover:bg-[#20BA5A] md:col-span-2 md:min-h-[4.25rem] md:px-5"
                     >
                       Booking Sekarang
                     </Link>
@@ -1039,25 +1071,34 @@ export default function ProductDetailModal({
                     <button
                       type="button"
                       disabled
-                      className="inline-flex min-h-[4.25rem] w-full cursor-not-allowed items-center justify-center bg-neutral-200 px-5 py-3 text-xs font-semibold uppercase tracking-wider text-neutral-500 md:col-span-2"
+                      className="inline-flex min-h-12 w-full cursor-not-allowed items-center justify-center bg-neutral-200 px-4 py-3 text-xs font-semibold uppercase tracking-wider text-neutral-500 md:col-span-2 md:min-h-[4.25rem] md:px-5"
                     >
-                      Booking Sekarang
+                      Tidak Tersedia
                     </button>
                   )}
                 </>
               ) : (
-                <a
-                  href={getWhatsAppLink()}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="bg-[#25D366] text-white hover:bg-[#20BA5A] text-sm font-semibold tracking-wider uppercase px-6 py-3.5 transition-all duration-300 flex items-center justify-center gap-2.5 shadow-sm hover:shadow-md cursor-pointer hover:-translate-y-[1px] md:justify-self-end md:min-w-52"
-                >
-                  {/* WhatsApp Simple SVG Icon */}
-                  <svg className="w-5 h-5 fill-current" viewBox="0 0 24 24">
-                    <path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946C.06 5.348 5.397.01 12.008.01c3.202.001 6.212 1.246 8.477 3.514 2.266 2.268 3.507 5.28 3.505 8.484-.004 6.657-5.34 11.997-11.953 11.997-2.005-.001-3.973-.502-5.724-1.455L0 24zm6.59-4.846c1.6.95 3.188 1.449 4.825 1.451 5.436 0 9.86-4.42 9.864-9.864.002-2.637-1.03-5.115-2.908-6.993-1.879-1.88-4.359-2.912-7-2.912-5.439 0-9.873 4.432-9.877 9.877-.001 1.769.479 3.498 1.39 5.031l-.963 3.518 3.6-.944z" />
-                  </svg>
-                  <span>WA Admin</span>
-                </a>
+                <>
+                  <button
+                    type="button"
+                    onClick={openAvailabilityCheck}
+                    className="inline-flex min-h-12 items-center justify-center border border-neutral-900 bg-white px-3 py-3 text-[10px] font-bold uppercase tracking-wider text-neutral-950 transition-colors hover:bg-neutral-50 md:hidden"
+                  >
+                    Cek Tanggal
+                  </button>
+                  <a
+                    href={getWhatsAppLink()}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex min-h-12 cursor-pointer items-center justify-center gap-2 bg-[#25D366] px-3 py-3 text-[10px] font-semibold uppercase tracking-wider text-white shadow-sm transition-all duration-300 hover:bg-[#20BA5A] md:min-w-52 md:px-6 md:py-3.5 md:text-sm md:hover:-translate-y-[1px] md:hover:shadow-md"
+                  >
+                    {/* WhatsApp Simple SVG Icon */}
+                    <svg className="h-4 w-4 fill-current md:h-5 md:w-5" viewBox="0 0 24 24">
+                      <path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946C.06 5.348 5.397.01 12.008.01c3.202.001 6.212 1.246 8.477 3.514 2.266 2.268 3.507 5.28 3.505 8.484-.004 6.657-5.34 11.997-11.953 11.997-2.005-.001-3.973-.502-5.724-1.455L0 24zm6.59-4.846c1.6.95 3.188 1.449 4.825 1.451 5.436 0 9.86-4.42 9.864-9.864.002-2.637-1.03-5.115-2.908-6.993-1.879-1.88-4.359-2.912-7-2.912-5.439 0-9.873 4.432-9.877 9.877-.001 1.769.479 3.498 1.39 5.031l-.963 3.518 3.6-.944z" />
+                    </svg>
+                    <span>WA Admin</span>
+                  </a>
+                </>
               )}
             </div>
           </div>
