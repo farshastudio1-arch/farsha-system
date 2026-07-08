@@ -2,7 +2,7 @@
 
 import React, { useMemo, useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
-import { CalendarDays, RotateCcw } from 'lucide-react';
+import { CalendarDays, ChevronDown, RotateCcw } from 'lucide-react';
 import { KebayaItem } from '@/data/mockData';
 import {
   addPreviewDays,
@@ -14,6 +14,7 @@ import {
   previewDpAmount,
   readStoredPreviewBookings,
 } from '@/lib/booking-preview';
+import { formatRupiah } from '@/lib/formatters';
 import { matchesLandingCategory, occasionCategories } from '@/lib/landing-categories';
 import { useSavedPosLedger } from '@/lib/pos-ledger-client';
 
@@ -318,15 +319,6 @@ export default function ProductDetailModal({
     }, 0);
   };
 
-  const formatPrice = (price: number) => {
-    return new Intl.NumberFormat('id-ID', {
-      style: 'currency',
-      currency: 'IDR',
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0,
-    }).format(price);
-  };
-
   const formatDate = (dateStr: string | null) => {
     if (!dateStr) return '';
     const date = new Date(dateStr);
@@ -541,10 +533,19 @@ export default function ProductDetailModal({
               )}
 
               {!hasScrolledDetails && (
-                <div
-                  aria-hidden="true"
-                  className="pointer-events-none absolute inset-x-0 bottom-0 z-[9] h-20 bg-gradient-to-t from-black/25 via-black/8 to-transparent"
-                />
+                <>
+                  <div
+                    aria-hidden="true"
+                    className="pointer-events-none absolute inset-x-0 bottom-0 z-[9] h-24 bg-gradient-to-t from-black/30 via-black/10 to-transparent"
+                  />
+                  <div
+                    aria-hidden="true"
+                    className="pointer-events-none absolute bottom-4 right-4 z-10 inline-flex max-w-[72%] items-center gap-2 bg-black/55 px-3 py-2 text-[10px] font-bold uppercase tracking-[0.18em] text-white shadow-sm backdrop-blur-sm"
+                  >
+                    <span>Geser bawah untuk detail</span>
+                    <ChevronDown className="h-4 w-4 shrink-0" strokeWidth={2.4} />
+                  </div>
+                </>
               )}
             </div>
 
@@ -592,11 +593,11 @@ export default function ProductDetailModal({
                 <div className="mt-3 flex items-baseline gap-1.5 flex-wrap md:hidden">
                   {visibleCompareAtRentalPrice && (
                     <span className="theme-muted-strong text-sm font-mono line-through">
-                      {formatPrice(visibleCompareAtRentalPrice)}
+                      {formatRupiah(visibleCompareAtRentalPrice)}
                     </span>
                   )}
                   <span className="font-mono text-2xl font-semibold text-[var(--theme-text)]">
-                    {formatPrice(product.rentalPrice)}
+                    {formatRupiah(product.rentalPrice)}
                   </span>
                   <span className="theme-muted-strong font-mono text-xs font-normal">
                     /3 hari
@@ -845,13 +846,13 @@ export default function ProductDetailModal({
                             onClick={() => setBookingEventDate(day.value)}
                             className={`flex aspect-square min-h-10 flex-col items-center justify-center border px-1 text-sm font-semibold leading-none transition-colors sm:min-h-11 ${
                               isPickup
-                                ? 'border-neutral-950 bg-neutral-950 text-white'
+                                ? 'border-black bg-black text-white'
                                 : isEvent
-                                  ? 'border-amber-300 bg-amber-50 text-amber-900'
+                                  ? 'border-black/80 bg-black/80 text-white'
                                   : isReturnEstimate
-                                    ? 'border-sky-300 bg-sky-50 text-sky-900'
+                                    ? 'border-black/60 bg-black/60 text-white'
                                     : isCleaningBuffer
-                                      ? 'border-neutral-300 bg-neutral-100 text-neutral-600'
+                                      ? 'border-black/40 bg-black/40 text-black'
                                       : day.isBooked
                                         ? 'cursor-not-allowed border-orange-200 bg-orange-50 text-orange-700'
                                         : day.disabled
@@ -883,21 +884,13 @@ export default function ProductDetailModal({
                     </div>
 
                     {bookingDates && !bookingConflict && !posAvailabilityBlock && !serverAvailabilityBlock && (
-                      <div className="mt-4 flex flex-col gap-3 border border-emerald-200 bg-emerald-50 p-3 text-sm leading-relaxed text-emerald-800 sm:flex-row sm:items-center sm:justify-between">
+                      <div className="mt-4 border border-emerald-200 bg-emerald-50 p-3 text-sm leading-relaxed text-emerald-800">
                         <span>
                           Pickup <strong>{formatDate(bookingDates.pickupDate)}</strong>, acara{' '}
                           <strong>{formatDate(bookingDates.eventDate)}</strong>. Estimasi return{' '}
                           <strong>{formatDate(selectedReturnStartDate)}</strong> -{' '}
                           <strong>{formatDate(selectedReturnEndDate)}</strong>.
                         </span>
-                        <button
-                          type="button"
-                          onClick={() => setBookingEventDate('')}
-                          className="inline-flex min-h-9 shrink-0 items-center justify-center gap-2 border border-emerald-300 bg-white px-3 py-2 text-[10px] font-semibold uppercase tracking-wider text-emerald-900 transition-colors hover:border-emerald-600 hover:bg-emerald-100"
-                        >
-                          <RotateCcw className="h-3.5 w-3.5" aria-hidden="true" />
-                          Reset tanggal
-                        </button>
                       </div>
                     )}
 
@@ -1021,7 +1014,7 @@ export default function ProductDetailModal({
                 {bookingDates ? (
                   <>
                     <span className="font-mono text-lg font-semibold text-[var(--theme-text)] md:text-2xl">
-                      {formatPrice(previewDpAmount)}
+                      {formatRupiah(previewDpAmount)}
                     </span>
                     <span className="truncate text-[10px] font-semibold uppercase tracking-wider text-neutral-500 md:hidden">
                       {isBookingBlocked ? bookingBlockedLabel : formatDate(bookingDates.pickupDate)}
@@ -1031,11 +1024,11 @@ export default function ProductDetailModal({
                   <div className="flex flex-wrap items-baseline gap-1.5">
                     {visibleCompareAtRentalPrice && (
                       <span className="theme-muted-strong hidden font-mono text-sm line-through sm:inline">
-                        {formatPrice(visibleCompareAtRentalPrice)}
+                        {formatRupiah(visibleCompareAtRentalPrice)}
                       </span>
                     )}
                     <span className="font-mono text-lg font-semibold text-[var(--theme-text)] md:text-2xl">
-                      {formatPrice(product.rentalPrice)}
+                      {formatRupiah(product.rentalPrice)}
                     </span>
                     <span className="theme-muted-strong font-mono text-xs font-normal">
                       /3 hari
@@ -1051,31 +1044,41 @@ export default function ProductDetailModal({
                       Biaya Booking
                     </span>
                     <strong className="mt-1 block font-mono text-lg text-neutral-950">
-                      {formatPrice(previewDpAmount)}
+                      {formatRupiah(previewDpAmount)}
                     </strong>
                   </div>
-                  {!bookingConflict && !posAvailabilityBlock && !serverAvailabilityBlock ? (
-                    <Link
-                      href={{
-                        pathname: '/booking',
-                        query: {
-                          itemId: product.id,
-                          eventDate: bookingDates.pickupDate,
-                        },
-                      }}
-                      className="inline-flex min-h-12 w-full items-center justify-center bg-[#25D366] px-4 py-3 text-xs font-semibold uppercase tracking-wider text-white shadow-sm transition-all duration-300 hover:bg-[#20BA5A] md:col-span-2 md:min-h-[4.25rem] md:px-5"
-                    >
-                      Booking Sekarang
-                    </Link>
-                  ) : (
+                  <div className="flex items-center gap-2 md:col-span-2">
                     <button
                       type="button"
-                      disabled
-                      className="inline-flex min-h-12 w-full cursor-not-allowed items-center justify-center bg-neutral-200 px-4 py-3 text-xs font-semibold uppercase tracking-wider text-neutral-500 md:col-span-2 md:min-h-[4.25rem] md:px-5"
+                      onClick={() => setBookingEventDate('')}
+                      className="inline-flex min-h-12 shrink-0 items-center justify-center gap-1.5 border border-neutral-300 bg-white px-3 py-3 text-[10px] font-bold uppercase tracking-wider text-neutral-800 transition-colors hover:border-neutral-900 hover:bg-neutral-50 md:min-h-[4.25rem] md:px-4"
                     >
-                      Tidak Tersedia
+                      <RotateCcw className="h-3.5 w-3.5" aria-hidden="true" />
+                      Reset
                     </button>
-                  )}
+                    {!bookingConflict && !posAvailabilityBlock && !serverAvailabilityBlock ? (
+                      <Link
+                        href={{
+                          pathname: '/booking',
+                          query: {
+                            itemId: product.id,
+                            eventDate: bookingDates.pickupDate,
+                          },
+                        }}
+                        className="inline-flex min-h-12 items-center justify-center bg-[#25D366] px-4 py-3 text-xs font-semibold uppercase tracking-wider text-white shadow-sm transition-all duration-300 hover:bg-[#20BA5A] md:min-h-[4.25rem] md:flex-1 md:px-5"
+                      >
+                        Booking Sekarang
+                      </Link>
+                    ) : (
+                      <button
+                        type="button"
+                        disabled
+                        className="inline-flex min-h-12 cursor-not-allowed items-center justify-center bg-neutral-200 px-4 py-3 text-xs font-semibold uppercase tracking-wider text-neutral-500 md:min-h-[4.25rem] md:flex-1 md:px-5"
+                      >
+                        Tidak Tersedia
+                      </button>
+                    )}
+                  </div>
                 </>
               ) : (
                 <>

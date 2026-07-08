@@ -8,6 +8,7 @@ import {
   KebayaCategory,
   KebayaItem,
 } from '@/data/mockData';
+import { formatRupiah } from '@/lib/formatters';
 import { occasionCategories } from '@/lib/landing-categories';
 
 export interface FilterState {
@@ -147,15 +148,6 @@ export default function Filters({
   };
 
   const handleReset = onReset ?? resetBaseFilters;
-
-  const formatPrice = (price: number) => {
-    return new Intl.NumberFormat('id-ID', {
-      style: 'currency',
-      currency: 'IDR',
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0,
-    }).format(price);
-  };
 
   const baseTotalActiveFilters =
     (filters.search ? 1 : 0) +
@@ -319,7 +311,7 @@ export default function Filters({
             Maksimum Sewa
           </span>
           <span className="text-xs font-semibold font-mono text-[var(--theme-text)]">
-            {formatPrice(filters.maxPrice)}
+            {formatRupiah(filters.maxPrice)}
           </span>
         </div>
         <input
@@ -333,8 +325,8 @@ export default function Filters({
           style={{ '--range-progress': `${priceSliderProgress}%` } as React.CSSProperties}
         />
         <div className="theme-muted flex justify-between items-center text-[10px] font-mono mt-1">
-          <span>{formatPrice(minPriceLimit)}</span>
-          <span>{formatPrice(maxPriceLimit)}</span>
+          <span>{formatRupiah(minPriceLimit)}</span>
+          <span>{formatRupiah(maxPriceLimit)}</span>
         </div>
       </div>
 

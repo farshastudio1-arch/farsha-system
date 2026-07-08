@@ -21,17 +21,13 @@ import {
   previewDpAmount,
   previewExtraReturnDayFee,
 } from '@/lib/booking-preview';
+import { formatRupiah } from '@/lib/formatters';
 
 type BookingStep = 'order' | 'identity' | 'payment';
 type PickupMethod = 'store' | 'gosend';
 
 function formatCurrency(amount: number) {
-  return new Intl.NumberFormat('id-ID', {
-    style: 'currency',
-    currency: 'IDR',
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0,
-  }).format(amount);
+  return formatRupiah(amount);
 }
 
 function formatDate(value: string | null) {

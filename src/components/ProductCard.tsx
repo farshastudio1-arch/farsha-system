@@ -2,6 +2,7 @@
 
 import React, { useState, useRef } from 'react';
 import { KebayaItem, SiteSettings } from '@/data/mockData';
+import { formatRupiah } from '@/lib/formatters';
 
 interface ProductCardProps {
   product: KebayaItem;
@@ -26,15 +27,6 @@ export default function ProductCard({
     const container = e.currentTarget;
     const index = Math.round(container.scrollLeft / container.clientWidth);
     setActiveImageIndex(index);
-  };
-
-  const formatPrice = (price: number) => {
-    return new Intl.NumberFormat('id-ID', {
-      style: 'currency',
-      currency: 'IDR',
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0,
-    }).format(price);
   };
 
   // Status Badge configurations
@@ -265,13 +257,13 @@ export default function ProductCard({
                         isOneColumn ? 'text-xs' : 'text-[10px]'
                       }`}
                     >
-                      {formatPrice(visibleCompareAtRentalPrice)}
+                      {formatRupiah(visibleCompareAtRentalPrice)}
                     </span>
                   )}
                   <span
                     className={`text-[var(--theme-text)] font-semibold ${isOneColumn ? 'text-base sm:text-lg' : 'text-xs sm:text-sm'}`}
                   >
-                    {formatPrice(product.rentalPrice)}
+                    {formatRupiah(product.rentalPrice)}
                   </span>
                   <span className="theme-muted-strong text-[9px] font-normal">/3 hari</span>
                 </div>
