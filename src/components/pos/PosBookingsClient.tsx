@@ -123,7 +123,7 @@ const queueFilters: Array<{ value: QueueFilter; label: string }> = [
   { value: 'all', label: 'Semua' },
   { value: 'requested', label: 'Request' },
   { value: 'payment_submitted', label: 'Bukti masuk' },
-  { value: 'dp_confirmed', label: 'DP confirmed' },
+  { value: 'dp_confirmed', label: 'Biaya Booking verified' },
   { value: 'closed', label: 'Ditutup' },
 ];
 
@@ -227,7 +227,7 @@ function getStatusLabel(status: BookingStatus) {
     case 'payment_submitted':
       return 'Bukti masuk';
     case 'dp_confirmed':
-      return 'DP confirmed';
+      return 'Biaya Booking verified';
     case 'fitting_link_sent':
       return 'Fitting sent';
     case 'picked_up':
@@ -308,11 +308,11 @@ function createDocumentMessage(
 
   if (kind === 'receipt') {
     return [
-      `Halo ${snapshot.customerName}, pembayaran DP booking Farsha Studio sudah kami terima.`,
+      `Halo ${snapshot.customerName}, pembayaran Biaya Booking Farsha Studio sudah kami terima.`,
       '',
       `No. Booking: ${snapshot.bookingNumber}`,
       `No. Receipt: ${documentNumber}`,
-      `DP diterima: ${formatCurrency(document.totalAmount)}`,
+      `Biaya Booking diterima: ${formatCurrency(document.totalAmount)}`,
       '',
       'Tanggal booking sudah terkunci. Link jadwal fitting akan dikirimkan setelah ini.',
     ].join('\n');
@@ -323,7 +323,7 @@ function createDocumentMessage(
     '',
     `No. Booking: ${snapshot.bookingNumber}`,
     `No. Invoice: ${documentNumber}`,
-    `Total DP: ${formatCurrency(document.totalAmount)}`,
+    `Total Biaya Booking: ${formatCurrency(document.totalAmount)}`,
     `Pembayaran ke: ${bankLine}`,
     '',
     'Setelah transfer, mohon kirim bukti pembayaran agar admin bisa mengunci tanggal booking.',
@@ -662,13 +662,13 @@ export default function PosBookingsClient({
       const payload = (await response.json()) as ApiResponse<unknown>;
 
       if (!response.ok || !payload.ok) {
-        throw new Error(payload.error ?? 'Confirm DP gagal.');
+        throw new Error(payload.error ?? 'Konfirmasi Biaya Booking gagal.');
       }
 
       await refreshBookings();
-      setActionMessage(`${booking.bookingNumber} DP confirmed. Buat paid receipt lalu kirim link fitting.`);
+      setActionMessage(`${booking.bookingNumber} Biaya Booking verified. Buat paid receipt lalu kirim link fitting.`);
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Confirm DP gagal.';
+      const message = error instanceof Error ? error.message : 'Konfirmasi Biaya Booking gagal.';
       setActionError(message);
     } finally {
       setConfirmingBookingId('');
@@ -678,7 +678,7 @@ export default function PosBookingsClient({
   const closeBookingStatus = async (booking: BookingQueueRow, action: CloseBookingAction) => {
     const fallbackReason =
       action === 'reject'
-        ? 'Ditolak admin / bukti DP tidak valid.'
+        ? 'Ditolak admin / bukti Biaya Booking tidak valid.'
         : 'Dibatalkan customer/admin.';
     const reason = closeReason.trim() || fallbackReason;
 
@@ -865,7 +865,7 @@ export default function PosBookingsClient({
                 Booking Control Desk
               </h1>
               <p className="mt-2 max-w-2xl text-sm text-neutral-500">
-                Antrean booking dari D1 untuk upload bukti transfer dan konfirmasi DP.
+                Antrean booking dari D1 untuk upload bukti transfer dan konfirmasi Biaya Booking.
               </p>
             </div>
             <div className="flex flex-col gap-2 sm:flex-row">
@@ -904,7 +904,7 @@ export default function PosBookingsClient({
             </div>
             <div className="border border-neutral-200 bg-neutral-50 p-4">
               <p className="font-mono text-[10px] font-bold uppercase tracking-widest text-neutral-400">
-                DP Confirmed
+                Biaya Booking Verified
               </p>
               <strong className="mt-2 block text-2xl text-neutral-950">{metrics.dpConfirmed}</strong>
             </div>
@@ -922,7 +922,7 @@ export default function PosBookingsClient({
                   Booking dari Chat WhatsApp
                 </h2>
                 <p className="mt-1 max-w-2xl text-sm text-neutral-500">
-                  Booking dibuat sebagai request. Kalender baru terkunci setelah bukti transfer diupload dan DP dikonfirmasi.
+                  Booking dibuat sebagai request. Kalender baru terkunci setelah bukti transfer diupload dan Biaya Booking dikonfirmasi.
                 </p>
               </div>
             </div>
@@ -1014,7 +1014,7 @@ export default function PosBookingsClient({
                   <input
                     value={manualBookingForm.customerInstagram}
                     onChange={(event) => updateManualBookingForm('customerInstagram', event.target.value)}
-                    placeholder="Opsional, diskon DP 10%"
+                    placeholder="Opsional, diskon Biaya Booking 10%"
                     className="min-h-12 w-full border border-neutral-200 bg-white px-3 text-sm text-neutral-900 outline-none focus:border-neutral-900"
                   />
                 </label>
@@ -1133,7 +1133,7 @@ export default function PosBookingsClient({
                   <h3 className="font-semibold text-neutral-950">Ringkasan biaya</h3>
                   <div className="mt-3 space-y-2 text-neutral-600">
                     <div className="flex justify-between gap-3">
-                      <span>DP booking</span>
+                      <span>Biaya Booking</span>
                       <strong className="text-neutral-950">{formatCurrency(manualDpTotal)}</strong>
                     </div>
                     <div className="flex justify-between gap-3">
@@ -1141,7 +1141,7 @@ export default function PosBookingsClient({
                       <strong className="text-neutral-950">-{formatCurrency(manualInstagramDiscount)}</strong>
                     </div>
                     <div className="flex justify-between gap-3 border-t border-neutral-200 pt-2">
-                      <span>DP dibayar</span>
+                      <span>Biaya Booking dibayar</span>
                       <strong className="text-neutral-950">{formatCurrency(manualPayNowTotal)}</strong>
                     </div>
                     <div className="flex justify-between gap-3 text-xs">
@@ -1303,7 +1303,7 @@ export default function PosBookingsClient({
 
                   <div className="grid gap-3 sm:grid-cols-2">
                     <div className="border border-neutral-200 bg-neutral-50 p-3">
-                      <p className="text-neutral-400">DP</p>
+                      <p className="text-neutral-400">Biaya Booking</p>
                       <strong className="mt-1 block text-neutral-950">
                         {formatCurrency(Math.max(selectedBooking.dpTotal - selectedBooking.instagramDiscountAmount, 0))}
                       </strong>
@@ -1411,15 +1411,15 @@ export default function PosBookingsClient({
                       >
                         <CheckCircle2 className="h-4 w-4" />
                         {selectedBooking.status === 'dp_confirmed'
-                          ? 'DP sudah dikonfirmasi'
+                          ? 'Biaya Booking sudah dikonfirmasi'
                           : confirmingBookingId === selectedBooking.id
                             ? 'Confirming...'
-                            : 'Confirm DP'}
+                            : 'Konfirmasi Biaya Booking'}
                       </button>
 
                       {selectedBooking.proofCount <= 0 && (
                         <p className="text-xs text-neutral-500">
-                          Confirm DP aktif setelah bukti transfer diupload.
+                          Konfirmasi Biaya Booking aktif setelah bukti transfer diupload.
                         </p>
                       )}
 
@@ -1574,12 +1574,12 @@ export default function PosBookingsClient({
                     Farsha Studio
                   </p>
                   <h1 className="mt-2 font-serif text-3xl font-semibold text-neutral-950">
-                    {documentKind === 'receipt' ? 'Receipt DP Terbayar' : 'Invoice Booking DP'}
+                    {documentKind === 'receipt' ? 'Receipt Biaya Booking Terbayar' : 'Invoice Biaya Booking'}
                   </h1>
                   <p className="mt-2 text-sm text-neutral-500">
                     {documentKind === 'receipt'
-                      ? 'DP sudah diverifikasi admin dan tanggal booking sudah terkunci.'
-                      : 'DP hanya untuk mengamankan tanggal dan bersifat non-refundable.'}
+                      ? 'Biaya Booking sudah diverifikasi admin dan tanggal booking sudah terkunci.'
+                      : 'Biaya Booking hanya untuk mengamankan tanggal dan bersifat non-refundable.'}
                   </p>
                 </div>
                 <div className="text-left sm:text-right">
@@ -1611,7 +1611,7 @@ export default function PosBookingsClient({
                   </h3>
                   {documentKind === 'receipt' ? (
                     <div className="mt-2 border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-800">
-                      DP telah diterima dan diverifikasi oleh admin. Simpan dokumen ini sebagai bukti pembayaran DP booking.
+                      Biaya Booking telah diterima dan diverifikasi oleh admin. Simpan dokumen ini sebagai bukti pembayaran Biaya Booking.
                     </div>
                   ) : documentSnapshot.bank.isConfigured ? (
                     <div className="mt-2 border border-neutral-200 bg-neutral-50 p-3">
@@ -1638,7 +1638,7 @@ export default function PosBookingsClient({
                       <tr>
                         <th className="px-3 py-3">Item</th>
                         <th className="px-3 py-3">Tanggal</th>
-                        <th className="px-3 py-3 text-right">DP</th>
+                        <th className="px-3 py-3 text-right">Biaya Booking</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -1678,12 +1678,12 @@ export default function PosBookingsClient({
                   <p className="mt-3">
                     {documentKind === 'receipt'
                       ? 'Tanggal booking sudah terkunci. Link jadwal fitting dapat dikirimkan setelah receipt ini dibuat.'
-                      : 'Setelah transfer, customer mengirim bukti pembayaran agar admin dapat memverifikasi DP dan mengunci kalender booking.'}
+                      : 'Setelah transfer, customer mengirim bukti pembayaran agar admin dapat memverifikasi Biaya Booking dan mengunci kalender booking.'}
                   </p>
                 </div>
                 <div className="border border-neutral-200 bg-neutral-50 p-4 text-sm">
                   <div className="flex justify-between gap-3">
-                    <span>Subtotal DP</span>
+                    <span>Subtotal Biaya Booking</span>
                     <strong>{formatCurrency(documentData.subtotalAmount)}</strong>
                   </div>
                   <div className="mt-2 flex justify-between gap-3">
@@ -1691,7 +1691,7 @@ export default function PosBookingsClient({
                     <strong>-{formatCurrency(documentData.discountAmount)}</strong>
                   </div>
                   <div className="mt-3 flex justify-between gap-3 border-t border-neutral-200 pt-3 text-base">
-                    <span className="font-semibold">{documentKind === 'receipt' ? 'DP diterima' : 'Total DP'}</span>
+                    <span className="font-semibold">{documentKind === 'receipt' ? 'Biaya Booking diterima' : 'Total Biaya Booking'}</span>
                     <strong>{formatCurrency(documentData.totalAmount)}</strong>
                   </div>
                   <div className="mt-3 flex justify-between gap-3 text-xs text-neutral-500">

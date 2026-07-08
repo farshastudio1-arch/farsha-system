@@ -977,7 +977,7 @@ export async function recordBookingPaymentProof(input: {
     .first<PaymentRow>();
 
   if (!payment) {
-    throw new BookingDbError('Data pembayaran DP belum tersedia.', 404, 'PAYMENT_NOT_FOUND');
+    throw new BookingDbError('Data pembayaran Biaya Booking belum tersedia.', 404, 'PAYMENT_NOT_FOUND');
   }
 
   const proofId = createId('booking-proof');
@@ -1313,7 +1313,7 @@ export async function generateBookingInvoice(bookingId: string, actor?: string |
         bookingStatus,
         bookingStatus,
         'invoice_generated',
-        'Booking DP invoice generated.',
+        'Booking fee invoice generated.',
         normalizeOptionalText(actor),
       ),
   ]);
@@ -1339,7 +1339,7 @@ export async function generateBookingReceipt(bookingId: string, actor?: string |
 
   if (!['dp_confirmed', 'fitting_link_sent', 'picked_up', 'completed'].includes(bookingStatus)) {
     throw new BookingDbError(
-      'Receipt baru bisa dibuat setelah DP dikonfirmasi.',
+      'Receipt baru bisa dibuat setelah Biaya Booking dikonfirmasi.',
       409,
       'DP_NOT_CONFIRMED',
     );
@@ -1375,7 +1375,7 @@ export async function generateBookingReceipt(bookingId: string, actor?: string |
         bookingStatus,
         bookingStatus,
         'receipt_generated',
-        'Paid DP receipt generated.',
+        'Paid booking fee receipt generated.',
         normalizeOptionalText(actor),
       ),
   ]);
@@ -1423,7 +1423,7 @@ export async function confirmBookingDp(bookingId: string, actor?: string | null)
     .first<PaymentRow>();
 
   if (!payment) {
-    throw new BookingDbError('Data pembayaran DP belum tersedia.', 404, 'PAYMENT_NOT_FOUND');
+    throw new BookingDbError('Data pembayaran Biaya Booking belum tersedia.', 404, 'PAYMENT_NOT_FOUND');
   }
 
   const proofCount = await db
@@ -1437,7 +1437,7 @@ export async function confirmBookingDp(bookingId: string, actor?: string | null)
 
   if (!proofCount?.total) {
     throw new BookingDbError(
-      'Upload bukti transfer sebelum confirm DP.',
+      'Upload bukti transfer sebelum konfirmasi Biaya Booking.',
       409,
       'PAYMENT_PROOF_REQUIRED',
     );
@@ -1529,7 +1529,7 @@ export async function confirmBookingDp(bookingId: string, actor?: string | null)
         booking.status,
         'dp_confirmed',
         'confirm_dp',
-        'DP verified and date block activated.',
+        'Booking fee verified and date block activated.',
         normalizeOptionalText(actor),
       ),
   ]);
@@ -1572,7 +1572,7 @@ export async function markFittingLinkSent(bookingId: string, actor?: string | nu
 
   if (booking.status !== 'dp_confirmed') {
     throw new BookingDbError(
-      'Link fitting baru bisa dikirim setelah DP confirmed.',
+      'Link fitting baru bisa dikirim setelah Biaya Booking dikonfirmasi.',
       409,
       'DP_NOT_CONFIRMED',
     );

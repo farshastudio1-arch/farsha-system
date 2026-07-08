@@ -8,7 +8,6 @@ import {
   CheckCircle2,
   Mail,
   MessageCircle,
-  Plus,
   ReceiptText,
   ShieldCheck,
   Truck,
@@ -17,7 +16,6 @@ import {
 
 import type { KebayaItem } from '@/data/mockData';
 import {
-  calculatePreviewBookingDates,
   getPreviewDayDifference,
   previewDpAmount,
   previewExtraReturnDayFee,
@@ -51,7 +49,34 @@ function formatDate(value: string | null) {
 function todayInputValue() {
   const date = new Date();
   date.setDate(date.getDate() + 1);
-  return date.toISOString().slice(0, 10);
+  return formatDatePart(date);
+}
+
+function formatDatePart(date: Date) {
+  const year = date.getFullYear();
+  const month = `${date.getMonth() + 1}`.padStart(2, '0');
+  const day = `${date.getDate()}`.padStart(2, '0');
+
+  return `${year}-${month}-${day}`;
+}
+
+function addDays(value: string, days: number) {
+  const date = new Date(`${value}T00:00:00`);
+  date.setDate(date.getDate() + days);
+  return formatDatePart(date);
+}
+
+function calculateBookingDatesFromPickup(pickupDate: string) {
+  if (!pickupDate || Number.isNaN(new Date(`${pickupDate}T00:00:00`).getTime())) {
+    return null;
+  }
+
+  return {
+    pickupDate,
+    eventDate: addDays(pickupDate, 1),
+    returnDate: addDays(pickupDate, 2),
+    bufferUntilDate: addDays(pickupDate, 5),
+  };
 }
 
 function normalizeWhatsAppNumber(value: string) {
@@ -80,14 +105,12 @@ export default function BookingPageClient({
   whatsappNumber: string;
 }) {
   const firstItem = getItemById(initialItems, initialItemId) ?? initialItems[0] ?? null;
-  const initialDate = calculatePreviewBookingDates(initialEventDate) ? initialEventDate : todayInputValue();
-  const initialDates = calculatePreviewBookingDates(initialDate);
+  const initialDate = calculateBookingDatesFromPickup(initialEventDate) ? initialEventDate : todayInputValue();
+  const initialDates = calculateBookingDatesFromPickup(initialDate);
   const [step, setStep] = useState<BookingStep>('order');
-  const [eventDate] = useState(initialDate);
+  const [pickupDate] = useState(initialDate);
   const [returnDate, setReturnDate] = useState(initialDates?.returnDate ?? initialDate);
   const [pickupMethod, setPickupMethod] = useState<PickupMethod>('store');
-  const [selectedItemIds, setSelectedItemIds] = useState<string[]>(firstItem ? [firstItem.id] : []);
-  const [isAddItemPanelOpen, setIsAddItemPanelOpen] = useState(false);
   const [customerName, setCustomerName] = useState('');
   const [customerWhatsapp, setCustomerWhatsapp] = useState('');
   const [customerEmail, setCustomerEmail] = useState('');
@@ -98,16 +121,17 @@ export default function BookingPageClient({
   const [showWhatsappFallback, setShowWhatsappFallback] = useState(false);
   const [submittedNumbers, setSubmittedNumbers] = useState<string[]>([]);
   const [isSubmittingBooking, setIsSubmittingBooking] = useState(false);
+  const [isConfirmBookingOpen, setIsConfirmBookingOpen] = useState(false);
   const [confirmedOrderKey, setConfirmedOrderKey] = useState('');
   const [confirmedIdentityKey, setConfirmedIdentityKey] = useState('');
   const returnDateInputRef = useRef<HTMLInputElement>(null);
+  const activeStepAreaRef = useRef<HTMLElement>(null);
 
-  const bookingDates = useMemo(() => calculatePreviewBookingDates(eventDate), [eventDate]);
-  const selectedItems = selectedItemIds
-    .map((itemId) => getItemById(initialItems, itemId))
-    .filter((item): item is KebayaItem => Boolean(item));
-  const availableAddItems = initialItems.filter((item) => !selectedItemIds.includes(item.id));
-  const defaultReturnDate = bookingDates?.returnDate ?? eventDate;
+  const bookingDates = useMemo(() => calculateBookingDatesFromPickup(pickupDate), [pickupDate]);
+  const eventDate = bookingDates?.eventDate ?? pickupDate;
+  const selectedItems = firstItem ? [firstItem] : [];
+  const selectedItem = selectedItems[0] ?? null;
+  const defaultReturnDate = bookingDates?.returnDate ?? pickupDate;
   const normalizedReturnDate = returnDate < defaultReturnDate ? defaultReturnDate : returnDate;
   const extraReturnDays = getPreviewDayDifference(defaultReturnDate, normalizedReturnDate);
   const extraReturnFee = extraReturnDays * previewExtraReturnDayFee * selectedItems.length;
@@ -117,11 +141,11 @@ export default function BookingPageClient({
   const estimatedRentalTotal = Math.max(rentalSubtotal + extraReturnFee, 0);
   const payNowTotal = Math.max(dpTotal - instagramDpDiscount, 0);
   const orderConfirmationKey = [
-    eventDate,
     bookingDates?.pickupDate ?? '',
+    bookingDates?.eventDate ?? '',
     normalizedReturnDate,
     pickupMethod,
-    selectedItemIds.join('|'),
+    selectedItem?.id ?? '',
   ].join('::');
   const identityConfirmationKey = [
     customerName.trim(),
@@ -138,8 +162,8 @@ export default function BookingPageClient({
   const whatsappFallbackMessage = [
     'Halo admin Farsha, saya mau request booking kebaya.',
     whatsappFallbackItemList ? `Item: ${whatsappFallbackItemList}` : '',
-    `Tanggal acara: ${formatDate(eventDate)}`,
     `Pickup: ${formatDate(bookingDates?.pickupDate ?? null)}`,
+    `Tanggal acara: ${formatDate(eventDate)}`,
     `Return: ${formatDate(normalizedReturnDate)}`,
     customerName.trim() ? `Nama: ${customerName.trim()}` : '',
     customerWhatsapp.trim() ? `WhatsApp: ${customerWhatsapp.trim()}` : '',
@@ -149,6 +173,12 @@ export default function BookingPageClient({
   const whatsappFallbackUrl = `https://wa.me/${whatsappFallbackPhone}?text=${encodeURIComponent(
     whatsappFallbackMessage,
   )}`;
+
+  const getAdminBookingNotificationUrl = (bookingNumber: string) => {
+    const message = `Hi admin, saya sudah booking kebaya dengan nomor booking : ${bookingNumber}. Tolong segera diproses ya`;
+
+    return `https://wa.me/${whatsappFallbackPhone}?text=${encodeURIComponent(message)}`;
+  };
 
   const openReturnDatePicker = () => {
     const input = returnDateInputRef.current;
@@ -163,25 +193,13 @@ export default function BookingPageClient({
     input.click();
   };
 
-  const addSelectedItem = (itemId: string) => {
-    if (!itemId || selectedItemIds.includes(itemId)) {
-      return;
-    }
-
-    setSelectedItemIds((current) => [...current, itemId]);
-    setSubmittedNumbers([]);
-    setFormError('');
-    setShowWhatsappFallback(false);
-  };
-
-  const removeItem = (itemId: string) => {
-    if (selectedItemIds.length <= 1) {
-      return;
-    }
-
-    setSelectedItemIds((current) => current.filter((entry) => entry !== itemId));
-    setSubmittedNumbers([]);
-    setShowWhatsappFallback(false);
+  const scrollToActiveStepArea = () => {
+    window.setTimeout(() => {
+      activeStepAreaRef.current?.scrollIntoView({
+        behavior: 'smooth',
+        block: 'start',
+      });
+    }, 0);
   };
 
   const goToIdentity = () => {
@@ -195,6 +213,7 @@ export default function BookingPageClient({
     setShowWhatsappFallback(false);
     setConfirmedOrderKey(orderConfirmationKey);
     setStep('identity');
+    scrollToActiveStepArea();
   };
 
   const goToPayment = () => {
@@ -220,12 +239,26 @@ export default function BookingPageClient({
     setShowWhatsappFallback(false);
     setConfirmedIdentityKey(identityConfirmationKey);
     setStep('payment');
+    scrollToActiveStepArea();
+  };
+
+  const openBookingConfirmation = () => {
+    if (!bookingDates || selectedItems.length === 0) {
+      setFormError('Booking belum bisa dikunci. Cek tanggal dan item terlebih dahulu.');
+      setShowWhatsappFallback(false);
+      return;
+    }
+
+    setFormError('');
+    setShowWhatsappFallback(false);
+    setIsConfirmBookingOpen(true);
   };
 
   const lockDates = async () => {
     if (!bookingDates || selectedItems.length === 0) {
       setFormError('Booking belum bisa dikunci. Cek tanggal dan item terlebih dahulu.');
       setShowWhatsappFallback(false);
+      setIsConfirmBookingOpen(false);
       return;
     }
 
@@ -242,7 +275,7 @@ export default function BookingPageClient({
         body: JSON.stringify({
           itemIds: selectedItems.map((item) => item.id),
           pickupDate: bookingDates.pickupDate,
-          eventDate,
+          eventDate: bookingDates.eventDate,
           returnDueDate: normalizedReturnDate,
           customerName,
           customerWhatsapp,
@@ -272,7 +305,10 @@ export default function BookingPageClient({
         throw new Error(payload.error ?? 'Database booking belum siap.');
       }
 
-      setSubmittedNumbers([payload.data.bookingNumber]);
+      const bookingNumber = payload.data.bookingNumber;
+
+      setSubmittedNumbers([bookingNumber]);
+      setIsConfirmBookingOpen(false);
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Booking belum bisa dikirim.';
 
@@ -315,40 +351,45 @@ export default function BookingPageClient({
           <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
             <div>
               <p className="font-mono text-[10px] font-bold uppercase tracking-widest text-neutral-400">
-                Booking Farsha Studio
+                Amankan Tanggal, Acara Aman
               </p>
               <h1 className="mt-1 font-serif text-3xl font-semibold tracking-tight text-neutral-950">
                 Kunci tanggal sewa kebaya
               </h1>
               <p className="mt-2 max-w-2xl text-sm leading-relaxed text-neutral-500">
-                Lengkapi detail pesanan, data diri, lalu bayar DP untuk mengamankan slot booking.
+                Lengkapi detail pesanan, data diri, lalu bayar biaya booking untuk mengamankan slot hari agar kamu bisa dapatin kebaya pilihan kamu
               </p>
             </div>
 
-            <div className="grid grid-cols-3 gap-2 text-center text-[10px] font-bold uppercase tracking-wider">
-              {stepNavigation.map(({ value, label, enabled }) => (
-                <button
-                  key={value}
-                  type="button"
-                  disabled={!enabled}
-                  onClick={() => setStep(value)}
-                  className={`border px-3 py-2 ${
-                    step === value
-                      ? 'border-neutral-900 bg-neutral-900 text-white'
-                      : enabled
-                        ? 'border-neutral-200 bg-white text-neutral-600 hover:border-neutral-400'
-                        : 'cursor-not-allowed border-neutral-100 bg-neutral-50 text-neutral-300'
-                  }`}
-                >
-                  {label}
-                </button>
+            <div className="grid grid-cols-[1fr_auto_1fr_auto_1fr] items-center text-center text-[10px] font-bold uppercase tracking-wider">
+              {stepNavigation.map(({ value, label, enabled }, index) => (
+                <div key={value} className="contents">
+                  <button
+                    type="button"
+                    disabled={!enabled}
+                    onClick={() => setStep(value)}
+                    className={`relative border px-3 py-2 ${
+                      step === value
+                        ? 'border-neutral-900 bg-neutral-900 text-white'
+                        : enabled
+                          ? 'border-neutral-200 bg-white text-neutral-600 hover:border-neutral-400'
+                          : 'cursor-not-allowed border-neutral-100 bg-neutral-50 text-neutral-300'
+                    }`}
+                  >
+                    <span className="mr-1 font-mono">{index + 1}.</span>
+                    {label}
+                  </button>
+                  {index < stepNavigation.length - 1 && (
+                    <span className="mx-2 h-px min-w-5 bg-neutral-200" aria-hidden="true" />
+                  )}
+                </div>
               ))}
             </div>
           </div>
         </section>
 
         <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_360px]">
-          <section className="border theme-border bg-white p-5 shadow-sm">
+          <section ref={activeStepAreaRef} className="scroll-mt-4 border theme-border bg-white p-5 shadow-sm">
             {step === 'order' && (
               <div className="space-y-6">
                 <header className="flex items-start gap-3">
@@ -363,33 +404,17 @@ export default function BookingPageClient({
                   </div>
                 </header>
 
-                <div className="border border-neutral-200 bg-neutral-50 p-4">
-                  <span className="block text-sm font-semibold text-neutral-700">
-                    Konfirmasi tanggal acara
-                  </span>
-                  <strong className="mt-2 block font-mono text-xl text-neutral-950">
-                    {formatDate(eventDate)}
-                  </strong>
-                  <p className="mt-2 text-xs leading-relaxed text-neutral-500">
-                    Tanggal ini mengikuti pilihan dari katalog. Kalau ingin ganti tanggal, cek ulang
-                    availability kebaya dari katalog.
-                  </p>
-                  <Link
-                    href="/catalog"
-                    className="mt-3 inline-flex border border-neutral-300 bg-white px-3 py-2 text-xs font-semibold uppercase text-neutral-900 hover:border-neutral-900"
-                  >
-                    Cek tanggal lain
-                  </Link>
-                </div>
-
-                <div className="grid gap-3 md:grid-cols-2">
+                <div className="grid gap-3 md:grid-cols-3">
                   <div className="border border-neutral-200 bg-neutral-50 p-4">
-                    <span className="block text-xs font-semibold uppercase tracking-wider text-neutral-400">
+                    <span className="block text-sm font-semibold text-neutral-700">
                       Tanggal pickup
                     </span>
-                    <strong className="mt-1 block font-mono text-lg text-neutral-950">
+                    <strong className="mt-2 block font-mono text-lg text-neutral-950">
                       {formatDate(bookingDates?.pickupDate ?? null)}
                     </strong>
+                    <p className="mt-2 text-xs leading-relaxed text-neutral-500">
+                      Tanggal ini mengikuti pilihan dari katalog.
+                    </p>
                     <div className="mt-3 grid gap-2 sm:grid-cols-2">
                       <button
                         type="button"
@@ -416,8 +441,20 @@ export default function BookingPageClient({
                     </div>
                   </div>
 
+                  <div className="border border-neutral-200 bg-neutral-50 p-4">
+                    <span className="block text-sm font-semibold text-neutral-700">
+                      Konfirmasi tanggal acara
+                    </span>
+                    <strong className="mt-2 block font-mono text-lg text-neutral-950">
+                      {formatDate(eventDate)}
+                    </strong>
+                    <p className="mt-2 text-xs leading-relaxed text-neutral-500">
+                      Satu hari setelah pickup.
+                    </p>
+                  </div>
+
                   <div className="block border border-neutral-200 bg-neutral-50 p-4">
-                    <span className="block text-xs font-semibold uppercase tracking-wider text-neutral-400">
+                    <span className="block text-sm font-semibold text-neutral-700">
                       Tanggal return
                     </span>
                     <button
@@ -461,84 +498,8 @@ export default function BookingPageClient({
                             {formatCurrency(item.rentalPrice)} / 3 hari
                           </p>
                         </div>
-                        <button
-                          type="button"
-                          disabled={selectedItems.length <= 1}
-                          onClick={() => removeItem(item.id)}
-                          className="self-start text-xs font-semibold uppercase tracking-wider text-neutral-400 hover:text-red-600 disabled:opacity-30"
-                        >
-                          Hapus
-                        </button>
                       </div>
                   ))}
-                </div>
-
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between gap-3">
-                    <div>
-                      <h3 className="text-sm font-semibold text-neutral-950">Tambah item kebaya</h3>
-                      <p className="mt-1 text-xs text-neutral-500">
-                        Lihat kebaya lain jika ingin booking lebih dari satu item.
-                      </p>
-                    </div>
-                    <button
-                      type="button"
-                      disabled={availableAddItems.length === 0}
-                      onClick={() => setIsAddItemPanelOpen((isOpen) => !isOpen)}
-                      className="inline-flex min-h-10 shrink-0 items-center justify-center gap-2 border border-neutral-900 bg-white px-3 py-2 text-xs font-semibold uppercase tracking-wider text-neutral-900 hover:bg-neutral-50 disabled:cursor-not-allowed disabled:border-neutral-200 disabled:text-neutral-300"
-                    >
-                      <Plus className="h-4 w-4" />
-                      {availableAddItems.length === 0
-                        ? 'Semua dipilih'
-                        : isAddItemPanelOpen
-                          ? 'Sembunyikan'
-                          : 'Lihat kebaya lain'}
-                    </button>
-                  </div>
-
-                  {availableAddItems.length === 0 && (
-                    <p className="border border-neutral-200 bg-neutral-50 p-3 text-sm text-neutral-500">
-                      Semua item yang tersedia sudah masuk ke pesanan ini.
-                    </p>
-                  )}
-
-                  {isAddItemPanelOpen && availableAddItems.length > 0 && (
-                    <div className="grid gap-3 sm:grid-cols-2">
-                      {availableAddItems.map((item) => (
-                          <div key={item.id} className="border border-neutral-200 bg-white p-2">
-                            <div className="flex gap-3">
-                              <div className="h-24 w-20 shrink-0 overflow-hidden bg-neutral-100">
-                                {/* eslint-disable-next-line @next/next/no-img-element */}
-                                <img
-                                  src={item.imageUrls[0]}
-                                  alt={item.name}
-                                  className="h-full w-full object-cover"
-                                />
-                              </div>
-                              <div className="min-w-0 flex-1">
-                                <p className="font-mono text-[10px] font-bold uppercase text-neutral-400">
-                                  {item.code}
-                                </p>
-                                <h4 className="mt-1 line-clamp-2 text-sm font-semibold text-neutral-950">
-                                  {item.name}
-                                </h4>
-                                <p className="mt-1 text-xs text-neutral-500">
-                                  {formatCurrency(item.rentalPrice)} / 3 hari
-                                </p>
-                              </div>
-                            </div>
-                            <button
-                              type="button"
-                              onClick={() => addSelectedItem(item.id)}
-                              className="mt-2 inline-flex min-h-10 w-full items-center justify-center gap-2 border border-neutral-900 bg-white px-3 py-2 text-xs font-semibold uppercase tracking-wider text-neutral-900 hover:bg-neutral-50 disabled:cursor-not-allowed disabled:border-neutral-200 disabled:bg-neutral-50 disabled:text-neutral-300"
-                            >
-                              <Plus className="h-4 w-4" />
-                              Tambah
-                            </button>
-                          </div>
-                      ))}
-                    </div>
-                  )}
                 </div>
 
                 <div className="border border-neutral-900 bg-neutral-900 p-4 text-white">
@@ -547,7 +508,7 @@ export default function BookingPageClient({
                     <strong>{formatCurrency(estimatedRentalTotal)}</strong>
                   </div>
                   <div className="mt-2 flex justify-between text-sm text-neutral-300">
-                    <span>DP untuk kunci tanggal</span>
+                    <span>Biaya Booking</span>
                     <strong className="text-white">{formatCurrency(dpTotal)}</strong>
                   </div>
                   <button
@@ -664,7 +625,7 @@ export default function BookingPageClient({
                       Detail Pembayaran
                     </h2>
                     <p className="mt-1 text-sm text-neutral-500">
-                      Preview pembayaran DP. Belum ada payment gateway sungguhan.
+                      Preview biaya booking. Belum ada payment gateway sungguhan.
                     </p>
                   </div>
                 </header>
@@ -673,21 +634,21 @@ export default function BookingPageClient({
                   <h3 className="text-sm font-semibold text-neutral-950">Ringkasan pembayaran</h3>
                   <div className="mt-3 space-y-2 text-sm">
                     <div className="flex justify-between">
-                      <span>DP booking ({selectedItems.length} item)</span>
+                      <span>Biaya Booking ({selectedItems.length} item)</span>
                       <strong>{formatCurrency(dpTotal)}</strong>
                     </div>
                     <div className="flex justify-between">
-                      <span>Diskon Instagram 10% untuk DP</span>
+                      <span>Diskon Instagram 10% untuk biaya booking</span>
                       <strong>-{formatCurrency(instagramDpDiscount)}</strong>
                     </div>
                     <div className="border-t border-neutral-200 pt-2">
                       <div className="flex justify-between font-semibold text-neutral-950">
-                        <span>Total DP dibayar sekarang</span>
+                        <span>Total biaya booking dibayar sekarang</span>
                         <span>{formatCurrency(payNowTotal)}</span>
                       </div>
                       <p className="mt-1 text-xs leading-relaxed text-neutral-500">
-                        DP hanya untuk mengunci tanggal dan bersifat non-refundable. DP tidak
-                        memotong biaya sewa.
+                        Biaya Booking hanya untuk mengunci tanggal dan bersifat non-refundable.
+                        Biaya Booking tidak memotong biaya sewa.
                       </p>
                     </div>
                     <div className="border-t border-neutral-200 pt-2 text-xs text-neutral-500">
@@ -711,8 +672,8 @@ export default function BookingPageClient({
                   <h3 className="font-semibold text-neutral-950">Syarat dan Ketentuan</h3>
                   <p className="mt-3 font-semibold">Pemesanan & Pembayaran:</p>
                   <ul className="mt-1 list-disc space-y-1 pl-5">
-                    <li>Pembayaran DP diperlukan untuk mengunci jadwal.</li>
-                    <li>DP bersifat non-refundable.</li>
+                    <li>Pembayaran Biaya Booking diperlukan untuk mengunci jadwal.</li>
+                    <li>Biaya Booking bersifat non-refundable.</li>
                     <li>Pelunasan dilakukan saat pengambilan atau sebelum barang dikirim.</li>
                   </ul>
                   <p className="mt-3 font-semibold">Verifikasi:</p>
@@ -721,7 +682,7 @@ export default function BookingPageClient({
                   </ul>
                   <p className="mt-3 font-semibold">Fitting:</p>
                   <ul className="mt-1 list-disc space-y-1 pl-5">
-                    <li>Link jadwal fitting akan dikirimkan melalui WhatsApp setelah melakukan pembayaran DP.</li>
+                    <li>Link jadwal fitting akan dikirimkan melalui WhatsApp setelah melakukan pembayaran Biaya Booking.</li>
                   </ul>
                 </div>
 
@@ -731,14 +692,11 @@ export default function BookingPageClient({
                       <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0" />
                       <div>
                         <p className="font-semibold">
-                          Request booking masuk, menunggu verifikasi DP dari admin.
+                          Request booking masuk, menunggu verifikasi Biaya Booking dari admin.
                         </p>
                         <p className="mt-1">
                           Nomor booking: {submittedNumbers.join(', ')}
                         </p>
-                        <Link href="/pos/bookings" className="mt-3 inline-flex font-semibold underline">
-                          Lihat di POS
-                        </Link>
                       </div>
                     </div>
                   </div>
@@ -752,14 +710,26 @@ export default function BookingPageClient({
                   >
                     Kembali
                   </button>
-                  <button
-                    type="button"
-                    onClick={lockDates}
-                    disabled={isSubmittingBooking}
-                    className="theme-primary-action flex-1 px-4 py-3 text-xs font-semibold uppercase tracking-wider disabled:cursor-wait disabled:opacity-60"
-                  >
-                    {isSubmittingBooking ? 'Mengirim...' : 'Kunci Tanggal'}
-                  </button>
+                  {submittedNumbers[0] ? (
+                    <a
+                      href={getAdminBookingNotificationUrl(submittedNumbers[0])}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="inline-flex min-h-14 flex-1 items-center justify-center gap-3 bg-[#25D366] px-5 py-4 text-sm font-bold uppercase tracking-wider text-white shadow-sm transition-colors hover:bg-[#20BA5A]"
+                    >
+                      <MessageCircle className="h-5 w-5" />
+                      Kabari Admin
+                    </a>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={openBookingConfirmation}
+                      disabled={isSubmittingBooking}
+                      className="theme-primary-action flex-1 px-4 py-3 text-xs font-semibold uppercase tracking-wider disabled:cursor-wait disabled:opacity-60"
+                    >
+                      Kunci Tanggal
+                    </button>
+                  )}
                 </div>
               </div>
             )}
@@ -792,24 +762,26 @@ export default function BookingPageClient({
               </div>
               <div className="mt-4 space-y-3 text-sm">
                 <div className="flex justify-between">
-                  <span className="text-neutral-500">Tanggal acara</span>
-                  <strong>{formatDate(eventDate)}</strong>
-                </div>
-                <div className="flex justify-between">
                   <span className="text-neutral-500">Pickup</span>
                   <strong>{formatDate(bookingDates?.pickupDate ?? null)}</strong>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-neutral-500">Tanggal acara</span>
+                  <strong>{formatDate(eventDate)}</strong>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-neutral-500">Return</span>
                   <strong>{formatDate(normalizedReturnDate)}</strong>
                 </div>
-                <div className="flex justify-between">
+                <div className="flex items-start justify-between gap-4">
                   <span className="text-neutral-500">Item</span>
-                  <strong>{selectedItems.length}</strong>
+                  <strong className="max-w-[14rem] text-right leading-snug">
+                    {selectedItem ? `${selectedItem.name} / ${selectedItem.code}` : '-'}
+                  </strong>
                 </div>
                 <div className="border-t border-neutral-200 pt-3">
                   <div className="flex justify-between text-base font-semibold text-neutral-950">
-                    <span>DP sekarang</span>
+                    <span>Biaya Booking</span>
                     <span>{formatCurrency(payNowTotal)}</span>
                   </div>
                   <div className="mt-2 flex justify-between text-xs text-neutral-500">
@@ -840,6 +812,71 @@ export default function BookingPageClient({
           </aside>
         </div>
       </div>
+
+      {isConfirmBookingOpen && (
+        <div className="fixed inset-0 z-50 flex items-end bg-black/50 px-4 py-4 sm:items-center sm:justify-center">
+          <section className="w-full max-w-lg border border-neutral-200 bg-white p-5 shadow-2xl">
+            <div className="flex items-start gap-3">
+              <ShieldCheck className="mt-1 h-5 w-5 shrink-0 text-neutral-400" />
+              <div>
+                <p className="font-mono text-[10px] font-bold uppercase tracking-widest text-neutral-400">
+                  Konfirmasi Booking
+                </p>
+                <h2 className="mt-1 font-serif text-2xl font-semibold text-neutral-950">
+                  Kunci tanggal ini?
+                </h2>
+                <p className="mt-2 text-sm leading-relaxed text-neutral-500">
+                  Setelah dikonfirmasi, request booking akan masuk ke admin Farsha dan WhatsApp admin akan terbuka otomatis.
+                </p>
+              </div>
+            </div>
+
+            <div className="mt-5 space-y-3 border border-neutral-200 bg-neutral-50 p-4 text-sm">
+              <div className="flex justify-between gap-4">
+                <span className="text-neutral-500">Item</span>
+                <strong className="max-w-[14rem] text-right text-neutral-950">
+                  {selectedItem ? `${selectedItem.name} / ${selectedItem.code}` : '-'}
+                </strong>
+              </div>
+              <div className="flex justify-between gap-4">
+                <span className="text-neutral-500">Pickup</span>
+                <strong className="text-right text-neutral-950">{formatDate(bookingDates?.pickupDate ?? null)}</strong>
+              </div>
+              <div className="flex justify-between gap-4">
+                <span className="text-neutral-500">Acara</span>
+                <strong className="text-right text-neutral-950">{formatDate(eventDate)}</strong>
+              </div>
+              <div className="flex justify-between gap-4">
+                <span className="text-neutral-500">Return</span>
+                <strong className="text-right text-neutral-950">{formatDate(normalizedReturnDate)}</strong>
+              </div>
+              <div className="flex justify-between gap-4 border-t border-neutral-200 pt-3">
+                <span className="font-semibold text-neutral-950">Biaya Booking</span>
+                <strong className="text-right text-neutral-950">{formatCurrency(payNowTotal)}</strong>
+              </div>
+            </div>
+
+            <div className="mt-5 grid gap-2 sm:grid-cols-2">
+              <button
+                type="button"
+                onClick={() => setIsConfirmBookingOpen(false)}
+                disabled={isSubmittingBooking}
+                className="min-h-12 border border-neutral-300 bg-white px-4 py-3 text-xs font-bold uppercase tracking-wider text-neutral-700 hover:border-neutral-900 disabled:cursor-wait disabled:opacity-60"
+              >
+                Cek lagi
+              </button>
+              <button
+                type="button"
+                onClick={lockDates}
+                disabled={isSubmittingBooking}
+                className="min-h-12 bg-neutral-950 px-4 py-3 text-xs font-bold uppercase tracking-wider text-white hover:bg-neutral-800 disabled:cursor-wait disabled:opacity-60"
+              >
+                {isSubmittingBooking ? 'Mengirim...' : 'Ya, Kunci Tanggal'}
+              </button>
+            </div>
+          </section>
+        </div>
+      )}
     </main>
   );
 }

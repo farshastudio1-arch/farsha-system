@@ -704,7 +704,7 @@ export default function ProductDetailModal({
                   </li>
                   <li className="flex items-start gap-2">
                     <span className="text-emerald-600 font-bold shrink-0">✓</span>
-                    <span><strong>Down Payment (DP):</strong> Rp 100.000 per kebaya untuk keep tanggal sewa.</span>
+                    <span><strong>Biaya Booking:</strong> Rp 100.000 per kebaya untuk keep tanggal sewa.</span>
                   </li>
                   <li className="flex items-start gap-2">
                     <span className="text-emerald-600 font-bold shrink-0">✓</span>
@@ -1016,7 +1016,7 @@ export default function ProductDetailModal({
                 <>
                   <div className="flex min-h-[4.25rem] flex-col justify-center border theme-border bg-white px-3 py-2.5">
                     <span className="block text-[10px] font-bold uppercase tracking-wider text-neutral-400">
-                      DP untuk mengamankan tanggal
+                      Biaya Booking
                     </span>
                     <strong className="mt-1 block font-mono text-lg text-neutral-950">
                       {formatPrice(previewDpAmount)}
@@ -1028,7 +1028,7 @@ export default function ProductDetailModal({
                         pathname: '/booking',
                         query: {
                           itemId: product.id,
-                          eventDate: bookingDates.eventDate,
+                          eventDate: bookingDates.pickupDate,
                         },
                       }}
                       className="inline-flex min-h-[4.25rem] w-full items-center justify-center bg-[#25D366] px-5 py-3 text-xs font-semibold uppercase tracking-wider text-white shadow-sm transition-all duration-300 hover:-translate-y-[1px] hover:bg-[#20BA5A] hover:shadow-md md:col-span-2"

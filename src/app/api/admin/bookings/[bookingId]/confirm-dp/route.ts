@@ -40,7 +40,7 @@ export async function POST(_request: Request, context: ConfirmDpRouteContext) {
       return jsonResponse({ ok: false, error: error.message, code: error.code }, error.status);
     }
 
-    const message = error instanceof Error ? error.message : 'Confirm DP failed.';
+    const message = error instanceof Error ? error.message : 'Konfirmasi Biaya Booking gagal.';
 
     return jsonResponse({ ok: false, error: message }, 500);
   }
