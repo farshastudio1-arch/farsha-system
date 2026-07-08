@@ -1,9 +1,9 @@
 import { auth } from '../../../../../../../auth';
-import { BookingDbError, generateBookingInvoice, getBookingInvoice } from '@/lib/booking-db';
+import { BookingDbError, generateBookingReceipt, getBookingReceipt } from '@/lib/booking-db';
 
 export const dynamic = 'force-dynamic';
 
-type InvoiceRouteContext = {
+type ReceiptRouteContext = {
   params: Promise<{
     bookingId: string;
   }>;
@@ -23,28 +23,28 @@ async function getAdminEmail() {
   return session.user.email ?? null;
 }
 
-export async function GET(_request: Request, context: InvoiceRouteContext) {
+export async function GET(_request: Request, context: ReceiptRouteContext) {
   try {
     if (!(await getAdminEmail())) {
       return jsonResponse({ ok: false, error: 'Unauthorized.' }, 401);
     }
 
     const { bookingId } = await context.params;
-    const invoice = await getBookingInvoice(bookingId);
+    const receipt = await getBookingReceipt(bookingId);
 
-    if (!invoice) {
-      return jsonResponse({ ok: false, error: 'Invoice belum tersedia.' }, 404);
+    if (!receipt) {
+      return jsonResponse({ ok: false, error: 'Receipt belum tersedia.' }, 404);
     }
 
-    return jsonResponse({ ok: true, data: invoice });
+    return jsonResponse({ ok: true, data: receipt });
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'Failed to load invoice.';
+    const message = error instanceof Error ? error.message : 'Failed to load receipt.';
 
     return jsonResponse({ ok: false, error: message }, 500);
   }
 }
 
-export async function POST(_request: Request, context: InvoiceRouteContext) {
+export async function POST(_request: Request, context: ReceiptRouteContext) {
   try {
     const adminEmail = await getAdminEmail();
 
@@ -53,15 +53,15 @@ export async function POST(_request: Request, context: InvoiceRouteContext) {
     }
 
     const { bookingId } = await context.params;
-    const invoice = await generateBookingInvoice(bookingId, adminEmail);
+    const receipt = await generateBookingReceipt(bookingId, adminEmail);
 
-    return jsonResponse({ ok: true, data: invoice });
+    return jsonResponse({ ok: true, data: receipt });
   } catch (error) {
     if (error instanceof BookingDbError) {
       return jsonResponse({ ok: false, error: error.message, code: error.code }, error.status);
     }
 
-    const message = error instanceof Error ? error.message : 'Failed to generate invoice.';
+    const message = error instanceof Error ? error.message : 'Failed to generate receipt.';
 
     return jsonResponse({ ok: false, error: message }, 500);
   }

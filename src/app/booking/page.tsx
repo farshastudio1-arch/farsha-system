@@ -31,6 +31,7 @@ export default async function BookingPage({ searchParams }: BookingPageProps) {
         initialItems={projectedCatalogItems}
         initialItemId={itemIdParam ?? ''}
         initialEventDate={eventDateParam ?? ''}
+        whatsappNumber={siteSettings.whatsappNumber}
       />
       <div className="hidden lg:block">
         <PublicFooter cmsContent={cmsContent} siteSettings={siteSettings} />

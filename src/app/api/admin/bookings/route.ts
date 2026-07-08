@@ -69,6 +69,9 @@ export async function POST(request: Request) {
       source: body.source === 'walk_in' ? 'walk_in' : 'whatsapp',
       status: body.status === 'payment_submitted' ? 'payment_submitted' : 'requested',
       dpPerItem: Number(body.dpPerItem),
+      instagramDiscountAmount: Number(body.instagramDiscountAmount),
+      extraReturnFeeTotal: Number(body.extraReturnFeeTotal),
+      rentalEstimateTotal: Number(body.rentalEstimateTotal),
       paymentReference: stringValue(body.paymentReference),
       createdBy: adminEmail,
     });

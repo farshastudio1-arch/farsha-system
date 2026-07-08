@@ -7,6 +7,7 @@ import {
   CalendarCheck,
   CheckCircle2,
   Mail,
+  MessageCircle,
   Plus,
   ReceiptText,
   ShieldCheck,
@@ -16,13 +17,10 @@ import {
 
 import type { KebayaItem } from '@/data/mockData';
 import {
-  addPreviewDays,
   calculatePreviewBookingDates,
-  getPreviewBookingConflict,
   getPreviewDayDifference,
   previewDpAmount,
   previewExtraReturnDayFee,
-  saveCheckoutPreviewBooking,
 } from '@/lib/booking-preview';
 
 type BookingStep = 'order' | 'identity' | 'payment';
@@ -56,6 +54,16 @@ function todayInputValue() {
   return date.toISOString().slice(0, 10);
 }
 
+function normalizeWhatsAppNumber(value: string) {
+  const digits = value.replace(/\D/g, '');
+
+  if (digits.startsWith('0')) {
+    return `62${digits.slice(1)}`;
+  }
+
+  return digits;
+}
+
 function getItemById(items: KebayaItem[], itemId: string) {
   return items.find((item) => item.id === itemId) ?? null;
 }
@@ -64,10 +72,12 @@ export default function BookingPageClient({
   initialItems,
   initialItemId,
   initialEventDate,
+  whatsappNumber,
 }: {
   initialItems: KebayaItem[];
   initialItemId: string;
   initialEventDate: string;
+  whatsappNumber: string;
 }) {
   const firstItem = getItemById(initialItems, initialItemId) ?? initialItems[0] ?? null;
   const initialDate = calculatePreviewBookingDates(initialEventDate) ? initialEventDate : todayInputValue();
@@ -85,9 +95,9 @@ export default function BookingPageClient({
   const [deliveryAddress, setDeliveryAddress] = useState('');
   const [notes, setNotes] = useState('');
   const [formError, setFormError] = useState('');
+  const [showWhatsappFallback, setShowWhatsappFallback] = useState(false);
   const [submittedNumbers, setSubmittedNumbers] = useState<string[]>([]);
   const [isSubmittingBooking, setIsSubmittingBooking] = useState(false);
-  const [submissionMode, setSubmissionMode] = useState<'database' | 'preview' | ''>('');
   const [confirmedOrderKey, setConfirmedOrderKey] = useState('');
   const [confirmedIdentityKey, setConfirmedIdentityKey] = useState('');
   const returnDateInputRef = useRef<HTMLInputElement>(null);
@@ -99,7 +109,6 @@ export default function BookingPageClient({
   const availableAddItems = initialItems.filter((item) => !selectedItemIds.includes(item.id));
   const defaultReturnDate = bookingDates?.returnDate ?? eventDate;
   const normalizedReturnDate = returnDate < defaultReturnDate ? defaultReturnDate : returnDate;
-  const bufferUntilDate = addPreviewDays(normalizedReturnDate, 1);
   const extraReturnDays = getPreviewDayDifference(defaultReturnDate, normalizedReturnDate);
   const extraReturnFee = extraReturnDays * previewExtraReturnDayFee * selectedItems.length;
   const rentalSubtotal = selectedItems.reduce((sum, item) => sum + item.rentalPrice, 0);
@@ -107,16 +116,6 @@ export default function BookingPageClient({
   const instagramDpDiscount = customerInstagram.trim() ? Math.round(dpTotal * 0.1) : 0;
   const estimatedRentalTotal = Math.max(rentalSubtotal + extraReturnFee, 0);
   const payNowTotal = Math.max(dpTotal - instagramDpDiscount, 0);
-  const perItemDpPayNow =
-    selectedItems.length > 0 ? Math.round(payNowTotal / selectedItems.length) : previewDpAmount;
-  const hasConflict = selectedItems.some((item) =>
-    getPreviewBookingConflict(item.id, {
-      eventDate,
-      pickupDate: bookingDates?.pickupDate ?? eventDate,
-      returnDate: normalizedReturnDate,
-      bufferUntilDate,
-    }),
-  );
   const orderConfirmationKey = [
     eventDate,
     bookingDates?.pickupDate ?? '',
@@ -134,6 +133,22 @@ export default function BookingPageClient({
   ].join('::');
   const isOrderConfirmed = confirmedOrderKey === orderConfirmationKey;
   const isIdentityConfirmed = confirmedIdentityKey === identityConfirmationKey;
+  const whatsappFallbackPhone = normalizeWhatsAppNumber(whatsappNumber);
+  const whatsappFallbackItemList = selectedItems.map((item) => `${item.code} - ${item.name}`).join(', ');
+  const whatsappFallbackMessage = [
+    'Halo admin Farsha, saya mau request booking kebaya.',
+    whatsappFallbackItemList ? `Item: ${whatsappFallbackItemList}` : '',
+    `Tanggal acara: ${formatDate(eventDate)}`,
+    `Pickup: ${formatDate(bookingDates?.pickupDate ?? null)}`,
+    `Return: ${formatDate(normalizedReturnDate)}`,
+    customerName.trim() ? `Nama: ${customerName.trim()}` : '',
+    customerWhatsapp.trim() ? `WhatsApp: ${customerWhatsapp.trim()}` : '',
+  ]
+    .filter(Boolean)
+    .join('\n');
+  const whatsappFallbackUrl = `https://wa.me/${whatsappFallbackPhone}?text=${encodeURIComponent(
+    whatsappFallbackMessage,
+  )}`;
 
   const openReturnDatePicker = () => {
     const input = returnDateInputRef.current;
@@ -156,6 +171,7 @@ export default function BookingPageClient({
     setSelectedItemIds((current) => [...current, itemId]);
     setSubmittedNumbers([]);
     setFormError('');
+    setShowWhatsappFallback(false);
   };
 
   const removeItem = (itemId: string) => {
@@ -165,20 +181,18 @@ export default function BookingPageClient({
 
     setSelectedItemIds((current) => current.filter((entry) => entry !== itemId));
     setSubmittedNumbers([]);
+    setShowWhatsappFallback(false);
   };
 
   const goToIdentity = () => {
     if (!bookingDates || selectedItems.length === 0) {
       setFormError('Pilih tanggal dan minimal satu kebaya.');
-      return;
-    }
-
-    if (hasConflict) {
-      setFormError('Ada item yang sudah ter-booking di tanggal ini. Ganti tanggal atau item.');
+      setShowWhatsappFallback(false);
       return;
     }
 
     setFormError('');
+    setShowWhatsappFallback(false);
     setConfirmedOrderKey(orderConfirmationKey);
     setStep('identity');
   };
@@ -186,32 +200,38 @@ export default function BookingPageClient({
   const goToPayment = () => {
     if (!customerName.trim()) {
       setFormError('Nama lengkap sesuai KTP wajib diisi.');
+      setShowWhatsappFallback(false);
       return;
     }
 
     if (!customerWhatsapp.trim()) {
       setFormError('Nomor WhatsApp wajib diisi.');
+      setShowWhatsappFallback(false);
       return;
     }
 
     if (pickupMethod === 'gosend' && !deliveryAddress.trim()) {
       setFormError('Alamat pengiriman wajib diisi untuk GoSend Instant.');
+      setShowWhatsappFallback(false);
       return;
     }
 
     setFormError('');
+    setShowWhatsappFallback(false);
     setConfirmedIdentityKey(identityConfirmationKey);
     setStep('payment');
   };
 
   const lockDates = async () => {
-    if (!bookingDates || selectedItems.length === 0 || hasConflict) {
+    if (!bookingDates || selectedItems.length === 0) {
       setFormError('Booking belum bisa dikunci. Cek tanggal dan item terlebih dahulu.');
+      setShowWhatsappFallback(false);
       return;
     }
 
     setIsSubmittingBooking(true);
     setFormError('');
+    setShowWhatsappFallback(false);
 
     try {
       const response = await fetch('/api/bookings', {
@@ -231,7 +251,7 @@ export default function BookingPageClient({
           pickupMethod,
           deliveryAddress,
           notes,
-          dpPerItem: perItemDpPayNow,
+          dpPerItem: previewDpAmount,
           instagramDiscountAmount: instagramDpDiscount,
           extraReturnFeeTotal: extraReturnFee,
           rentalEstimateTotal: estimatedRentalTotal,
@@ -253,38 +273,11 @@ export default function BookingPageClient({
       }
 
       setSubmittedNumbers([payload.data.bookingNumber]);
-      setSubmissionMode('database');
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Booking belum bisa dikirim.';
 
-      if (message.includes('bentrok') || message.includes('tidak tersedia')) {
-        setFormError(message);
-        return;
-      }
-
-      const savedNumbers = selectedItems.map((item) =>
-        saveCheckoutPreviewBooking({
-          item,
-          customerName,
-          customerWhatsapp,
-          customerEmail,
-          customerInstagram,
-          deliveryAddress,
-          eventDate,
-          pickupDate: bookingDates.pickupDate,
-          returnDate: normalizedReturnDate,
-          bufferUntilDate,
-          pickupMethod,
-          notes,
-          itemCount: 1,
-          dpTotal: perItemDpPayNow,
-          extraReturnFee: extraReturnDays * previewExtraReturnDayFee,
-        }).bookingNumber,
-      );
-
-      setSubmittedNumbers(savedNumbers);
-      setSubmissionMode('preview');
-      setFormError('Database booking belum aktif, jadi request disimpan sebagai preview lokal.');
+      setFormError(`${message} Tidak ada booking yang dibuat. Silakan coba lagi atau hubungi admin via WhatsApp.`);
+      setShowWhatsappFallback(true);
     } finally {
       setIsSubmittingBooking(false);
     }
@@ -451,15 +444,7 @@ export default function BookingPageClient({
                 </div>
 
                 <div className="space-y-3">
-                  {selectedItems.map((item) => {
-                    const conflict = getPreviewBookingConflict(item.id, {
-                      eventDate,
-                      pickupDate: bookingDates?.pickupDate ?? eventDate,
-                      returnDate: normalizedReturnDate,
-                      bufferUntilDate,
-                    });
-
-                    return (
+                  {selectedItems.map((item) => (
                       <div key={item.id} className="flex gap-3 border border-neutral-200 bg-white p-3">
                         <div className="h-20 w-16 shrink-0 overflow-hidden bg-neutral-100">
                           {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -475,11 +460,6 @@ export default function BookingPageClient({
                           <p className="mt-1 text-xs text-neutral-500">
                             {formatCurrency(item.rentalPrice)} / 3 hari
                           </p>
-                          {conflict && (
-                            <p className="mt-2 border border-amber-200 bg-amber-50 px-2 py-1 text-xs font-semibold text-amber-800">
-                              Tanggal bentrok dengan {conflict.bookingNumber}
-                            </p>
-                          )}
                         </div>
                         <button
                           type="button"
@@ -490,8 +470,7 @@ export default function BookingPageClient({
                           Hapus
                         </button>
                       </div>
-                    );
-                  })}
+                  ))}
                 </div>
 
                 <div className="space-y-3">
@@ -519,21 +498,13 @@ export default function BookingPageClient({
 
                   {availableAddItems.length === 0 && (
                     <p className="border border-neutral-200 bg-neutral-50 p-3 text-sm text-neutral-500">
-                      Semua item preview sudah masuk ke pesanan ini.
+                      Semua item yang tersedia sudah masuk ke pesanan ini.
                     </p>
                   )}
 
                   {isAddItemPanelOpen && availableAddItems.length > 0 && (
                     <div className="grid gap-3 sm:grid-cols-2">
-                      {availableAddItems.map((item) => {
-                        const addConflict = getPreviewBookingConflict(item.id, {
-                          eventDate,
-                          pickupDate: bookingDates?.pickupDate ?? eventDate,
-                          returnDate: normalizedReturnDate,
-                          bufferUntilDate,
-                        });
-
-                        return (
+                      {availableAddItems.map((item) => (
                           <div key={item.id} className="border border-neutral-200 bg-white p-2">
                             <div className="flex gap-3">
                               <div className="h-24 w-20 shrink-0 overflow-hidden bg-neutral-100">
@@ -554,16 +525,10 @@ export default function BookingPageClient({
                                 <p className="mt-1 text-xs text-neutral-500">
                                   {formatCurrency(item.rentalPrice)} / 3 hari
                                 </p>
-                                {addConflict && (
-                                  <p className="mt-2 text-xs font-semibold text-amber-700">
-                                    Sudah ter-booking di tanggal ini
-                                  </p>
-                                )}
                               </div>
                             </div>
                             <button
                               type="button"
-                              disabled={Boolean(addConflict)}
                               onClick={() => addSelectedItem(item.id)}
                               className="mt-2 inline-flex min-h-10 w-full items-center justify-center gap-2 border border-neutral-900 bg-white px-3 py-2 text-xs font-semibold uppercase tracking-wider text-neutral-900 hover:bg-neutral-50 disabled:cursor-not-allowed disabled:border-neutral-200 disabled:bg-neutral-50 disabled:text-neutral-300"
                             >
@@ -571,8 +536,7 @@ export default function BookingPageClient({
                               Tambah
                             </button>
                           </div>
-                        );
-                      })}
+                      ))}
                     </div>
                   )}
                 </div>
@@ -606,7 +570,7 @@ export default function BookingPageClient({
                       Detail Data Diri
                     </h2>
                     <p className="mt-1 text-sm text-neutral-500">
-                      Data ini masuk ke POS preview setelah tanggal dikunci.
+                      Data ini masuk ke antrean POS setelah tanggal dikunci.
                     </p>
                   </div>
                 </header>
@@ -772,11 +736,6 @@ export default function BookingPageClient({
                         <p className="mt-1">
                           Nomor booking: {submittedNumbers.join(', ')}
                         </p>
-                        {submissionMode === 'preview' && (
-                          <p className="mt-1 text-xs">
-                            Ini masih tersimpan di preview lokal karena database belum aktif.
-                          </p>
-                        )}
                         <Link href="/pos/bookings" className="mt-3 inline-flex font-semibold underline">
                           Lihat di POS
                         </Link>
@@ -806,9 +765,20 @@ export default function BookingPageClient({
             )}
 
             {formError && (
-              <p className="mt-5 border border-amber-200 bg-amber-50 p-3 text-sm font-semibold text-amber-800">
-                {formError}
-              </p>
+              <div className="mt-5 border border-amber-200 bg-amber-50 p-3 text-sm font-semibold text-amber-800">
+                <p>{formError}</p>
+                {showWhatsappFallback && (
+                  <a
+                    href={whatsappFallbackUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="mt-3 inline-flex items-center gap-2 border border-amber-300 bg-white px-3 py-2 text-xs font-bold uppercase tracking-wider text-amber-900 hover:border-amber-500"
+                  >
+                    <MessageCircle className="h-4 w-4" />
+                    Hubungi admin via WhatsApp
+                  </a>
+                )}
+              </div>
             )}
           </section>
 
@@ -863,7 +833,7 @@ export default function BookingPageClient({
               <div className="border border-neutral-200 bg-white p-4 text-sm text-neutral-600">
                 <div className="flex items-start gap-3">
                   <Mail className="mt-0.5 h-4 w-4 shrink-0 text-neutral-400" />
-                  <p>Invoice preview akan diarahkan ke {customerEmail.trim()}.</p>
+                  <p>Invoice dapat diarahkan ke {customerEmail.trim()}.</p>
                 </div>
               </div>
             )}

@@ -68,6 +68,8 @@ export type BookingQueueRow = {
   pickupMethod: BookingPickupMethod;
   deliveryAddress: string | null;
   notes: string;
+  rejectedReason: string | null;
+  cancelledReason: string | null;
   dpTotal: number;
   instagramDiscountAmount: number;
   extraReturnFeeTotal: number;
@@ -86,7 +88,77 @@ export type BookingQueueRow = {
   paymentStatus: string | null;
   paymentReference: string | null;
   proofCount: number;
+  proofUrl: string | null;
+  proofFilename: string | null;
+  receiptNumber: string | null;
+  receiptIssuedAt: string | null;
 };
+
+export type BookingInvoiceSnapshot = {
+  bookingNumber: string;
+  customerName: string;
+  customerWhatsapp: string;
+  customerEmail: string | null;
+  customerInstagram: string | null;
+  pickupMethod: BookingPickupMethod;
+  deliveryAddress: string | null;
+  notes: string;
+  itemCount: number;
+  items: Array<{
+    itemCode: string;
+    itemName: string;
+    rentalPrice: number;
+    dpAmount: number;
+    extraReturnFee: number;
+    pickupDate: string;
+    eventDate: string;
+    returnDueDate: string;
+  }>;
+  paymentReference: string | null;
+  subtotalAmount: number;
+  discountAmount: number;
+  totalAmount: number;
+  rentalEstimateTotal: number;
+  extraReturnFeeTotal: number;
+  bank: {
+    bankName: string;
+    accountName: string;
+    accountNumber: string;
+    isConfigured: boolean;
+  };
+};
+
+export type BookingInvoiceRecord = {
+  id: string;
+  bookingId: string;
+  invoiceNumber: string;
+  invoiceType: string;
+  status: string;
+  subtotalAmount: number;
+  discountAmount: number;
+  totalAmount: number;
+  htmlSnapshot: string | null;
+  r2Key: string | null;
+  url: string | null;
+  issuedAt: string;
+};
+
+export type BookingReceiptRecord = {
+  id: string;
+  bookingId: string;
+  receiptNumber: string;
+  receiptType: string;
+  status: string;
+  subtotalAmount: number;
+  discountAmount: number;
+  totalAmount: number;
+  htmlSnapshot: string | null;
+  r2Key: string | null;
+  url: string | null;
+  issuedAt: string;
+};
+
+export type CloseBookingAction = 'reject' | 'cancel';
 
 type CatalogItemRow = {
   id: string;
@@ -111,6 +183,11 @@ type PaymentRow = {
   status: string;
   amount_due: number;
   reference: string;
+};
+
+type BookingInvoiceSource = {
+  bookingStatus: BookingStatus;
+  snapshot: BookingInvoiceSnapshot;
 };
 
 const bookingBlockingStatuses: BookingStatus[] = [
@@ -206,6 +283,23 @@ function makeInvoiceNumber(bookingNumber: string) {
   return `INV-${bookingNumber.replace(/^BK-/, '')}`;
 }
 
+function makeReceiptNumber(bookingNumber: string) {
+  return `RCP-${bookingNumber.replace(/^BK-/, '')}`;
+}
+
+function getBookingBankConfig() {
+  const bankName = normalizeText(process.env.FARSHA_BANK_NAME);
+  const accountName = normalizeText(process.env.FARSHA_BANK_ACCOUNT_NAME);
+  const accountNumber = normalizeText(process.env.FARSHA_BANK_ACCOUNT_NUMBER);
+
+  return {
+    bankName,
+    accountName,
+    accountNumber,
+    isConfigured: Boolean(bankName && accountName && accountNumber),
+  };
+}
+
 function hasMissingMigration(error: unknown) {
   const message = String(error);
   return message.includes('no such table') || message.includes('no such column');
@@ -223,7 +317,7 @@ export function calculateBookingDatesFromPickup(
 
   const eventDate = addDays(pickupDate, 1);
   const returnStartDate = addDays(pickupDate, 2);
-  const defaultReturnDueDate = addDays(pickupDate, 3);
+  const defaultReturnDueDate = addDays(pickupDate, 2);
   const requestedReturnDate = returnDueDateValue ? normalizeDatePart(returnDueDateValue) : null;
   const returnDueDate =
     requestedReturnDate && requestedReturnDate > defaultReturnDueDate
@@ -633,7 +727,7 @@ export async function createBooking(input: CreateBookingInput) {
   const dpPerItem = normalizeAmount(input.dpPerItem, defaultDpPerItem);
   const dpTotal = dpPerItem * items.length;
   const instagramDiscountAmount = normalizeAmount(input.instagramDiscountAmount);
-  const extraReturnDays = getDayDifference(addDays(dates.pickupDate, 3), dates.returnDueDate);
+  const extraReturnDays = getDayDifference(addDays(dates.pickupDate, 2), dates.returnDueDate);
   const extraReturnFeeTotal =
     input.extraReturnFeeTotal !== undefined
       ? normalizeAmount(input.extraReturnFeeTotal)
@@ -804,6 +898,8 @@ export async function listBookingQueue() {
                 b.pickup_method AS pickupMethod,
                 b.delivery_address AS deliveryAddress,
                 b.notes,
+                b.rejected_reason AS rejectedReason,
+                b.cancelled_reason AS cancelledReason,
                 b.dp_total AS dpTotal,
                 b.instagram_discount_amount AS instagramDiscountAmount,
                 b.extra_return_fee_total AS extraReturnFeeTotal,
@@ -821,11 +917,16 @@ export async function listBookingQueue() {
                 MIN(bi.item_code || ' / ' || bi.item_name) AS itemLabel,
                 MAX(bp.status) AS paymentStatus,
                 MAX(bp.reference) AS paymentReference,
-                COUNT(DISTINCT bpp.id) AS proofCount
+                COUNT(DISTINCT bpp.id) AS proofCount,
+                MAX(bpp.url) AS proofUrl,
+                MAX(bpp.filename) AS proofFilename,
+                MAX(br.receipt_number) AS receiptNumber,
+                MAX(br.issued_at) AS receiptIssuedAt
          FROM bookings b
          LEFT JOIN booking_items bi ON bi.booking_id = b.id
          LEFT JOIN booking_payments bp ON bp.booking_id = b.id
          LEFT JOIN booking_payment_proofs bpp ON bpp.booking_id = b.id
+         LEFT JOIN booking_receipts br ON br.booking_id = b.id AND br.status = 'paid'
          GROUP BY b.id
          ORDER BY b.created_at DESC`,
       )
@@ -956,6 +1057,338 @@ export async function recordBookingPaymentProof(input: {
   return { id: proofId, url, key: input.key, status: nextBookingStatus };
 }
 
+async function getBookingInvoiceRecord(db: D1Database, bookingId: string) {
+  return db
+    .prepare(
+      `SELECT id,
+              booking_id AS bookingId,
+              invoice_number AS invoiceNumber,
+              invoice_type AS invoiceType,
+              status,
+              subtotal_amount AS subtotalAmount,
+              discount_amount AS discountAmount,
+              total_amount AS totalAmount,
+              html_snapshot AS htmlSnapshot,
+              r2_key AS r2Key,
+              url,
+              issued_at AS issuedAt
+       FROM booking_invoices
+       WHERE booking_id = ?
+       ORDER BY issued_at DESC
+       LIMIT 1`,
+    )
+    .bind(bookingId)
+    .first<BookingInvoiceRecord>();
+}
+
+async function getBookingReceiptRecord(db: D1Database, bookingId: string) {
+  return db
+    .prepare(
+      `SELECT id,
+              booking_id AS bookingId,
+              receipt_number AS receiptNumber,
+              receipt_type AS receiptType,
+              status,
+              subtotal_amount AS subtotalAmount,
+              discount_amount AS discountAmount,
+              total_amount AS totalAmount,
+              html_snapshot AS htmlSnapshot,
+              r2_key AS r2Key,
+              url,
+              issued_at AS issuedAt
+       FROM booking_receipts
+       WHERE booking_id = ?
+       ORDER BY issued_at DESC
+       LIMIT 1`,
+    )
+    .bind(bookingId)
+    .first<BookingReceiptRecord>();
+}
+
+async function buildBookingInvoiceSource(db: D1Database, bookingId: string): Promise<BookingInvoiceSource> {
+  const booking = await db
+    .prepare(
+      `SELECT id,
+              booking_number,
+              status,
+              customer_name,
+              customer_whatsapp,
+              customer_email,
+              customer_instagram,
+              pickup_method,
+              delivery_address,
+              notes,
+              dp_total,
+              instagram_discount_amount,
+              extra_return_fee_total,
+              rental_estimate_total
+       FROM bookings
+       WHERE id = ?
+       LIMIT 1`,
+    )
+    .bind(bookingId)
+    .first<{
+      id: string;
+      booking_number: string;
+      status: BookingStatus;
+      customer_name: string;
+      customer_whatsapp: string;
+      customer_email: string | null;
+      customer_instagram: string | null;
+      pickup_method: BookingPickupMethod;
+      delivery_address: string | null;
+      notes: string;
+      dp_total: number;
+      instagram_discount_amount: number;
+      extra_return_fee_total: number;
+      rental_estimate_total: number;
+    }>();
+
+  if (!booking) {
+    throw new BookingDbError('Booking tidak ditemukan.', 404, 'BOOKING_NOT_FOUND');
+  }
+
+  const items = await db
+    .prepare(
+      `SELECT item_code AS itemCode,
+              item_name AS itemName,
+              rental_price_snapshot AS rentalPrice,
+              dp_amount AS dpAmount,
+              extra_return_fee AS extraReturnFee,
+              pickup_date AS pickupDate,
+              event_date AS eventDate,
+              return_due_date AS returnDueDate
+       FROM booking_items
+       WHERE booking_id = ? AND item_status = 'active'
+       ORDER BY created_at ASC`,
+    )
+    .bind(bookingId)
+    .all<BookingInvoiceSnapshot['items'][number]>();
+  const payment = await db
+    .prepare(
+      `SELECT reference
+       FROM booking_payments
+       WHERE booking_id = ? AND payment_type = 'dp'
+       ORDER BY created_at DESC
+       LIMIT 1`,
+    )
+    .bind(bookingId)
+    .first<{ reference: string | null }>();
+  const subtotalAmount = normalizeAmount(booking.dp_total);
+  const discountAmount = Math.min(normalizeAmount(booking.instagram_discount_amount), subtotalAmount);
+  const totalAmount = Math.max(subtotalAmount - discountAmount, 0);
+
+  return {
+    bookingStatus: booking.status,
+    snapshot: {
+      bookingNumber: booking.booking_number,
+      customerName: booking.customer_name,
+      customerWhatsapp: booking.customer_whatsapp,
+      customerEmail: booking.customer_email,
+      customerInstagram: booking.customer_instagram,
+      pickupMethod: booking.pickup_method,
+      deliveryAddress: booking.delivery_address,
+      notes: booking.notes,
+      itemCount: items.results.length,
+      items: items.results,
+      paymentReference: normalizeOptionalText(payment?.reference),
+      subtotalAmount,
+      discountAmount,
+      totalAmount,
+      rentalEstimateTotal: normalizeAmount(booking.rental_estimate_total),
+      extraReturnFeeTotal: normalizeAmount(booking.extra_return_fee_total),
+      bank: getBookingBankConfig(),
+    },
+  };
+}
+
+function makeBookingReceiptInsert(
+  db: D1Database,
+  input: {
+    id: string;
+    bookingId: string;
+    receiptNumber: string;
+    snapshot: BookingInvoiceSnapshot;
+    createdBy?: string | null;
+  },
+) {
+  return db
+    .prepare(
+      `INSERT INTO booking_receipts (
+        id,
+        booking_id,
+        receipt_number,
+        subtotal_amount,
+        discount_amount,
+        total_amount,
+        html_snapshot,
+        created_by
+      )
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+    )
+    .bind(
+      input.id,
+      input.bookingId,
+      input.receiptNumber,
+      input.snapshot.subtotalAmount,
+      input.snapshot.discountAmount,
+      input.snapshot.totalAmount,
+      JSON.stringify(input.snapshot),
+      normalizeOptionalText(input.createdBy),
+    );
+}
+
+function makeBookingInvoiceInsert(
+  db: D1Database,
+  input: {
+    id: string;
+    bookingId: string;
+    invoiceNumber: string;
+    snapshot: BookingInvoiceSnapshot;
+    createdBy?: string | null;
+  },
+) {
+  return db
+    .prepare(
+      `INSERT INTO booking_invoices (
+        id,
+        booking_id,
+        invoice_number,
+        subtotal_amount,
+        discount_amount,
+        total_amount,
+        html_snapshot,
+        created_by
+      )
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+    )
+    .bind(
+      input.id,
+      input.bookingId,
+      input.invoiceNumber,
+      input.snapshot.subtotalAmount,
+      input.snapshot.discountAmount,
+      input.snapshot.totalAmount,
+      JSON.stringify(input.snapshot),
+      normalizeOptionalText(input.createdBy),
+    );
+}
+
+export async function generateBookingInvoice(bookingId: string, actor?: string | null) {
+  const db = await getD1Database();
+  const existingInvoice = await getBookingInvoiceRecord(db, bookingId);
+
+  if (existingInvoice) {
+    return existingInvoice;
+  }
+
+  const invoiceId = createId('booking-invoice');
+  const { bookingStatus, snapshot } = await buildBookingInvoiceSource(db, bookingId);
+  const invoiceNumber = makeInvoiceNumber(snapshot.bookingNumber);
+
+  await db.batch([
+    makeBookingInvoiceInsert(db, {
+      id: invoiceId,
+      bookingId,
+      invoiceNumber,
+      snapshot,
+      createdBy: actor,
+    }),
+    db
+      .prepare(
+        `INSERT INTO booking_status_history (
+          id,
+          booking_id,
+          from_status,
+          to_status,
+          action,
+          note,
+          actor
+        )
+        VALUES (?, ?, ?, ?, ?, ?, ?)`,
+      )
+      .bind(
+        createId('booking-history'),
+        bookingId,
+        bookingStatus,
+        bookingStatus,
+        'invoice_generated',
+        'Booking DP invoice generated.',
+        normalizeOptionalText(actor),
+      ),
+  ]);
+
+  const invoice = await getBookingInvoiceRecord(db, bookingId);
+
+  if (!invoice) {
+    throw new BookingDbError('Invoice belum bisa dibuat.', 500, 'INVOICE_CREATE_FAILED');
+  }
+
+  return invoice;
+}
+
+export async function generateBookingReceipt(bookingId: string, actor?: string | null) {
+  const db = await getD1Database();
+  const existingReceipt = await getBookingReceiptRecord(db, bookingId);
+
+  if (existingReceipt) {
+    return existingReceipt;
+  }
+
+  const { bookingStatus, snapshot } = await buildBookingInvoiceSource(db, bookingId);
+
+  if (!['dp_confirmed', 'fitting_link_sent', 'picked_up', 'completed'].includes(bookingStatus)) {
+    throw new BookingDbError(
+      'Receipt baru bisa dibuat setelah DP dikonfirmasi.',
+      409,
+      'DP_NOT_CONFIRMED',
+    );
+  }
+
+  const receiptId = createId('booking-receipt');
+  const receiptNumber = makeReceiptNumber(snapshot.bookingNumber);
+
+  await db.batch([
+    makeBookingReceiptInsert(db, {
+      id: receiptId,
+      bookingId,
+      receiptNumber,
+      snapshot,
+      createdBy: actor,
+    }),
+    db
+      .prepare(
+        `INSERT INTO booking_status_history (
+          id,
+          booking_id,
+          from_status,
+          to_status,
+          action,
+          note,
+          actor
+        )
+        VALUES (?, ?, ?, ?, ?, ?, ?)`,
+      )
+      .bind(
+        createId('booking-history'),
+        bookingId,
+        bookingStatus,
+        bookingStatus,
+        'receipt_generated',
+        'Paid DP receipt generated.',
+        normalizeOptionalText(actor),
+      ),
+  ]);
+
+  const receipt = await getBookingReceiptRecord(db, bookingId);
+
+  if (!receipt) {
+    throw new BookingDbError('Receipt belum bisa dibuat.', 500, 'RECEIPT_CREATE_FAILED');
+  }
+
+  return receipt;
+}
+
 export async function confirmBookingDp(bookingId: string, actor?: string | null) {
   const db = await getD1Database();
   const booking = await db
@@ -1039,11 +1472,21 @@ export async function confirmBookingDp(bookingId: string, actor?: string | null)
     }
   }
 
-  const invoiceId = createId('booking-invoice');
-  const invoiceNumber = makeInvoiceNumber(booking.booking_number);
-  const discountAmount = normalizeAmount(booking.instagram_discount_amount);
-  const subtotalAmount = normalizeAmount(booking.dp_total);
-  const totalAmount = Math.max(subtotalAmount - discountAmount, 0);
+  const existingInvoice = await getBookingInvoiceRecord(db, bookingId);
+  const invoiceId = existingInvoice?.id ?? createId('booking-invoice');
+  const invoiceNumber = existingInvoice?.invoiceNumber ?? makeInvoiceNumber(booking.booking_number);
+  const { snapshot } = await buildBookingInvoiceSource(db, bookingId);
+  const invoiceStatements = existingInvoice
+    ? []
+    : [
+        makeBookingInvoiceInsert(db, {
+          id: invoiceId,
+          bookingId,
+          invoiceNumber,
+          snapshot,
+          createdBy: actor,
+        }),
+      ];
 
   await db.batch([
     db
@@ -1066,36 +1509,7 @@ export async function confirmBookingDp(bookingId: string, actor?: string | null)
          WHERE id = ?`,
       )
       .bind(normalizeOptionalText(actor), payment.id),
-    db
-      .prepare(
-        `INSERT INTO booking_invoices (
-          id,
-          booking_id,
-          invoice_number,
-          subtotal_amount,
-          discount_amount,
-          total_amount,
-          html_snapshot,
-          created_by
-        )
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-      )
-      .bind(
-        invoiceId,
-        bookingId,
-        invoiceNumber,
-        subtotalAmount,
-        discountAmount,
-        totalAmount,
-        JSON.stringify({
-          bookingNumber: booking.booking_number,
-          paymentReference: payment.reference,
-          subtotalAmount,
-          discountAmount,
-          totalAmount,
-        }),
-        normalizeOptionalText(actor),
-      ),
+    ...invoiceStatements,
     db
       .prepare(
         `INSERT INTO booking_status_history (
@@ -1127,35 +1541,186 @@ export async function confirmBookingDp(bookingId: string, actor?: string | null)
     invoice: {
       id: invoiceId,
       invoiceNumber,
-      totalAmount,
+      totalAmount: snapshot.totalAmount,
     },
+  };
+}
+
+export async function markFittingLinkSent(bookingId: string, actor?: string | null) {
+  const db = await getD1Database();
+  const booking = await db
+    .prepare(
+      `SELECT id, booking_number, status
+       FROM bookings
+       WHERE id = ?
+       LIMIT 1`,
+    )
+    .bind(bookingId)
+    .first<{ id: string; booking_number: string; status: BookingStatus }>();
+
+  if (!booking) {
+    throw new BookingDbError('Booking tidak ditemukan.', 404, 'BOOKING_NOT_FOUND');
+  }
+
+  if (booking.status === 'fitting_link_sent') {
+    return {
+      id: bookingId,
+      bookingNumber: booking.booking_number,
+      status: booking.status,
+    };
+  }
+
+  if (booking.status !== 'dp_confirmed') {
+    throw new BookingDbError(
+      'Link fitting baru bisa dikirim setelah DP confirmed.',
+      409,
+      'DP_NOT_CONFIRMED',
+    );
+  }
+
+  await db.batch([
+    db
+      .prepare(
+        `UPDATE bookings
+         SET status = 'fitting_link_sent',
+             updated_by = ?,
+             updated_at = CURRENT_TIMESTAMP
+         WHERE id = ?`,
+      )
+      .bind(normalizeOptionalText(actor), bookingId),
+    db
+      .prepare(
+        `INSERT INTO booking_status_history (
+          id,
+          booking_id,
+          from_status,
+          to_status,
+          action,
+          note,
+          actor
+        )
+        VALUES (?, ?, ?, ?, ?, ?, ?)`,
+      )
+      .bind(
+        createId('booking-history'),
+        bookingId,
+        booking.status,
+        'fitting_link_sent',
+        'fitting_link_sent',
+        'Fitting schedule link sent to customer.',
+        normalizeOptionalText(actor),
+      ),
+  ]);
+
+  return {
+    id: bookingId,
+    bookingNumber: booking.booking_number,
+    status: 'fitting_link_sent' as const,
+  };
+}
+
+export async function closeBooking(input: {
+  bookingId: string;
+  action: CloseBookingAction;
+  reason?: string | null;
+  actor?: string | null;
+}) {
+  const db = await getD1Database();
+  const nextStatus: Extract<BookingStatus, 'rejected' | 'cancelled'> =
+    input.action === 'reject' ? 'rejected' : 'cancelled';
+  const reason = normalizeText(input.reason);
+  const booking = await db
+    .prepare(
+      `SELECT id, booking_number, status
+       FROM bookings
+       WHERE id = ?
+       LIMIT 1`,
+    )
+    .bind(input.bookingId)
+    .first<{ id: string; booking_number: string; status: BookingStatus }>();
+
+  if (!booking) {
+    throw new BookingDbError('Booking tidak ditemukan.', 404, 'BOOKING_NOT_FOUND');
+  }
+
+  if (['completed', 'rejected', 'cancelled', 'expired'].includes(booking.status)) {
+    throw new BookingDbError(
+      'Booking ini sudah ditutup.',
+      409,
+      'BOOKING_ALREADY_CLOSED',
+    );
+  }
+
+  await db.batch([
+    db
+      .prepare(
+        `UPDATE bookings
+         SET status = ?,
+             rejected_reason = CASE WHEN ? = 'rejected' THEN ? ELSE rejected_reason END,
+             cancelled_reason = CASE WHEN ? = 'cancelled' THEN ? ELSE cancelled_reason END,
+             updated_by = ?,
+             updated_at = CURRENT_TIMESTAMP
+         WHERE id = ?`,
+      )
+      .bind(
+        nextStatus,
+        nextStatus,
+        reason,
+        nextStatus,
+        reason,
+        normalizeOptionalText(input.actor),
+        input.bookingId,
+      ),
+    db
+      .prepare(
+        `UPDATE booking_items
+         SET item_status = 'cancelled',
+             updated_at = CURRENT_TIMESTAMP
+         WHERE booking_id = ?`,
+      )
+      .bind(input.bookingId),
+    db
+      .prepare(
+        `INSERT INTO booking_status_history (
+          id,
+          booking_id,
+          from_status,
+          to_status,
+          action,
+          note,
+          actor
+        )
+        VALUES (?, ?, ?, ?, ?, ?, ?)`,
+      )
+      .bind(
+        createId('booking-history'),
+        input.bookingId,
+        booking.status,
+        nextStatus,
+        input.action,
+        reason || (input.action === 'reject' ? 'Booking rejected by admin.' : 'Booking cancelled by admin.'),
+        normalizeOptionalText(input.actor),
+      ),
+  ]);
+
+  return {
+    id: input.bookingId,
+    bookingNumber: booking.booking_number,
+    previousStatus: booking.status,
+    status: nextStatus,
   };
 }
 
 export async function getBookingInvoice(bookingId: string) {
   const db = await getD1Database();
 
-  return db
-    .prepare(
-      `SELECT id,
-              booking_id AS bookingId,
-              invoice_number AS invoiceNumber,
-              invoice_type AS invoiceType,
-              status,
-              subtotal_amount AS subtotalAmount,
-              discount_amount AS discountAmount,
-              total_amount AS totalAmount,
-              html_snapshot AS htmlSnapshot,
-              r2_key AS r2Key,
-              url,
-              issued_at AS issuedAt
-       FROM booking_invoices
-       WHERE booking_id = ?
-       ORDER BY issued_at DESC
-       LIMIT 1`,
-    )
-    .bind(bookingId)
-    .first();
+  return getBookingInvoiceRecord(db, bookingId);
+}
+
+export async function getBookingReceipt(bookingId: string) {
+  const db = await getD1Database();
+
+  return getBookingReceiptRecord(db, bookingId);
 }
 
 export function getBookingBlockingStatuses() {
