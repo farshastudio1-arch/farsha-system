@@ -125,7 +125,7 @@ export default function BookingPageClient({
   const [confirmedOrderKey, setConfirmedOrderKey] = useState('');
   const [confirmedIdentityKey, setConfirmedIdentityKey] = useState('');
   const returnDateInputRef = useRef<HTMLInputElement>(null);
-  const activeStepAreaRef = useRef<HTMLElement>(null);
+  const pageTopRef = useRef<HTMLDivElement>(null);
 
   const bookingDates = useMemo(() => calculateBookingDatesFromPickup(pickupDate), [pickupDate]);
   const eventDate = bookingDates?.eventDate ?? pickupDate;
@@ -193,9 +193,9 @@ export default function BookingPageClient({
     input.click();
   };
 
-  const scrollToActiveStepArea = () => {
+  const scrollToPageTop = () => {
     window.setTimeout(() => {
-      activeStepAreaRef.current?.scrollIntoView({
+      pageTopRef.current?.scrollIntoView({
         behavior: 'smooth',
         block: 'start',
       });
@@ -213,7 +213,7 @@ export default function BookingPageClient({
     setShowWhatsappFallback(false);
     setConfirmedOrderKey(orderConfirmationKey);
     setStep('identity');
-    scrollToActiveStepArea();
+    scrollToPageTop();
   };
 
   const goToPayment = () => {
@@ -239,7 +239,7 @@ export default function BookingPageClient({
     setShowWhatsappFallback(false);
     setConfirmedIdentityKey(identityConfirmationKey);
     setStep('payment');
-    scrollToActiveStepArea();
+    scrollToPageTop();
   };
 
   const openBookingConfirmation = () => {
@@ -338,7 +338,7 @@ export default function BookingPageClient({
 
   return (
     <main className="theme-surface min-h-screen px-4 py-6 sm:px-6 lg:px-8">
-      <div className="mx-auto max-w-6xl space-y-6">
+      <div ref={pageTopRef} className="mx-auto max-w-6xl scroll-mt-4 space-y-6">
         <Link
           href="/catalog"
           className="inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-neutral-500 hover:text-neutral-900"
@@ -389,7 +389,7 @@ export default function BookingPageClient({
         </section>
 
         <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_360px]">
-          <section ref={activeStepAreaRef} className="scroll-mt-4 border theme-border bg-white p-5 shadow-sm">
+          <section className="border theme-border bg-white p-5 shadow-sm">
             {step === 'order' && (
               <div className="space-y-6">
                 <header className="flex items-start gap-3">
