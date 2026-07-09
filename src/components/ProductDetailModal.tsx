@@ -54,7 +54,7 @@ function calculatePickupAvailabilityDates(pickupDate: string) {
   return {
     pickupDate,
     eventDate: addPreviewDays(pickupDate, 1),
-    returnDate: addPreviewDays(pickupDate, 3),
+    returnDate: addPreviewDays(pickupDate, 2),
     bufferUntilDate: addPreviewDays(pickupDate, 5),
   };
 }
@@ -182,7 +182,7 @@ export default function ProductDetailModal({
     () => (selectedPickupDate ? addPreviewDays(selectedPickupDate, 2) : ''),
     [selectedPickupDate],
   );
-  const selectedReturnEndDate = useMemo(
+  const selectedBufferStartDate = useMemo(
     () => (selectedPickupDate ? addPreviewDays(selectedPickupDate, 3) : ''),
     [selectedPickupDate],
   );
@@ -826,10 +826,11 @@ export default function ProductDetailModal({
                       {calendarDates.map((day) => {
                         const isPickup = selectedPickupDate === day.value;
                         const isEvent = selectedEventDate === day.value;
-                        const isReturnEstimate =
-                          selectedReturnStartDate === day.value || selectedReturnEndDate === day.value;
+                        const isReturnEstimate = selectedReturnStartDate === day.value;
                         const isCleaningBuffer =
-                          selectedCleaningStartDate === day.value || selectedCleaningEndDate === day.value;
+                          selectedBufferStartDate === day.value ||
+                          selectedCleaningStartDate === day.value ||
+                          selectedCleaningEndDate === day.value;
                         const dayRoleLabel = isPickup
                           ? 'Pickup'
                           : isEvent
@@ -852,7 +853,7 @@ export default function ProductDetailModal({
                                   : isReturnEstimate
                                     ? 'border-black/60 bg-black/60 text-white'
                                     : isCleaningBuffer
-                                      ? 'border-black/40 bg-black/40 text-black'
+                                      ? 'border-black/55 bg-black/55 text-white'
                                       : day.isBooked
                                         ? 'cursor-not-allowed border-orange-200 bg-orange-50 text-orange-700'
                                         : day.disabled
@@ -888,8 +889,7 @@ export default function ProductDetailModal({
                         <span>
                           Pickup <strong>{formatDate(bookingDates.pickupDate)}</strong>, acara{' '}
                           <strong>{formatDate(bookingDates.eventDate)}</strong>. Estimasi return{' '}
-                          <strong>{formatDate(selectedReturnStartDate)}</strong> -{' '}
-                          <strong>{formatDate(selectedReturnEndDate)}</strong>.
+                          <strong>{formatDate(selectedReturnStartDate)}</strong>.
                         </span>
                       </div>
                     )}

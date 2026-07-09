@@ -123,7 +123,6 @@ export default function BookingPageClient({
   const [isConfirmBookingOpen, setIsConfirmBookingOpen] = useState(false);
   const [confirmedOrderKey, setConfirmedOrderKey] = useState('');
   const [confirmedIdentityKey, setConfirmedIdentityKey] = useState('');
-  const returnDateInputRef = useRef<HTMLInputElement>(null);
   const pageTopRef = useRef<HTMLDivElement>(null);
 
   const bookingDates = useMemo(() => calculateBookingDatesFromPickup(pickupDate), [pickupDate]);
@@ -177,19 +176,6 @@ export default function BookingPageClient({
     const message = `Hi admin, saya sudah booking kebaya dengan nomor booking : ${bookingNumber}. Tolong segera diproses ya`;
 
     return `https://wa.me/${whatsappFallbackPhone}?text=${encodeURIComponent(message)}`;
-  };
-
-  const openReturnDatePicker = () => {
-    const input = returnDateInputRef.current;
-    if (!input) return;
-
-    if (typeof input.showPicker === 'function') {
-      input.showPicker();
-      return;
-    }
-
-    input.focus();
-    input.click();
   };
 
   const scrollToPageTop = () => {
@@ -436,15 +422,12 @@ export default function BookingPageClient({
           <section className="border theme-border bg-white p-4 shadow-sm md:p-5">
             {step === 'order' && (
               <div className="space-y-4 md:space-y-6">
-                <header className="flex items-start gap-3">
-                  <CalendarCheck className="mt-1 h-5 w-5 text-neutral-400" />
+                <header className="flex items-center gap-3">
+                  <CalendarCheck className="h-5 w-5 text-neutral-400" />
                   <div>
                     <h2 className="font-serif text-xl font-semibold leading-tight text-neutral-950 md:text-2xl">
                       Detail Pesanan
                     </h2>
-                    <p className="mt-1 text-sm text-neutral-500">
-                      Pickup otomatis satu hari sebelum acara. Return bisa diperpanjang.
-                    </p>
                   </div>
                 </header>
 
@@ -473,7 +456,7 @@ export default function BookingPageClient({
 
                 <div className="border border-neutral-200 bg-neutral-50 p-4">
                   <div className="space-y-3">
-                    <div className="flex items-start justify-between gap-4">
+                    <div>
                       <div>
                         <span className="block text-xs font-semibold uppercase tracking-wider text-neutral-500">
                           Pickup
@@ -482,9 +465,8 @@ export default function BookingPageClient({
                           {formatDate(bookingDates?.pickupDate ?? null)}
                         </strong>
                       </div>
-                      <span className="text-right text-xs text-neutral-500">Dari katalog</span>
                     </div>
-                    <div className="flex items-start justify-between gap-4 border-t border-neutral-200 pt-3">
+                    <div className="border-t border-neutral-200 pt-3">
                       <div>
                         <span className="block text-xs font-semibold uppercase tracking-wider text-neutral-500">
                           Acara
@@ -493,7 +475,6 @@ export default function BookingPageClient({
                           {formatDate(eventDate)}
                         </strong>
                       </div>
-                      <span className="text-right text-xs text-neutral-500">+1 hari</span>
                     </div>
                     <div className="flex items-center justify-between gap-4 border-t border-neutral-200 pt-3">
                       <div>
@@ -504,25 +485,21 @@ export default function BookingPageClient({
                           {formatDate(normalizedReturnDate)}
                         </strong>
                       </div>
-                      <button
-                        type="button"
-                        onClick={openReturnDatePicker}
-                        className="inline-flex min-h-10 shrink-0 items-center gap-2 border border-neutral-300 bg-white px-3 py-2 text-xs font-bold uppercase tracking-wider text-neutral-900 hover:border-neutral-900 focus:outline-none focus:ring-1 focus:ring-neutral-900"
-                      >
-                        Ubah
-                        <CalendarCheck className="h-4 w-4" />
-                      </button>
+                      <label className="relative inline-flex min-h-10 shrink-0 cursor-pointer touch-manipulation items-center gap-2 border border-neutral-300 bg-white px-3 py-2 text-xs font-bold uppercase tracking-wider text-neutral-900 hover:border-neutral-900 focus-within:border-neutral-900 focus-within:ring-1 focus-within:ring-neutral-900">
+                        <span className="pointer-events-none">Ubah</span>
+                        <CalendarCheck className="pointer-events-none h-4 w-4" />
+                        <input
+                          type="date"
+                          min={defaultReturnDate}
+                          value={normalizedReturnDate}
+                          onInput={(event) => setReturnDate(event.currentTarget.value)}
+                          onChange={(event) => setReturnDate(event.currentTarget.value)}
+                          className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
+                          aria-label="Pilih tanggal return"
+                        />
+                      </label>
                     </div>
                   </div>
-                  <input
-                    ref={returnDateInputRef}
-                    type="date"
-                    min={defaultReturnDate}
-                    value={normalizedReturnDate}
-                    onChange={(event) => setReturnDate(event.target.value)}
-                    className="sr-only"
-                    aria-label="Pilih tanggal return"
-                  />
                   <p className="mt-3 text-xs leading-relaxed text-neutral-500">
                     Tambahan {formatCurrency(previewExtraReturnDayFee)} per hari per item setelah {formatDate(defaultReturnDate)}.
                   </p>
@@ -692,15 +669,12 @@ export default function BookingPageClient({
 
             {step === 'payment' && (
               <div className="space-y-4 md:space-y-6">
-                <header className="flex items-start gap-3">
-                  <ShieldCheck className="mt-1 h-5 w-5 text-neutral-400" />
+                <header className="flex items-center gap-3">
+                  <ShieldCheck className="h-5 w-5 text-neutral-400" />
                   <div>
                     <h2 className="font-serif text-xl font-semibold leading-tight text-neutral-950 md:text-2xl">
                       Review Pembayaran
                     </h2>
-                    <p className="mt-1 text-sm text-neutral-500">
-                      Request akan diverifikasi admin. Belum ada payment gateway otomatis.
-                    </p>
                   </div>
                 </header>
 
