@@ -1,224 +1,183 @@
-'use client';
-
 import Link from 'next/link';
-import { useEffect, useMemo, useState } from 'react';
 import {
+  AlertTriangle,
   ArrowUpRight,
-  CheckCircle,
-  Clock,
-  Eye,
-  MessageCircle,
-  PackageCheck,
+  CheckCircle2,
+  FileImage,
+  ImageIcon,
+  LayoutPanelTop,
+  LibraryBig,
+  Megaphone,
+  Palette,
+  Settings,
   ShoppingBag,
-  Sparkles,
-  Wrench,
+  Tags,
+  Wand2,
 } from 'lucide-react';
 
-import { KebayaItem } from '@/data/mockData';
+import type { CMSContent, KebayaItem, SiteSettings } from '@/data/mockData';
 import {
-  fetchAdminCatalogItemsAction,
-  fetchPosLedgerAction,
-  fetchSiteSettingsAction,
-} from '@/lib/farsha-actions';
-import { landingCategories, matchesLandingCategory } from '@/lib/landing-categories';
-import { useSavedCatalogItems, writeSavedCatalogItems } from '@/lib/catalog-storage';
-import { useSavedSiteSettings, writeSavedSiteSettings } from '@/lib/site-settings';
-import {
-  writeSavedPosLedger,
-  projectCatalogItems,
-  getOverdueTransactions,
-} from '@/lib/pos-ledger';
-import { useSavedPosLedger } from '@/lib/pos-ledger-client';
+  getCmsContent,
+  getSiteSettings,
+  listCatalogItems,
+  listMediaAlbums,
+  listMediaAssets,
+} from '@/lib/farsha-db';
+import type { MediaAsset } from '@/lib/media-library';
 
-type StatusTone = 'good' | 'warning' | 'neutral';
+type Tone = 'neutral' | 'good' | 'warning' | 'danger';
 
-function formatPrice(price: number) {
-  return new Intl.NumberFormat('id-ID', {
-    style: 'currency',
-    currency: 'IDR',
-    maximumFractionDigits: 0,
-  }).format(price);
-}
-
-function formatDate(value: string | null) {
-  if (!value) {
-    return 'Tanggal belum diisi';
-  }
-
-  const date = new Date(value);
-
-  if (Number.isNaN(date.getTime())) {
-    return 'Tanggal tidak valid';
-  }
-
-  return new Intl.DateTimeFormat('id-ID', {
-    day: 'numeric',
-    month: 'short',
-    year: 'numeric',
-  }).format(date);
-}
-
-function statusLabel(status: KebayaItem['status']) {
-  const labels: Record<KebayaItem['status'], string> = {
-    available: 'AVAILABLE',
-    rented: 'RENTED',
-    maintenance: 'DICUCI',
+function toneClass(tone: Tone) {
+  const classes: Record<Tone, string> = {
+    neutral: 'border-neutral-200 bg-white text-neutral-950',
+    good: 'border-emerald-200 bg-emerald-50 text-emerald-900',
+    warning: 'border-amber-200 bg-amber-50 text-amber-900',
+    danger: 'border-red-200 bg-red-50 text-red-900',
   };
 
-  return labels[status];
-}
-
-function statusClass(status: KebayaItem['status']) {
-  const classes: Record<KebayaItem['status'], string> = {
-    available: 'border-emerald-200 bg-emerald-50 text-emerald-700',
-    rented: 'border-amber-200 bg-amber-50 text-amber-700',
-    maintenance: 'border-rose-200 bg-rose-50 text-rose-700',
-  };
-
-  return classes[status];
-}
-
-function readinessClass(tone: StatusTone) {
-  if (tone === 'good') {
-    return 'border-emerald-200 bg-emerald-50 text-emerald-700';
-  }
-
-  if (tone === 'warning') {
-    return 'border-amber-200 bg-amber-50 text-amber-700';
-  }
-
-  return 'border-neutral-200 bg-neutral-50 text-neutral-700';
+  return classes[tone];
 }
 
 function cleanPhone(value: string) {
   return value.replace(/[^0-9]/g, '');
 }
 
-function countByStatus(items: KebayaItem[], status: KebayaItem['status']) {
-  return items.filter((item) => item.status === status).length;
+function isConfigured(value: string | null | undefined) {
+  return Boolean(value?.trim());
 }
 
-function getActionItems(items: KebayaItem[], overdueTransactions: Array<{ itemId: string }>) {
-  return items
-    .flatMap((item) => {
-      const actions: Array<{
-        key: string;
-        title: string;
-        detail: string;
-        priority: 'high' | 'medium' | 'low';
-        item: KebayaItem;
-      }> = [];
+function getItemQualityIssues(item: KebayaItem) {
+  const issues: string[] = [];
 
-      if (item.status === 'maintenance') {
-        actions.push({
-          key: `${item.id}-maintenance`,
-          title: 'Maintenance item',
-          detail: 'Item tidak tampil sebagai siap sewa. Cek cleaning atau repair.',
-          priority: 'high',
-          item,
-        });
-      }
+  if (item.imageUrls.filter(Boolean).length < 2) {
+    issues.push('photos');
+  }
 
-      if (item.status === 'rented') {
-        actions.push({
-          key: `${item.id}-rented`,
-          title: item.rentalEndDate ? 'Return scheduled' : 'Missing return date',
-          detail: `Estimasi kembali: ${formatDate(item.rentalEndDate)}`,
-          priority: item.rentalEndDate ? 'medium' : 'high',
-          item,
-        });
-      }
+  if (!item.description.trim()) {
+    issues.push('copy');
+  }
 
-      if (overdueTransactions.some((transaction) => transaction.itemId === item.id)) {
-        actions.push({
-          key: `${item.id}-overdue`,
-          title: 'Overdue rental',
-          detail: 'Ledger says the item is still open past due date.',
-          priority: 'high',
-          item,
-        });
-      }
+  if (!item.rentalPrice || item.rentalPrice <= 0) {
+    issues.push('price');
+  }
 
-      if (item.imageUrls.length < 2) {
-        actions.push({
-          key: `${item.id}-images`,
-          title: 'Add more photos',
-          detail: 'Catalog cards and detail pages work better with multiple product photos.',
-          priority: 'medium',
-          item,
-        });
-      }
+  if (!item.categories || item.categories.length === 0) {
+    issues.push('category');
+  }
 
-      if (!item.description.trim()) {
-        actions.push({
-          key: `${item.id}-description`,
-          title: 'Missing description',
-          detail: 'Public detail modal needs copy for fit, material, and occasion context.',
-          priority: 'medium',
-          item,
-        });
-      }
+  if (!item.measurements?.rentalCategory) {
+    issues.push('rental area');
+  }
 
-      return actions;
-    })
-    .sort((a, b) => {
-      const rank = { high: 0, medium: 1, low: 2 };
-      return rank[a.priority] - rank[b.priority];
-    })
-    .slice(0, 6);
+  return issues;
 }
 
-function OverviewCard({
+function getCmsIssues(content: CMSContent) {
+  const issues: string[] = [];
+
+  if (!content.heroTitle.trim()) {
+    issues.push('hero title');
+  }
+
+  if (!content.heroSubtitle.trim()) {
+    issues.push('hero subtitle');
+  }
+
+  if (!content.heroImageUrl.trim()) {
+    issues.push('hero image');
+  }
+
+  if (content.landingCategories.length === 0) {
+    issues.push('landing categories');
+  }
+
+  if (content.trustPoints.length === 0) {
+    issues.push('trust points');
+  }
+
+  if (!content.aboutText.trim()) {
+    issues.push('about copy');
+  }
+
+  return issues;
+}
+
+function getSettingsIssues(settings: SiteSettings) {
+  const issues: string[] = [];
+
+  if (settings.status !== 'active') {
+    issues.push(`store ${settings.status}`);
+  }
+
+  if (cleanPhone(settings.whatsappNumber).length < 10) {
+    issues.push('WhatsApp');
+  }
+
+  if (!isConfigured(settings.address)) {
+    issues.push('address');
+  }
+
+  if (!isConfigured(settings.mapsUrl)) {
+    issues.push('maps');
+  }
+
+  if (!isConfigured(settings.email)) {
+    issues.push('email');
+  }
+
+  return issues;
+}
+
+function getMediaIssues(assets: MediaAsset[]) {
+  return assets.filter((asset) => !asset.title.trim() || !asset.altText.trim());
+}
+
+function ReadinessCard({
   title,
   value,
-  description,
+  detail,
+  tone,
   icon: Icon,
-  tone = 'neutral',
+  href,
 }: {
   title: string;
   value: string | number;
-  description: string;
+  detail: string;
+  tone: Tone;
   icon: typeof ShoppingBag;
-  tone?: StatusTone;
+  href: string;
 }) {
   return (
-    <div className="border border-neutral-200 bg-white p-4 shadow-sm sm:p-5">
-      <div className="flex items-start justify-between gap-4">
-        <div className="min-w-0">
-          <p className="text-xs font-semibold uppercase tracking-widest text-neutral-500">
-            {title}
-          </p>
-          <p className="mt-3 text-3xl font-semibold tracking-tight text-neutral-950">{value}</p>
+    <Link href={href} className="block h-full transition-opacity hover:opacity-90">
+      <div className={`h-full border p-4 shadow-sm sm:p-5 ${toneClass(tone)}`}>
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-widest opacity-70">{title}</p>
+            <p className="mt-3 text-3xl font-semibold tracking-tight">{value}</p>
+          </div>
+          <div className="border border-current/20 bg-white/55 p-2">
+            <Icon className="h-5 w-5" />
+          </div>
         </div>
-        <div className={`border p-2 ${readinessClass(tone)}`}>
-          <Icon className="h-5 w-5" />
-        </div>
+        <p className="mt-3 text-sm leading-relaxed opacity-80">{detail}</p>
       </div>
-      <p className="mt-3 text-sm leading-relaxed text-neutral-500">{description}</p>
-    </div>
+    </Link>
   );
 }
 
-function SectionPanel({
+function Section({
   title,
-  description,
   action,
   children,
 }: {
   title: string;
-  description?: string;
   action?: React.ReactNode;
   children: React.ReactNode;
 }) {
   return (
     <section className="border border-neutral-200 bg-white shadow-sm">
-      <div className="flex flex-col gap-3 border-b border-neutral-200 p-4 sm:flex-row sm:items-start sm:justify-between sm:p-5">
-        <div>
-          <h2 className="text-base font-semibold text-neutral-950">{title}</h2>
-          {description && (
-            <p className="mt-1 text-sm leading-relaxed text-neutral-500">{description}</p>
-          )}
-        </div>
+      <div className="flex items-center justify-between gap-3 border-b border-neutral-200 p-4 sm:p-5">
+        <h2 className="text-base font-semibold text-neutral-950">{title}</h2>
         {action}
       </div>
       <div className="p-4 sm:p-5">{children}</div>
@@ -226,460 +185,377 @@ function SectionPanel({
   );
 }
 
-export default function AdminDashboard() {
-  const catalogItems = useSavedCatalogItems();
-  const settings = useSavedSiteSettings();
-  const ledger = useSavedPosLedger();
-  const [isLoadingDatabase, setIsLoadingDatabase] = useState(true);
-  const [databaseError, setDatabaseError] = useState('');
-  const projectedItems = useMemo(() => projectCatalogItems(catalogItems, ledger), [catalogItems, ledger]);
-  const overdueTransactions = useMemo(() => getOverdueTransactions(ledger), [ledger]);
+function ToolCard({
+  href,
+  title,
+  detail,
+  icon: Icon,
+}: {
+  href: string;
+  title: string;
+  detail: string;
+  icon: typeof ShoppingBag;
+}) {
+  return (
+    <Link
+      href={href}
+      className="block border border-neutral-200 bg-neutral-50 p-4 transition-colors hover:bg-white"
+    >
+      <div className="flex items-start gap-3">
+        <div className="border border-neutral-200 bg-white p-2 text-neutral-700">
+          <Icon className="h-4 w-4" />
+        </div>
+        <div>
+          <p className="text-sm font-semibold text-neutral-950">{title}</p>
+          <p className="mt-1 text-xs leading-relaxed text-neutral-500">{detail}</p>
+        </div>
+      </div>
+    </Link>
+  );
+}
 
-  useEffect(() => {
-    let active = true;
+export default async function AdminDashboard() {
+  const [catalogItems, cmsContent, settings, mediaAssets, mediaAlbums] = await Promise.all([
+    listCatalogItems({ fallbackToMock: false }),
+    getCmsContent(),
+    getSiteSettings(),
+    listMediaAssets(),
+    listMediaAlbums(),
+  ]);
 
-    async function loadDashboardData() {
-      setIsLoadingDatabase(true);
-      const [catalogResult, settingsResult, ledgerResult] = await Promise.all([
-        fetchAdminCatalogItemsAction(),
-        fetchSiteSettingsAction(),
-        fetchPosLedgerAction(),
-      ]);
-
-      if (!active) {
-        return;
-      }
-
-      if (catalogResult.ok) {
-        writeSavedCatalogItems(catalogResult.data);
-      }
-
-      if (settingsResult.ok) {
-        writeSavedSiteSettings(settingsResult.data);
-      }
-
-      if (ledgerResult.ok) {
-        writeSavedPosLedger(ledgerResult.data);
-      }
-
-      const errors = [
-        catalogResult.ok ? '' : catalogResult.error,
-        settingsResult.ok ? '' : settingsResult.error,
-        ledgerResult.ok ? '' : ledgerResult.error,
-      ].filter(Boolean);
-
-      setDatabaseError(errors.join(' '));
-      setIsLoadingDatabase(false);
-    }
-
-    loadDashboardData();
-
-    return () => {
-      active = false;
-    };
-  }, []);
-
-  const totalItems = projectedItems.length;
-  const availableItems = countByStatus(projectedItems, 'available');
-  const rentedItems = countByStatus(projectedItems, 'rented');
-  const maintenanceItems = countByStatus(projectedItems, 'maintenance');
-  const readyRatio = totalItems > 0 ? Math.round((availableItems / totalItems) * 100) : 0;
-  const whatsappReady = cleanPhone(settings.whatsappNumber).length >= 10;
-  const actionItems = getActionItems(projectedItems, overdueTransactions);
-  const priceValues = projectedItems.map((item) => item.rentalPrice).filter((price) => price > 0);
-  const lowestPrice = priceValues.length > 0 ? Math.min(...priceValues) : 0;
-  const highestPrice = priceValues.length > 0 ? Math.max(...priceValues) : 0;
-  const rentedSchedule = projectedItems
-    .filter((item) => item.status === 'rented')
-    .sort((a, b) => {
-      const aTime = a.rentalEndDate ? new Date(a.rentalEndDate).getTime() : Number.MAX_SAFE_INTEGER;
-      const bTime = b.rentalEndDate ? new Date(b.rentalEndDate).getTime() : Number.MAX_SAFE_INTEGER;
-      return aTime - bTime;
-    })
-    .slice(0, 5);
-  const maintenanceQueue = projectedItems.filter((item) => item.status === 'maintenance').slice(0, 5);
-
-  const categoryCoverage = landingCategories.map((category) => {
-    const matchedItems = projectedItems.filter((item) => matchesLandingCategory(item, category.slug));
-    const readyItems = matchedItems.filter((item) => item.status === 'available');
-
-    return {
-      ...category,
-      count: matchedItems.length,
-      readyCount: readyItems.length,
-      tone: readyItems.length > 0 ? ('good' as const) : ('warning' as const),
-    };
-  });
-
-  const readinessItems = [
-    {
-      label: 'Public catalog items',
-      value: `${totalItems} items`,
-      detail: 'Catalog identity records managed in admin.',
-      tone: totalItems > 0 ? ('good' as const) : ('warning' as const),
-      icon: Eye,
-    },
-    {
-      label: 'WhatsApp contact',
-      value: whatsappReady ? settings.whatsappNumber : 'Needs number',
-      detail: 'Used by customer inquiry links on public product flows.',
-      tone: whatsappReady ? ('good' as const) : ('warning' as const),
-      icon: MessageCircle,
-    },
-    {
-      label: 'Store status',
-      value: settings.status.replace('-', ' '),
-      detail: 'Reference status from admin settings.',
-      tone: settings.status === 'active' ? ('good' as const) : ('warning' as const),
-      icon: PackageCheck,
-    },
-  ];
+  const catalogIssueItems = catalogItems.filter((item) => getItemQualityIssues(item).length > 0);
+  const cmsIssues = getCmsIssues(cmsContent);
+  const settingsIssues = getSettingsIssues(settings);
+  const mediaIssueAssets = getMediaIssues(mediaAssets);
+  const uncategorizedMedia = mediaAssets.filter((asset) => !asset.albumId);
+  const readyCatalogItems = catalogItems.length - catalogIssueItems.length;
+  const storefrontIssueCount = cmsIssues.length + settingsIssues.length;
+  const setupIssueCount = catalogIssueItems.length + storefrontIssueCount + mediaIssueAssets.length;
 
   return (
     <div className="mx-auto flex w-full max-w-7xl flex-col gap-5 px-4 py-5 sm:px-6 sm:py-6 lg:px-8 lg:py-8">
       <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
         <div>
           <p className="font-mono text-[10px] font-bold uppercase tracking-widest text-neutral-400">
-            Admin overview
+            Admin dashboard
           </p>
           <h1 className="mt-2 text-2xl font-semibold tracking-tight text-neutral-950 sm:text-3xl">
-            Public catalog readiness
+            Business setup health
           </h1>
           <p className="mt-2 max-w-2xl text-sm leading-relaxed text-neutral-500 sm:text-base">
-            Operational snapshot from the same catalog and settings data used by the landing and
-            catalog pages.
+            Master data, storefront content, media library, and configuration readiness.
           </p>
         </div>
 
         <div className="flex flex-col gap-2 sm:flex-row">
           <Link
-            href="/catalog"
-            className="inline-flex items-center justify-center gap-2 border border-neutral-200 bg-white px-4 py-2.5 text-sm font-semibold text-neutral-700 transition-colors hover:bg-neutral-50"
-          >
-            View catalog
-            <ArrowUpRight className="h-4 w-4" />
-          </Link>
-          <Link
             href="/admin/catalog"
             className="inline-flex items-center justify-center gap-2 bg-neutral-900 px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-neutral-800"
           >
-            Manage items
+            Manage catalog
             <ShoppingBag className="h-4 w-4" />
+          </Link>
+          <Link
+            href="/catalog"
+            className="inline-flex items-center justify-center gap-2 border border-neutral-200 bg-white px-4 py-2.5 text-sm font-semibold text-neutral-700 transition-colors hover:bg-neutral-50"
+          >
+            View storefront
+            <ArrowUpRight className="h-4 w-4" />
           </Link>
         </div>
       </div>
 
-      {(isLoadingDatabase || databaseError) && (
-        <div
-          className={`border px-4 py-3 text-sm font-semibold ${
-            databaseError
-              ? 'border-red-200 bg-red-50 text-red-700'
-              : 'border-neutral-200 bg-neutral-50 text-neutral-600'
-          }`}
-        >
-          {databaseError || 'Loading admin overview from database...'}
-        </div>
-      )}
-
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-        <OverviewCard
-          title="Total items"
-          value={totalItems}
-          description="Catalog identity records"
+        <ReadinessCard
+          title="Setup issues"
+          value={setupIssueCount}
+          detail="Catalog, content, media, and settings items needing attention"
+          tone={setupIssueCount > 0 ? 'warning' : 'good'}
+          icon={AlertTriangle}
+          href="/admin"
+        />
+        <ReadinessCard
+          title="Catalog master"
+          value={`${readyCatalogItems}/${catalogItems.length}`}
+          detail={`${catalogIssueItems.length} item records need data cleanup`}
+          tone={catalogIssueItems.length > 0 ? 'warning' : 'good'}
           icon={ShoppingBag}
+          href="/admin/catalog"
         />
-        <OverviewCard
-          title="Available"
-          value={availableItems}
-          description={`${readyRatio}% of catalog can be offered now`}
-          icon={CheckCircle}
-          tone={availableItems > 0 ? 'good' : 'warning'}
+        <ReadinessCard
+          title="Storefront content"
+          value={storefrontIssueCount}
+          detail={`${cmsIssues.length} CMS issues · ${settingsIssues.length} settings issues`}
+          tone={storefrontIssueCount > 0 ? 'warning' : 'good'}
+          icon={LayoutPanelTop}
+          href="/admin/cms"
         />
-        <OverviewCard
-          title="Rented"
-          value={rentedItems}
-          description="Track return dates before promising availability"
-          icon={Clock}
-          tone={rentedItems > 0 ? 'warning' : 'neutral'}
-        />
-        <OverviewCard
-          title="Maintenance"
-          value={maintenanceItems}
-          description="Cleaning or repair items needing follow-up"
-          icon={Wrench}
-          tone={maintenanceItems > 0 ? 'warning' : 'good'}
+        <ReadinessCard
+          title="Media library"
+          value={mediaAssets.length}
+          detail={`${mediaIssueAssets.length} assets missing title or alt text`}
+          tone={mediaIssueAssets.length > 0 ? 'warning' : 'neutral'}
+          icon={ImageIcon}
+          href="/admin/media"
         />
       </div>
 
-      <div className="grid gap-5 xl:grid-cols-[minmax(0,1.25fr)_minmax(340px,0.75fr)]">
-        <SectionPanel
-          title="Landing category coverage"
-          description="Checks whether public occasion tiles have matching catalog inventory."
+      <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_minmax(340px,0.72fr)]">
+        <Section
+          title="Setup Checklist"
           action={
             <Link
-              href="/"
+              href="/admin/settings"
               className="inline-flex items-center gap-2 text-sm font-semibold text-neutral-700 hover:text-neutral-950"
             >
-              Open landing
+              Settings
               <ArrowUpRight className="h-4 w-4" />
             </Link>
           }
         >
           <div className="grid gap-3 sm:grid-cols-2">
-            {categoryCoverage.map((category) => (
-              <Link
-                key={category.slug}
-                href={`/catalog?category=${category.slug}`}
-                className="group border border-neutral-200 bg-neutral-50 p-4 transition-colors hover:border-neutral-300 hover:bg-white"
-              >
-                <div className="flex items-start justify-between gap-3">
-                  <div className="min-w-0">
-                    <p className="text-lg" aria-hidden="true">
-                      {category.emoji}
-                    </p>
-                    <h3 className="mt-2 text-sm font-semibold text-neutral-950">
-                      {category.title}
-                    </h3>
-                    <p className="mt-1 text-xs leading-relaxed text-neutral-500">
-                      {category.descriptor}
-                    </p>
-                  </div>
-                  <span
-                    className={`shrink-0 border px-2.5 py-1 text-xs font-semibold ${readinessClass(category.tone)}`}
-                  >
-                    {category.readyCount} ready
-                  </span>
-                </div>
-                <div className="mt-4 flex items-center justify-between border-t border-neutral-200 pt-3 text-xs text-neutral-500">
-                  <span>{category.count} matching items</span>
-                  <span className="inline-flex items-center gap-1 font-semibold text-neutral-700 group-hover:text-neutral-950">
-                    Review
-                    <ArrowUpRight className="h-3.5 w-3.5" />
-                  </span>
-                </div>
-              </Link>
-            ))}
-          </div>
-        </SectionPanel>
-
-        <SectionPanel title="Customer-facing readiness">
-          <div className="space-y-3">
-            {readinessItems.map((item) => {
-              const Icon = item.icon;
-
-              return (
-                <div key={item.label} className="border border-neutral-200 p-4">
-                  <div className="flex items-start gap-3">
-                    <div className={`border p-2 ${readinessClass(item.tone)}`}>
-                      <Icon className="h-4 w-4" />
-                    </div>
-                    <div className="min-w-0">
-                      <p className="text-xs font-semibold uppercase tracking-widest text-neutral-400">
-                        {item.label}
-                      </p>
-                      <p className="mt-1 break-words text-sm font-semibold capitalize text-neutral-950">
-                        {item.value}
-                      </p>
-                      <p className="mt-1 text-xs leading-relaxed text-neutral-500">
-                        {item.detail}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
-
-            <div className="border border-neutral-200 bg-neutral-50 p-4">
-              <p className="text-xs font-semibold uppercase tracking-widest text-neutral-400">
-                Price range
+            <div className={`border p-4 ${catalogIssueItems.length > 0 ? toneClass('warning') : toneClass('good')}`}>
+              <p className="text-xs font-semibold uppercase tracking-widest opacity-70">
+                Catalog data
               </p>
-              <p className="mt-2 text-sm font-semibold text-neutral-950">
-                {priceValues.length > 0
-                  ? `${formatPrice(lowestPrice)} - ${formatPrice(highestPrice)}`
-                  : 'No public prices'}
+              <p className="mt-2 text-sm font-semibold">
+                {catalogIssueItems.length > 0
+                  ? `${catalogIssueItems.length} records need cleanup`
+                  : 'Catalog records look complete'}
               </p>
-              <p className="mt-1 text-xs leading-relaxed text-neutral-500">
-                Based on catalog item prices.
+            </div>
+            <div className={`border p-4 ${cmsIssues.length > 0 ? toneClass('warning') : toneClass('good')}`}>
+              <p className="text-xs font-semibold uppercase tracking-widest opacity-70">
+                Homepage CMS
+              </p>
+              <p className="mt-2 text-sm font-semibold">
+                {cmsIssues.length > 0 ? cmsIssues.join(', ') : 'Homepage content configured'}
+              </p>
+            </div>
+            <div className={`border p-4 ${settingsIssues.length > 0 ? toneClass('warning') : toneClass('good')}`}>
+              <p className="text-xs font-semibold uppercase tracking-widest opacity-70">
+                Store settings
+              </p>
+              <p className="mt-2 text-sm font-semibold">
+                {settingsIssues.length > 0 ? settingsIssues.join(', ') : 'Settings configured'}
+              </p>
+            </div>
+            <div className={`border p-4 ${mediaIssueAssets.length > 0 ? toneClass('warning') : toneClass('neutral')}`}>
+              <p className="text-xs font-semibold uppercase tracking-widest opacity-70">
+                Media metadata
+              </p>
+              <p className="mt-2 text-sm font-semibold">
+                {mediaIssueAssets.length > 0
+                  ? `${mediaIssueAssets.length} assets need title or alt text`
+                  : 'No media metadata issues'}
               </p>
             </div>
           </div>
-        </SectionPanel>
+        </Section>
+
+        <Section title="Storefront Status">
+          <div className="space-y-3">
+            <div className="border border-neutral-200 p-4">
+              <p className="text-xs font-semibold uppercase tracking-widest text-neutral-400">
+                Store status
+              </p>
+              <p className="mt-1 text-sm font-semibold capitalize text-neutral-950">
+                {settings.status.replace('-', ' ')}
+              </p>
+            </div>
+            <div className="border border-neutral-200 p-4">
+              <p className="text-xs font-semibold uppercase tracking-widest text-neutral-400">
+                Public contact
+              </p>
+              <p className="mt-1 text-sm font-semibold text-neutral-950">
+                {cleanPhone(settings.whatsappNumber).length >= 10
+                  ? settings.whatsappNumber
+                  : 'WhatsApp needs setup'}
+              </p>
+            </div>
+            <div className="border border-neutral-200 p-4">
+              <p className="text-xs font-semibold uppercase tracking-widest text-neutral-400">
+                Homepage hero
+              </p>
+              <p className="mt-1 line-clamp-2 text-sm font-semibold text-neutral-950">
+                {cmsContent.heroTitle || 'Hero title not configured'}
+              </p>
+            </div>
+          </div>
+        </Section>
       </div>
 
       <div className="grid gap-5 xl:grid-cols-[minmax(340px,0.82fr)_minmax(0,1.18fr)]">
-        <SectionPanel
-          title="Action list"
-          description="Fix these before relying on the public catalog for customer decisions."
-        >
-          {actionItems.length > 0 ? (
-            <div className="space-y-3">
-              {actionItems.map((action) => (
-                <Link
-                  key={action.key}
-                  href="/admin/catalog"
-                  className="block border border-neutral-200 p-4 transition-colors hover:bg-neutral-50"
-                >
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="min-w-0">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <p className="text-sm font-semibold text-neutral-950">{action.title}</p>
-                        <span
-                          className={`border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-widest ${
-                            action.priority === 'high'
-                              ? 'border-red-200 bg-red-50 text-red-700'
-                              : action.priority === 'medium'
-                                ? 'border-amber-200 bg-amber-50 text-amber-700'
-                                : 'border-neutral-200 bg-neutral-50 text-neutral-600'
-                          }`}
-                        >
-                          {action.priority}
-                        </span>
-                      </div>
-                      <p className="mt-1 text-sm text-neutral-600">{action.item.name}</p>
-                      <p className="mt-1 text-xs leading-relaxed text-neutral-500">
-                        {action.detail}
-                      </p>
-                    </div>
-                    <span
-                      className={`shrink-0 border px-2.5 py-1 text-xs font-semibold ${statusClass(action.item.status)}`}
-                    >
-                      {statusLabel(action.item.status)}
-                    </span>
-                  </div>
-                </Link>
-              ))}
-            </div>
-          ) : (
-            <div className="border border-emerald-200 bg-emerald-50 p-4 text-emerald-800">
-              <div className="flex items-start gap-3">
-                <Sparkles className="mt-0.5 h-5 w-5" />
-                <div>
-                  <p className="text-sm font-semibold">Catalog looks ready</p>
-                  <p className="mt-1 text-sm leading-relaxed">
-                    No maintenance, rented-date, image, or description issues were found.
-                  </p>
-                </div>
-              </div>
-            </div>
-          )}
-        </SectionPanel>
-
-        <SectionPanel
-          title="Return and maintenance queue"
-          description="Operational items that need date tracking, cleaning, or repair follow-up."
+        <Section
+          title="Catalog Exceptions"
           action={
             <Link
               href="/admin/catalog"
               className="inline-flex items-center gap-2 text-sm font-semibold text-neutral-700 hover:text-neutral-950"
             >
-              Manage catalog
+              Catalog
               <ArrowUpRight className="h-4 w-4" />
             </Link>
           }
         >
-          <div className="grid gap-4 lg:grid-cols-2">
-            <div>
-              <div className="mb-3 flex items-center gap-2">
-                <Clock className="h-4 w-4 text-amber-600" />
-                <h3 className="text-sm font-semibold text-neutral-950">Rented returns</h3>
-              </div>
-              {rentedSchedule.length > 0 ? (
-                <div className="space-y-3">
-                  {rentedSchedule.map((item) => (
-                    <Link
-                      key={item.id}
-                      href="/admin/catalog"
-                      className="block border border-neutral-200 p-3 transition-colors hover:bg-neutral-50"
-                    >
-                      <div className="flex items-start justify-between gap-3">
-                        <div className="min-w-0">
-                          <p className="line-clamp-2 text-sm font-semibold leading-snug text-neutral-950">
-                            {item.name}
-                          </p>
-                          <p className="mt-1 font-mono text-[10px] uppercase tracking-widest text-neutral-400">
-                            {item.code}
-                          </p>
-                        </div>
-                        <span
-                          className={`shrink-0 border px-2 py-0.5 text-[10px] font-semibold ${statusClass(item.status)}`}
-                        >
-                          {statusLabel(item.status)}
-                        </span>
-                      </div>
-                      <p className="mt-3 border-t border-neutral-200 pt-2 text-xs font-semibold text-neutral-700">
-                        Return: {formatDate(item.rentalEndDate)}
-                      </p>
-                    </Link>
-                  ))}
-                </div>
-              ) : (
-                <div className="border border-neutral-200 bg-neutral-50 p-4 text-sm text-neutral-500">
-                  No rented items currently need return tracking.
-                </div>
-              )}
-            </div>
-
-            <div>
-              <div className="mb-3 flex items-center gap-2">
-                <Wrench className="h-4 w-4 text-red-600" />
-                <h3 className="text-sm font-semibold text-neutral-950">Maintenance queue</h3>
-              </div>
-              {maintenanceQueue.length > 0 ? (
-                <div className="space-y-3">
-                  {maintenanceQueue.map((item) => (
-                    <Link
-                      key={item.id}
-                      href="/admin/catalog"
-                      className="block border border-neutral-200 p-3 transition-colors hover:bg-neutral-50"
-                    >
-                      <div className="flex items-start justify-between gap-3">
-                        <div className="min-w-0">
-                          <p className="line-clamp-2 text-sm font-semibold leading-snug text-neutral-950">
-                            {item.name}
-                          </p>
-                          <p className="mt-1 font-mono text-[10px] uppercase tracking-widest text-neutral-400">
-                            {item.code}
-                          </p>
-                        </div>
-                        <span
-                          className={`shrink-0 border px-2 py-0.5 text-[10px] font-semibold ${statusClass(item.status)}`}
-                        >
-                          {statusLabel(item.status)}
-                        </span>
-                      </div>
-                      <div className="mt-3 flex flex-wrap gap-1.5 border-t border-neutral-200 pt-2">
-                        <span className="border border-neutral-200 bg-neutral-50 px-2 py-0.5 text-[10px] font-semibold text-neutral-600">
-                          {item.model} / {item.size}
-                        </span>
-                        <span className="border border-neutral-200 bg-neutral-50 px-2 py-0.5 text-[10px] font-semibold text-neutral-600">
-                          {item.color}
-                        </span>
-                      </div>
-                    </Link>
-                  ))}
-                </div>
-              ) : (
-                <div className="border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-800">
-                  No items are currently in maintenance.
-                </div>
-              )}
-            </div>
-          </div>
-
-          {rentedSchedule.length === 0 && maintenanceQueue.length === 0 && (
-            <div className="mt-4 border border-emerald-200 bg-emerald-50 p-4 text-emerald-800">
-              <div className="flex items-start gap-3">
-                <Sparkles className="mt-0.5 h-5 w-5" />
-                <div>
-                  <p className="text-sm font-semibold">No operational queue today</p>
-                  <p className="mt-1 text-sm leading-relaxed">
-                    Rented returns and maintenance items are clear.
+          {catalogIssueItems.length > 0 ? (
+            <div className="space-y-3">
+              {catalogIssueItems.slice(0, 6).map((item) => (
+                <Link
+                  key={item.id}
+                  href="/admin/catalog"
+                  className="block border border-neutral-200 p-4 transition-colors hover:bg-neutral-50"
+                >
+                  <p className="text-sm font-semibold text-neutral-950">{item.name}</p>
+                  <p className="mt-1 font-mono text-[10px] uppercase tracking-widest text-neutral-400">
+                    {item.code}
                   </p>
-                </div>
-              </div>
+                  <div className="mt-3 flex flex-wrap gap-1.5">
+                    {getItemQualityIssues(item).map((issue) => (
+                      <span
+                        key={issue}
+                        className="border border-amber-200 bg-amber-50 px-2 py-0.5 text-[10px] font-semibold text-amber-700"
+                      >
+                        {issue}
+                      </span>
+                    ))}
+                  </div>
+                </Link>
+              ))}
+            </div>
+          ) : (
+            <div className="border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-800">
+              Catalog master data is complete enough for public browsing.
             </div>
           )}
-        </SectionPanel>
+        </Section>
+
+        <Section
+          title="Admin Tools"
+          action={
+            <Link
+              href="/admin/cms"
+              className="inline-flex items-center gap-2 text-sm font-semibold text-neutral-700 hover:text-neutral-950"
+            >
+              CMS
+              <ArrowUpRight className="h-4 w-4" />
+            </Link>
+          }
+        >
+          <div className="grid gap-3 sm:grid-cols-2">
+            <ToolCard
+              href="/admin/catalog"
+              title="Catalog"
+              detail="Master item identity, pricing, photos, categories, and measurements."
+              icon={ShoppingBag}
+            />
+            <ToolCard
+              href="/admin/cms"
+              title="CMS"
+              detail="Homepage copy, hero media, landing categories, trust points, and promo content."
+              icon={LayoutPanelTop}
+            />
+            <ToolCard
+              href="/admin/media"
+              title="Media"
+              detail={`${mediaAssets.length} assets across ${mediaAlbums.length} albums.`}
+              icon={LibraryBig}
+            />
+            <ToolCard
+              href="/admin/settings"
+              title="Settings"
+              detail="Store status, contact, social links, theme, logo, and catalog display defaults."
+              icon={Settings}
+            />
+            <ToolCard
+              href="/admin/marketing"
+              title="Marketing"
+              detail="Notes, campaigns, and content ideas."
+              icon={Megaphone}
+            />
+            <ToolCard
+              href="/admin/name-generator"
+              title="Name Generator"
+              detail="Reusable naming pools for catalog item names."
+              icon={Wand2}
+            />
+          </div>
+        </Section>
+      </div>
+
+      <div className="grid gap-5 xl:grid-cols-2">
+        <Section
+          title="Media Review"
+          action={
+            <Link
+              href="/admin/media"
+              className="inline-flex items-center gap-2 text-sm font-semibold text-neutral-700 hover:text-neutral-950"
+            >
+              Media library
+              <ArrowUpRight className="h-4 w-4" />
+            </Link>
+          }
+        >
+          <div className="grid gap-3 sm:grid-cols-3">
+            <div className="border border-neutral-200 bg-neutral-50 p-4">
+              <p className="text-xs font-semibold uppercase tracking-widest text-neutral-500">
+                Assets
+              </p>
+              <p className="mt-3 text-3xl font-semibold text-neutral-950">{mediaAssets.length}</p>
+            </div>
+            <div className="border border-neutral-200 bg-neutral-50 p-4">
+              <p className="text-xs font-semibold uppercase tracking-widest text-neutral-500">
+                Albums
+              </p>
+              <p className="mt-3 text-3xl font-semibold text-neutral-950">{mediaAlbums.length}</p>
+            </div>
+            <div className="border border-amber-200 bg-amber-50 p-4 text-amber-900">
+              <p className="text-xs font-semibold uppercase tracking-widest">Uncategorized</p>
+              <p className="mt-3 text-3xl font-semibold">{uncategorizedMedia.length}</p>
+            </div>
+          </div>
+        </Section>
+
+        <Section title="Storefront Content">
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div className="border border-neutral-200 p-4">
+              <div className="flex items-center gap-2">
+                <Palette className="h-4 w-4 text-neutral-500" />
+                <p className="text-sm font-semibold text-neutral-950">Theme</p>
+              </div>
+              <p className="mt-2 text-xs leading-relaxed text-neutral-500">
+                Primary {settings.primaryColor} · background {settings.backgroundColor}
+              </p>
+            </div>
+            <div className="border border-neutral-200 p-4">
+              <div className="flex items-center gap-2">
+                <Tags className="h-4 w-4 text-neutral-500" />
+                <p className="text-sm font-semibold text-neutral-950">Landing categories</p>
+              </div>
+              <p className="mt-2 text-xs leading-relaxed text-neutral-500">
+                {cmsContent.landingCategories.length} public category cards configured
+              </p>
+            </div>
+            <div className="border border-neutral-200 p-4">
+              <div className="flex items-center gap-2">
+                <FileImage className="h-4 w-4 text-neutral-500" />
+                <p className="text-sm font-semibold text-neutral-950">Hero image</p>
+              </div>
+              <p className="mt-2 text-xs leading-relaxed text-neutral-500">
+                {cmsContent.heroImageUrl ? 'Configured' : 'Missing'}
+              </p>
+            </div>
+            <div className="border border-neutral-200 p-4">
+              <div className="flex items-center gap-2">
+                <CheckCircle2 className="h-4 w-4 text-neutral-500" />
+                <p className="text-sm font-semibold text-neutral-950">Promo banner</p>
+              </div>
+              <p className="mt-2 text-xs leading-relaxed text-neutral-500">
+                {settings.showPromoBanner ? 'Visible on storefront' : 'Hidden'}
+              </p>
+            </div>
+          </div>
+        </Section>
       </div>
     </div>
   );

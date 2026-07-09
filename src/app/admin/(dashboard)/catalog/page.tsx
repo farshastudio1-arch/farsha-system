@@ -422,13 +422,6 @@ function BookingVisibility({
           : summary.paymentSubmittedCount > 0
             ? 'Payment proof pending'
             : 'Booking request';
-  const bookingLink =
-    summary.nextConfirmed?.bookingId ??
-    summary.conflictingRequests[0]?.bookingId ??
-    summary.itemBookings[0]?.bookingId ??
-    undefined;
-  const linkQuery = bookingLink ? { itemId: item.id, bookingId: bookingLink } : { itemId: item.id };
-
   return (
     <div className={`space-y-2 ${compact ? 'text-xs' : ''}`}>
       <div className="border border-amber-200 bg-amber-50 p-2 text-amber-800">
@@ -454,12 +447,6 @@ function BookingVisibility({
           </p>
         )}
       </div>
-      <Link
-        href={{ pathname: '/pos/bookings', query: linkQuery }}
-        className="inline-flex w-full items-center justify-center border border-neutral-300 bg-white px-3 py-2 text-[10px] font-bold uppercase tracking-wider text-neutral-700 transition-colors hover:bg-neutral-50"
-      >
-        View in POS
-      </Link>
     </div>
   );
 }
@@ -557,6 +544,36 @@ export default function CatalogManagement() {
     const rentedItems = projectedItems.filter((item) => item.status === 'rented');
     const maintenanceItems = projectedItems.filter((item) => item.status === 'maintenance');
     const issueItems = catalogItems.filter((item) => getItemQualityIssues(item).length > 0);
+    const bookingSummaries = Object.values(bookingPressure);
+    const activeBookingIds = new Set<string>();
+    const confirmedBookingIds = new Set<string>();
+    const requestedBookingIds = new Set<string>();
+    const paymentSubmittedBookingIds = new Set<string>();
+    const bookedItemIds = new Set<string>();
+    const conflictBookingIds = new Set<string>();
+
+    for (const summary of bookingSummaries) {
+      for (const booking of summary.itemBookings) {
+        activeBookingIds.add(booking.bookingId);
+
+        if (booking.status === 'requested') {
+          requestedBookingIds.add(booking.bookingId);
+        }
+
+        if (booking.status === 'payment_submitted') {
+          paymentSubmittedBookingIds.add(booking.bookingId);
+        }
+      }
+
+      for (const booking of summary.confirmedBookings) {
+        confirmedBookingIds.add(booking.bookingId);
+        bookedItemIds.add(booking.itemId);
+      }
+
+      for (const booking of summary.conflictingRequests) {
+        conflictBookingIds.add(booking.bookingId);
+      }
+    }
 
     return {
       total: projectedItems.length,
@@ -564,27 +581,19 @@ export default function CatalogManagement() {
       rented: rentedItems.length,
       maintenance: maintenanceItems.length,
       issues: issueItems.length,
+      activeBookings: activeBookingIds.size,
+      confirmedBookings: confirmedBookingIds.size,
+      requestedBookings: requestedBookingIds.size,
+      paymentSubmittedBookings: paymentSubmittedBookingIds.size,
+      bookedItems: bookedItemIds.size,
+      bookingConflicts: conflictBookingIds.size,
+      hasBookingSnapshot:
+        activeBookingIds.size > 0 ||
+        paymentSubmittedBookingIds.size > 0 ||
+        requestedBookingIds.size > 0 ||
+        conflictBookingIds.size > 0,
     };
-  }, [catalogItems, projectedItems]);
-
-  const categoryCoverage = useMemo(
-    () =>
-      occasionCategories.map((category) => {
-        const matches = projectedItems.filter(
-          (item) => matchesLandingCategory(item, category.value),
-        );
-        const ready = matches.filter((item) => item.status === 'available');
-
-        return {
-          ...category,
-          slug: category.value,
-          title: category.label,
-          count: matches.length,
-          readyCount: ready.length,
-        };
-      }),
-    [projectedItems],
-  );
+  }, [bookingPressure, catalogItems, projectedItems]);
 
   const filteredItems = useMemo(() => {
     const query = searchQuery.trim().toLowerCase();
@@ -970,7 +979,7 @@ export default function CatalogManagement() {
         </div>
       )}
 
-      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
+      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         <div className="border border-neutral-200 bg-white p-4 shadow-sm">
           <p className="text-xs font-semibold uppercase tracking-widest text-neutral-500">
             Catalog items
@@ -1014,45 +1023,53 @@ export default function CatalogManagement() {
           </p>
           <p className="mt-2 text-sm text-neutral-500">Photos, copy, dates, or prices</p>
         </div>
+        {catalogSummary.hasBookingSnapshot && (
+          <>
+            <Link
+              href="/pos/bookings?status=active"
+              className="border border-sky-200 bg-sky-50 p-4 shadow-sm transition-colors hover:bg-sky-100"
+            >
+              <p className="text-xs font-semibold uppercase tracking-widest text-sky-700">
+                Active bookings
+              </p>
+              <p className="mt-3 text-3xl font-semibold tracking-tight text-sky-950">
+                {catalogSummary.activeBookings}
+              </p>
+              <p className="mt-2 text-sm text-sky-800">
+                {catalogSummary.bookedItems} item locks from booking desk
+              </p>
+            </Link>
+            <Link
+              href="/pos/bookings?status=payment_submitted"
+              className="border border-violet-200 bg-violet-50 p-4 shadow-sm transition-colors hover:bg-violet-100"
+            >
+              <p className="text-xs font-semibold uppercase tracking-widest text-violet-700">
+                Proof waiting
+              </p>
+              <p className="mt-3 text-3xl font-semibold tracking-tight text-violet-950">
+                {catalogSummary.paymentSubmittedBookings}
+              </p>
+              <p className="mt-2 text-sm text-violet-800">Need DP verification before dates lock</p>
+            </Link>
+            <Link
+              href="/pos/bookings?status=requested"
+              className="border border-neutral-200 bg-white p-4 shadow-sm transition-colors hover:bg-neutral-50"
+            >
+              <p className="text-xs font-semibold uppercase tracking-widest text-neutral-500">
+                Booking requests
+              </p>
+              <p className="mt-3 text-3xl font-semibold tracking-tight text-neutral-950">
+                {catalogSummary.requestedBookings}
+              </p>
+              <p className="mt-2 text-sm text-neutral-500">
+                {catalogSummary.bookingConflicts} request conflicts flagged
+              </p>
+            </Link>
+          </>
+        )}
       </div>
 
       <section className="border border-neutral-200 bg-white shadow-sm">
-        <div className="border-b border-neutral-200 p-4 sm:p-5">
-          <div className="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
-            <div>
-              <h2 className="text-base font-semibold text-neutral-950">Occasion coverage</h2>
-              <p className="mt-1 text-sm text-neutral-500">
-                Occasion categories used by catalog filters and item detail chips.
-              </p>
-            </div>
-            <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-5">
-              {categoryCoverage.map((category) => (
-                <button
-                  key={category.slug}
-                  type="button"
-                  onClick={() => setCoverageFilter(category.slug)}
-                  className={`border px-3 py-2 text-left transition-colors ${
-                    coverageFilter === category.slug
-                      ? 'border-neutral-900 bg-neutral-900 text-white'
-                      : 'border-neutral-200 bg-neutral-50 text-neutral-700 hover:bg-white'
-                  }`}
-                >
-                  <span className="block text-xs font-semibold">
-                    {category.emoji} {category.title}
-                  </span>
-                  <span
-                    className={`mt-1 block text-[11px] ${
-                      coverageFilter === category.slug ? 'text-neutral-300' : 'text-neutral-500'
-                    }`}
-                  >
-                    {category.readyCount} ready / {category.count} matching
-                  </span>
-                </button>
-              ))}
-            </div>
-          </div>
-        </div>
-
         <div className="grid gap-3 p-4 sm:p-5 lg:grid-cols-[minmax(260px,1fr)_180px_180px_170px_auto] lg:items-center">
           <div className="relative">
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-neutral-400" />

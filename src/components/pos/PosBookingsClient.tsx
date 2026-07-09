@@ -361,13 +361,25 @@ export default function PosBookingsClient({
   initialItems,
   initialItemId,
   initialBookingId,
+  initialQueueFilter,
   initialBookings,
 }: {
   initialItems: KebayaItem[];
   initialItemId: string;
   initialBookingId: string;
+  initialQueueFilter: string;
   initialBookings: BookingQueueRow[];
 }) {
+  const normalizedInitialQueueFilter: QueueFilter = [
+    'active',
+    'all',
+    'requested',
+    'payment_submitted',
+    'dp_confirmed',
+    'closed',
+  ].includes(initialQueueFilter)
+    ? (initialQueueFilter as QueueFilter)
+    : 'active';
   const [bookings, setBookings] = useState<BookingQueueRow[]>(initialBookings);
   const [selectedBookingId, setSelectedBookingId] = useState(
     initialBookings.find((booking) => booking.id === initialBookingId)?.id ??
@@ -375,7 +387,7 @@ export default function PosBookingsClient({
       initialBookings[0]?.id ??
       '',
   );
-  const [queueFilter, setQueueFilter] = useState<QueueFilter>('active');
+  const [queueFilter, setQueueFilter] = useState<QueueFilter>(normalizedInitialQueueFilter);
   const [itemFilter, setItemFilter] = useState(initialItemId);
   const [searchQuery, setSearchQuery] = useState('');
   const [actionMessage, setActionMessage] = useState('');
