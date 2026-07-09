@@ -85,6 +85,9 @@ export type BookingQueueRow = {
   firstItemCode: string | null;
   firstItemName: string | null;
   itemLabel: string | null;
+  itemIds: string[];
+  itemCodes: string[];
+  itemNames: string[];
   paymentStatus: string | null;
   paymentReference: string | null;
   proofCount: number;
@@ -93,6 +96,35 @@ export type BookingQueueRow = {
   receiptNumber: string | null;
   receiptIssuedAt: string | null;
 };
+
+export type BookingCatalogPressureEntry = {
+  itemId: string;
+  bookingId: string;
+  bookingNumber: string;
+  status: BookingStatus;
+  customerName: string;
+  pickupDate: string;
+  returnDueDate: string;
+  maintenanceEndDate: string;
+  createdAt: string;
+  conflictWith: string | null;
+};
+
+export type BookingCatalogPressureSummary = {
+  itemBookings: BookingCatalogPressureEntry[];
+  confirmedBookings: BookingCatalogPressureEntry[];
+  confirmedCount: number;
+  requestedCount: number;
+  paymentSubmittedCount: number;
+  nextConfirmed: BookingCatalogPressureEntry | null;
+  nextPickupDate: string | null;
+  nextReturnDate: string | null;
+  nextAvailableDate: string | null;
+  conflictingRequests: BookingCatalogPressureEntry[];
+  hasBookingPressure: boolean;
+};
+
+export type BookingCatalogPressureMap = Record<string, BookingCatalogPressureSummary>;
 
 export type BookingInvoiceSnapshot = {
   bookingNumber: string;
@@ -159,6 +191,10 @@ export type BookingReceiptRecord = {
 };
 
 export type CloseBookingAction = 'reject' | 'cancel';
+
+export function getBookingRelatedRevalidationPaths() {
+  return ['/catalog', '/admin/catalog', '/pos', '/pos/bookings', '/pos/finance'];
+}
 
 type CatalogItemRow = {
   id: string;
@@ -915,6 +951,9 @@ export async function listBookingQueue() {
                 MIN(bi.item_code) AS firstItemCode,
                 MIN(bi.item_name) AS firstItemName,
                 MIN(bi.item_code || ' / ' || bi.item_name) AS itemLabel,
+                json_group_array(DISTINCT bi.item_id) AS itemIds,
+                json_group_array(DISTINCT bi.item_code) AS itemCodes,
+                json_group_array(DISTINCT bi.item_name) AS itemNames,
                 MAX(bp.status) AS paymentStatus,
                 MAX(bp.reference) AS paymentReference,
                 COUNT(DISTINCT bpp.id) AS proofCount,
@@ -930,9 +969,20 @@ export async function listBookingQueue() {
          GROUP BY b.id
          ORDER BY b.created_at DESC`,
       )
-      .all<BookingQueueRow>();
+      .all<
+        Omit<BookingQueueRow, 'itemIds' | 'itemCodes' | 'itemNames'> & {
+          itemIds: string | null;
+          itemCodes: string | null;
+          itemNames: string | null;
+        }
+      >();
 
-    return result.results;
+    return result.results.map((booking) => ({
+      ...booking,
+      itemIds: parseStringArray(booking.itemIds),
+      itemCodes: parseStringArray(booking.itemCodes),
+      itemNames: parseStringArray(booking.itemNames),
+    }));
   } catch (error) {
     if (hasMissingMigration(error)) {
       return [];
@@ -940,6 +990,145 @@ export async function listBookingQueue() {
 
     throw error;
   }
+}
+
+function parseStringArray(value: string | null | undefined) {
+  if (!value) {
+    return [];
+  }
+
+  try {
+    const parsed = JSON.parse(value);
+    return Array.isArray(parsed)
+      ? parsed.filter((entry): entry is string => typeof entry === 'string' && entry.length > 0)
+      : [];
+  } catch {
+    return [];
+  }
+}
+
+function createEmptyBookingCatalogPressureSummary(): BookingCatalogPressureSummary {
+  return {
+    itemBookings: [],
+    confirmedBookings: [],
+    confirmedCount: 0,
+    requestedCount: 0,
+    paymentSubmittedCount: 0,
+    nextConfirmed: null,
+    nextPickupDate: null,
+    nextReturnDate: null,
+    nextAvailableDate: null,
+    conflictingRequests: [],
+    hasBookingPressure: false,
+  };
+}
+
+function toBookingCatalogPressureSummary(
+  bookings: BookingCatalogPressureEntry[],
+): BookingCatalogPressureSummary {
+  const itemBookings = bookings
+    .slice()
+    .sort(
+      (first, second) =>
+        first.pickupDate.localeCompare(second.pickupDate) ||
+        first.createdAt.localeCompare(second.createdAt),
+    );
+  const confirmedBookings = itemBookings.filter((booking) =>
+    bookingBlockingStatuses.includes(booking.status),
+  );
+  const nextConfirmed = confirmedBookings[0] ?? null;
+  const latestMaintenanceEndDate = confirmedBookings.reduce<string | null>(
+    (latest, booking) =>
+      !latest || booking.maintenanceEndDate > latest ? booking.maintenanceEndDate : latest,
+    null,
+  );
+  const conflictingRequests = itemBookings.filter(
+    (booking) => booking.status === 'requested' && Boolean(booking.conflictWith),
+  );
+
+  return {
+    itemBookings,
+    confirmedBookings,
+    confirmedCount: confirmedBookings.length,
+    requestedCount: itemBookings.filter((booking) => booking.status === 'requested').length,
+    paymentSubmittedCount: itemBookings.filter((booking) => booking.status === 'payment_submitted')
+      .length,
+    nextConfirmed,
+    nextPickupDate: nextConfirmed?.pickupDate ?? null,
+    nextReturnDate: nextConfirmed?.returnDueDate ?? null,
+    nextAvailableDate: latestMaintenanceEndDate ? addDays(latestMaintenanceEndDate, 1) : null,
+    conflictingRequests,
+    hasBookingPressure:
+      confirmedBookings.length > 0 ||
+      conflictingRequests.length > 0 ||
+      itemBookings.some(
+        (booking) => booking.status === 'requested' || booking.status === 'payment_submitted',
+      ),
+  };
+}
+
+export async function listBookingCatalogPressure(): Promise<BookingCatalogPressureMap> {
+  const db = await getD1Database();
+
+  try {
+    const result = await db
+      .prepare(
+        `SELECT bi.item_id AS itemId,
+                b.id AS bookingId,
+                b.booking_number AS bookingNumber,
+                b.status,
+                b.customer_name AS customerName,
+                bi.pickup_date AS pickupDate,
+                bi.return_due_date AS returnDueDate,
+                bi.maintenance_end_date AS maintenanceEndDate,
+                b.created_at AS createdAt,
+                (
+                  SELECT conflict_booking.booking_number
+                  FROM booking_items conflict_item
+                  JOIN bookings conflict_booking ON conflict_booking.id = conflict_item.booking_id
+                  WHERE conflict_item.item_id = bi.item_id
+                    AND conflict_item.item_status = 'active'
+                    AND conflict_booking.status IN ('dp_confirmed', 'fitting_link_sent', 'picked_up')
+                    AND conflict_item.pickup_date <= bi.maintenance_end_date
+                    AND conflict_item.maintenance_end_date >= bi.pickup_date
+                    AND conflict_booking.id != b.id
+                  ORDER BY conflict_item.pickup_date ASC
+                  LIMIT 1
+                ) AS conflictWith
+         FROM booking_items bi
+         JOIN bookings b ON b.id = bi.booking_id
+         WHERE bi.item_status = 'active'
+           AND b.status IN ('requested', 'payment_submitted', 'dp_confirmed', 'fitting_link_sent', 'picked_up')
+         ORDER BY bi.pickup_date ASC, b.created_at ASC`,
+      )
+      .all<BookingCatalogPressureEntry>();
+
+    const entriesByItem = new Map<string, BookingCatalogPressureEntry[]>();
+
+    for (const entry of result.results) {
+      entriesByItem.set(entry.itemId, [...(entriesByItem.get(entry.itemId) ?? []), entry]);
+    }
+
+    return Object.fromEntries(
+      Array.from(entriesByItem.entries()).map(([itemId, bookings]) => [
+        itemId,
+        toBookingCatalogPressureSummary(bookings),
+      ]),
+    );
+  } catch (error) {
+    if (hasMissingMigration(error)) {
+      return {};
+    }
+
+    throw error;
+  }
+}
+
+export function getBookingCatalogPressureSummaryForItem(
+  pressure: BookingCatalogPressureMap,
+  itemId: string,
+) {
+  return pressure[itemId] ?? createEmptyBookingCatalogPressureSummary();
 }
 
 export async function recordBookingPaymentProof(input: {

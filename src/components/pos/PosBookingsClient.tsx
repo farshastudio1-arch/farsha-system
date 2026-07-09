@@ -331,7 +331,12 @@ function createDocumentMessage(
 }
 
 function getItemLabel(booking: BookingQueueRow) {
-  const label = booking.itemLabel ?? booking.firstItemName ?? 'Booking item';
+  const firstCode = booking.itemCodes[0] ?? booking.firstItemCode;
+  const firstName = booking.itemNames[0] ?? booking.firstItemName;
+  const label =
+    firstCode && firstName
+      ? `${firstCode} / ${firstName}`
+      : booking.itemLabel ?? firstName ?? 'Booking item';
 
   return booking.itemCount > 1 ? `${label} +${booking.itemCount - 1} item` : label;
 }
@@ -424,7 +429,11 @@ export default function PosBookingsClient({
         return false;
       }
 
-      if (itemFilter && booking.firstItemId !== itemFilter) {
+      if (
+        itemFilter &&
+        !booking.itemIds.includes(itemFilter) &&
+        booking.firstItemId !== itemFilter
+      ) {
         return false;
       }
 
@@ -440,6 +449,8 @@ export default function PosBookingsClient({
         booking.customerInstagram ?? '',
         booking.firstItemCode ?? '',
         booking.firstItemName ?? '',
+        ...booking.itemCodes,
+        ...booking.itemNames,
       ]
         .join(' ')
         .toLowerCase()

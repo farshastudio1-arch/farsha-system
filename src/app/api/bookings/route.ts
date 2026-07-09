@@ -1,4 +1,6 @@
-import { BookingDbError, createBooking } from '@/lib/booking-db';
+import { revalidatePath } from 'next/cache';
+
+import { BookingDbError, createBooking, getBookingRelatedRevalidationPaths } from '@/lib/booking-db';
 
 export const dynamic = 'force-dynamic';
 
@@ -54,6 +56,8 @@ export async function POST(request: Request) {
       extraReturnFeeTotal: Number(body.extraReturnFeeTotal),
       rentalEstimateTotal: Number(body.rentalEstimateTotal),
     });
+
+    getBookingRelatedRevalidationPaths().forEach((path) => revalidatePath(path));
 
     return jsonResponse({ ok: true, data: booking }, 201);
   } catch (error) {

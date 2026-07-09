@@ -1,5 +1,12 @@
+import { revalidatePath } from 'next/cache';
+
 import { auth } from '../../../../../../../auth';
-import { BookingDbError, generateBookingReceipt, getBookingReceipt } from '@/lib/booking-db';
+import {
+  BookingDbError,
+  generateBookingReceipt,
+  getBookingReceipt,
+  getBookingRelatedRevalidationPaths,
+} from '@/lib/booking-db';
 
 export const dynamic = 'force-dynamic';
 
@@ -54,6 +61,7 @@ export async function POST(_request: Request, context: ReceiptRouteContext) {
 
     const { bookingId } = await context.params;
     const receipt = await generateBookingReceipt(bookingId, adminEmail);
+    getBookingRelatedRevalidationPaths().forEach((path) => revalidatePath(path));
 
     return jsonResponse({ ok: true, data: receipt });
   } catch (error) {

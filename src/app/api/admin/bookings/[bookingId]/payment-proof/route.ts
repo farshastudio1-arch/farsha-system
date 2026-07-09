@@ -1,5 +1,11 @@
+import { revalidatePath } from 'next/cache';
+
 import { auth } from '../../../../../../../auth';
-import { BookingDbError, recordBookingPaymentProof } from '@/lib/booking-db';
+import {
+  BookingDbError,
+  getBookingRelatedRevalidationPaths,
+  recordBookingPaymentProof,
+} from '@/lib/booking-db';
 import { getMediaBucket, mediaKeyToUrl, sanitizeMediaSegment } from '@/lib/media-library';
 
 export const dynamic = 'force-dynamic';
@@ -92,6 +98,7 @@ export async function POST(request: Request, context: PaymentProofRouteContext) 
       size: file.size,
       uploadedBy: adminEmail,
     });
+    getBookingRelatedRevalidationPaths().forEach((path) => revalidatePath(path));
 
     return jsonResponse({
       ok: true,

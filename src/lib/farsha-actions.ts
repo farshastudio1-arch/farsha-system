@@ -4,6 +4,7 @@ import { revalidatePath } from 'next/cache';
 
 import { auth } from '../../auth';
 import { CMSContent, KebayaItem, SiteSettings } from '@/data/mockData';
+import { BookingCatalogPressureMap, listBookingCatalogPressure } from '@/lib/booking-db';
 import {
   bulkCreateNameGeneratorPoolEntries,
   createCatalogItemWithGeneratedCode,
@@ -133,6 +134,20 @@ export async function fetchPosLedgerAction(): Promise<ActionResult<PosLedgerStat
     return {
       ok: false,
       error: getActionErrorMessage(error, 'Failed to load POS ledger.'),
+    };
+  }
+}
+
+export async function fetchBookingCatalogPressureAction(): Promise<
+  ActionResult<BookingCatalogPressureMap>
+> {
+  try {
+    await ensureAdmin();
+    return { ok: true, data: await listBookingCatalogPressure() };
+  } catch (error) {
+    return {
+      ok: false,
+      error: getActionErrorMessage(error, 'Failed to load booking visibility.'),
     };
   }
 }

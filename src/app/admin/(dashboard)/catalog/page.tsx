@@ -33,10 +33,11 @@ import { optimizeImageBeforeUpload } from '@/lib/client-image-optimizer';
 import {
   deleteCatalogItemAction,
   fetchAdminCatalogItemsAction,
+  fetchBookingCatalogPressureAction,
   fetchPosLedgerAction,
   saveCatalogItemAction,
 } from '@/lib/farsha-actions';
-import { getPreviewBookingSummaryForItem } from '@/lib/booking-preview';
+import type { BookingCatalogPressureMap } from '@/lib/booking-db';
 import { useSavedCatalogItems, writeSavedCatalogItems } from '@/lib/catalog-storage';
 import {
   getOccasionLabel,
@@ -388,8 +389,16 @@ function ProductImages({ item }: { item: KebayaItem }) {
   );
 }
 
-function BookingVisibility({ item, compact = false }: { item: KebayaItem; compact?: boolean }) {
-  const summary = getPreviewBookingSummaryForItem(item);
+function BookingVisibility({
+  item,
+  pressure,
+  compact = false,
+}: {
+  item: KebayaItem;
+  pressure: BookingCatalogPressureMap;
+  compact?: boolean;
+}) {
+  const summary = getCatalogBookingPressureSummary(pressure, item.id);
 
   if (!summary.hasBookingPressure) {
     return compact ? (
@@ -408,7 +417,17 @@ function BookingVisibility({ item, compact = false }: { item: KebayaItem; compac
       ? 'Multiple future bookings'
       : summary.confirmedCount > 0
         ? 'Booked soon'
-        : 'Request conflict';
+        : summary.conflictingRequests.length > 0
+          ? 'Request conflict'
+          : summary.paymentSubmittedCount > 0
+            ? 'Payment proof pending'
+            : 'Booking request';
+  const bookingLink =
+    summary.nextConfirmed?.bookingId ??
+    summary.conflictingRequests[0]?.bookingId ??
+    summary.itemBookings[0]?.bookingId ??
+    undefined;
+  const linkQuery = bookingLink ? { itemId: item.id, bookingId: bookingLink } : { itemId: item.id };
 
   return (
     <div className={`space-y-2 ${compact ? 'text-xs' : ''}`}>
@@ -416,7 +435,8 @@ function BookingVisibility({ item, compact = false }: { item: KebayaItem; compac
         <div className="flex flex-wrap items-center justify-between gap-2">
           <span className="text-[10px] font-bold uppercase tracking-wider">{pressureLabel}</span>
           <span className="text-[10px] font-semibold">
-            {summary.confirmedCount} confirmed / {summary.requestedCount} request
+            {summary.confirmedCount} confirmed / {summary.requestedCount} request /{' '}
+            {summary.paymentSubmittedCount} paid proof
           </span>
         </div>
         {summary.nextPickupDate && (
@@ -435,12 +455,30 @@ function BookingVisibility({ item, compact = false }: { item: KebayaItem; compac
         )}
       </div>
       <Link
-        href={{ pathname: '/pos/bookings', query: { itemId: item.id } }}
+        href={{ pathname: '/pos/bookings', query: linkQuery }}
         className="inline-flex w-full items-center justify-center border border-neutral-300 bg-white px-3 py-2 text-[10px] font-bold uppercase tracking-wider text-neutral-700 transition-colors hover:bg-neutral-50"
       >
         View in POS
       </Link>
     </div>
+  );
+}
+
+function getCatalogBookingPressureSummary(pressure: BookingCatalogPressureMap, itemId: string) {
+  return (
+    pressure[itemId] ?? {
+      itemBookings: [],
+      confirmedBookings: [],
+      confirmedCount: 0,
+      requestedCount: 0,
+      paymentSubmittedCount: 0,
+      nextConfirmed: null,
+      nextPickupDate: null,
+      nextReturnDate: null,
+      nextAvailableDate: null,
+      conflictingRequests: [],
+      hasBookingPressure: false,
+    }
   );
 }
 
@@ -453,6 +491,7 @@ export default function CatalogManagement() {
   const catalogItems = useSavedCatalogItems();
   const ledger = useSavedPosLedger();
   const projectedItems = useMemo(() => projectCatalogItems(catalogItems, ledger), [catalogItems, ledger]);
+  const [bookingPressure, setBookingPressure] = useState<BookingCatalogPressureMap>({});
   const [isLoadingCatalog, setIsLoadingCatalog] = useState(true);
   const [catalogError, setCatalogError] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
@@ -478,8 +517,11 @@ export default function CatalogManagement() {
 
     async function loadCatalogItems() {
       setIsLoadingCatalog(true);
-      const result = await fetchAdminCatalogItemsAction();
-      const ledgerResult = await fetchPosLedgerAction();
+      const [result, ledgerResult, bookingPressureResult] = await Promise.all([
+        fetchAdminCatalogItemsAction(),
+        fetchPosLedgerAction(),
+        fetchBookingCatalogPressureAction(),
+      ]);
 
       if (!active) {
         return;
@@ -494,6 +536,10 @@ export default function CatalogManagement() {
 
       if (ledgerResult.ok) {
         writeSavedPosLedger(ledgerResult.data);
+      }
+
+      if (bookingPressureResult.ok) {
+        setBookingPressure(bookingPressureResult.data);
       }
 
       setIsLoadingCatalog(false);
@@ -809,6 +855,10 @@ export default function CatalogManagement() {
 
     if (result.ok) {
       writeSavedCatalogItems(result.data);
+      const bookingPressureResult = await fetchBookingCatalogPressureAction();
+      if (bookingPressureResult.ok) {
+        setBookingPressure(bookingPressureResult.data);
+      }
       closeCatalogModal();
     } else {
       setFormError(result.error);
@@ -840,6 +890,10 @@ export default function CatalogManagement() {
 
     if (result.ok) {
       writeSavedCatalogItems(result.data);
+      const bookingPressureResult = await fetchBookingCatalogPressureAction();
+      if (bookingPressureResult.ok) {
+        setBookingPressure(bookingPressureResult.data);
+      }
       setCatalogError('');
       setDeleteTarget(null);
     } else {
@@ -863,7 +917,7 @@ export default function CatalogManagement() {
     ? projectedItems.find((item) => item.id === editingItem.id) ?? null
     : null;
   const editingBookingSummary = editingProjectedItem
-    ? getPreviewBookingSummaryForItem(editingProjectedItem)
+    ? getCatalogBookingPressureSummary(bookingPressure, editingProjectedItem.id)
     : null;
 
   const selectLibraryImage = (url: string) => {
@@ -1164,7 +1218,7 @@ export default function CatalogManagement() {
                     </td>
                     <td className="px-5 py-4">
                       <div className="max-w-[260px]">
-                        <BookingVisibility item={item} />
+                        <BookingVisibility item={item} pressure={bookingPressure} />
                       </div>
                     </td>
                     <td className="px-5 py-4 text-right">
@@ -1262,7 +1316,7 @@ export default function CatalogManagement() {
                     )}
 
                     <div className="mt-3">
-                      <BookingVisibility item={item} compact />
+                      <BookingVisibility item={item} pressure={bookingPressure} compact />
                     </div>
                   </div>
                 </div>

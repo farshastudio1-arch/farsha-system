@@ -1,5 +1,12 @@
+import { revalidatePath } from 'next/cache';
+
 import { auth } from '../../../../../auth';
-import { BookingDbError, createBooking, listBookingQueue } from '@/lib/booking-db';
+import {
+  BookingDbError,
+  createBooking,
+  getBookingRelatedRevalidationPaths,
+  listBookingQueue,
+} from '@/lib/booking-db';
 
 export const dynamic = 'force-dynamic';
 
@@ -75,6 +82,8 @@ export async function POST(request: Request) {
       paymentReference: stringValue(body.paymentReference),
       createdBy: adminEmail,
     });
+
+    getBookingRelatedRevalidationPaths().forEach((path) => revalidatePath(path));
 
     return jsonResponse({ ok: true, data: booking }, 201);
   } catch (error) {
