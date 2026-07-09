@@ -46,6 +46,17 @@ function formatDateInputValue(date: Date) {
   return `${year}-${month}-${day}`;
 }
 
+function formatDate(dateStr: string | null) {
+  if (!dateStr) return '';
+
+  const date = new Date(dateStr);
+  return new Intl.DateTimeFormat('id-ID', {
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+  }).format(date);
+}
+
 function calculatePickupAvailabilityDates(pickupDate: string) {
   if (!pickupDate) {
     return null;
@@ -319,23 +330,9 @@ export default function ProductDetailModal({
     }, 0);
   };
 
-  const formatDate = (dateStr: string | null) => {
-    if (!dateStr) return '';
-    const date = new Date(dateStr);
-    return new Intl.DateTimeFormat('id-ID', {
-      day: 'numeric',
-      month: 'long',
-      year: 'numeric',
-    }).format(date);
-  };
-
-  // WhatsApp Deep-Link generator
   const getWhatsAppLink = () => {
     const cleanPhone = studioPhone.replace(/[^0-9]/g, ''); // strip spaces, +, dashes
-    const dateText = bookingDates
-      ? ` untuk pickup tanggal ${formatDate(bookingDates.pickupDate)} dan acara tanggal ${formatDate(bookingDates.eventDate)}`
-      : '';
-    const message = `Halo, saya tertarik dengan ${product.name} (kode: ${product.code})${dateText}. Apakah masih tersedia?`;
+    const message = `Halo, saya tertarik dengan ${product.name} (kode: ${product.code}). Tanya-tanya dulu dong :D`;
     return `https://wa.me/${cleanPhone}?text=${encodeURIComponent(message)}`;
   };
 
@@ -712,37 +709,70 @@ export default function ProductDetailModal({
                 </div>
               )}
 
-              {/* Ketentuan Sewa (Competitor Layout element) */}
-              <div className="mb-6">
+              <div className="mb-6 space-y-5">
                 <h4 className="theme-muted text-xs font-semibold uppercase tracking-wider font-mono mb-3">
-                  Ketentuan Sewa
+                  Cara Sewa
                 </h4>
-                <ul className="space-y-2.5 text-xs theme-muted-strong leading-relaxed">
-                  <li className="flex items-start gap-2">
-                    <span className="text-emerald-600 font-bold shrink-0">✓</span>
-                    <span><strong>Datang langsung:</strong> Kamu bisa datang langsung ke store kami tanpa appointment.</span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <span className="text-emerald-600 font-bold shrink-0">✓</span>
-                    <span><strong>Uang Jaminan:</strong> Rp100.000 (titipan aman saat pelunasan, dikembalikan 100% setelah kebaya kembali).</span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <span className="text-emerald-600 font-bold shrink-0">✓</span>
-                    <span><strong>Biaya Booking:</strong> Rp100.000 per kebaya untuk keep tanggal sewa.</span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <span className="text-emerald-600 font-bold shrink-0">✓</span>
-                    <span><strong>Laundry Premium:</strong> Gratis laundry (cuci & setrika steril dari studio, tidak perlu dicuci setelah disewa).</span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <span className="text-emerald-600 font-bold shrink-0">✓</span>
-                    <span><strong>Durasi Sewa:</strong> Standar 3 hari (dihitung sejak pengambilan di studio).</span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <span className="text-emerald-600 font-bold shrink-0">✓</span>
-                    <span><strong>Fitting Gratis:</strong> Fitting langsung di studio Paccerakkang, Makassar (bisa disesuaikan gratis).</span>
-                  </li>
-                </ul>
+                <p className="text-xs leading-relaxed theme-muted-strong">
+                  Di Farsha Studio ada 2 cara sewa: pertama dengan cara{' '}
+                  <strong>Datang Langsung</strong>, kedua dengan cara{' '}
+                  <strong>Booking Baju Terlebih Dahulu</strong>.
+                </p>
+
+                <div className="space-y-4 text-xs leading-relaxed theme-muted-strong">
+                  <section className="space-y-1.5">
+                    <h5 className="text-sm font-semibold text-[var(--theme-text)]">Cara Datang Langsung</h5>
+                    <p>
+                      Cara ini cocok jika acaramu sudah mepet, jadi kamu bisa datang langsung ke alamat kami,
+                      pilih baju yang tersedia di hari itu, fitting, lalu bawa pulang. Dengan cara ini kamu
+                      tidak perlu membayar biaya booking baju dan tidak perlu appointment, cukup datang saja
+                      selama jam operasional toko. Kekurangannya, kamu hanya bisa menyewa baju sesuai
+                      ketersediaan hari itu saja.
+                    </p>
+                  </section>
+
+                  <section className="space-y-1.5">
+                    <h5 className="text-sm font-semibold text-[var(--theme-text)]">Cara Booking Dulu</h5>
+                    <p>
+                      Cara ini cocok jika acaramu masih nanti, jadi kamu bisa memilih style baju yang sesuai
+                      dengan keinginan & kebutuhan jauh-jauh hari tanpa takut bajunya tidak tersedia. Dengan
+                      cara ini kamu perlu membayar biaya booking sebesar Rp100.000 per kebaya untuk meng-keep
+                      tanggal. Jika kamu mau booking, silakan pilih tanggal di tombol &quot;cek tanggal&quot; di bawah ya.
+                    </p>
+                  </section>
+                </div>
+
+                <div>
+                  <h4 className="theme-muted text-xs font-semibold uppercase tracking-wider font-mono mb-3">
+                    Ketentuan Sewa
+                  </h4>
+                  <ul className="space-y-2.5 text-xs theme-muted-strong leading-relaxed">
+                    <li className="flex items-start gap-2">
+                      <span className="text-emerald-600 font-bold shrink-0">✓</span>
+                      <span>
+                        <strong>Uang Jaminan:</strong> Rp100.000 (titipan aman saat pelunasan, dikembalikan
+                        100% setelah kebaya kembali).
+                      </span>
+                    </li>
+                    <li className="flex items-start gap-2">
+                      <span className="text-emerald-600 font-bold shrink-0">✓</span>
+                      <span>
+                        <strong>Laundry Premium:</strong> Gratis laundry (cuci & setrika steril dari studio,
+                        tidak perlu dicuci setelah disewa).
+                      </span>
+                    </li>
+                    <li className="flex items-start gap-2">
+                      <span className="text-emerald-600 font-bold shrink-0">✓</span>
+                      <span>
+                        <strong>Durasi Sewa:</strong> Standar 3 hari (dihitung sejak pengambilan di studio,
+                        dikenakan extra charge jika ingin mengembalikan baju lebih dari waktu standar).
+                      </span>
+                    </li>
+                  </ul>
+                  <p className="mt-3 text-xs leading-relaxed theme-muted-strong">
+                    Masih bingung? klik tombol &quot;WA ADMIN&quot; untuk tanya-tanya dulu ya.
+                  </p>
+                </div>
               </div>
 
               <div ref={availabilitySectionRef} className="mb-6 border theme-border theme-soft-surface p-4 lg:p-5">
