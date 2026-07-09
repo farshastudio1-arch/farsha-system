@@ -830,22 +830,76 @@ export default function PosBookingsClient({
     <>
       <style jsx global>{`
         @media print {
+          @page {
+            margin: 12mm;
+          }
+
+          html,
+          body {
+            width: auto !important;
+            min-height: 0 !important;
+            overflow: visible !important;
+            background: white !important;
+          }
+
+          body {
+            margin: 0 !important;
+          }
+
+          body > div {
+            display: block !important;
+            min-height: 0 !important;
+            background: white !important;
+          }
+
+          body > div > header {
+            display: none !important;
+          }
+
+          body > div > main {
+            display: block !important;
+            width: 100% !important;
+            max-width: none !important;
+            margin: 0 !important;
+            padding: 0 !important;
+          }
+
           body * {
-            visibility: hidden;
+            visibility: hidden !important;
+          }
+
+          .booking-page-screen-shell {
+            display: none !important;
+          }
+
+          .booking-invoice-print-modal {
+            position: static !important;
+            inset: auto !important;
+            display: block !important;
+            overflow: visible !important;
+            background: white !important;
+            padding: 0 !important;
+          }
+
+          .booking-invoice-print-frame {
+            width: 100% !important;
+            max-width: none !important;
+            box-shadow: none !important;
           }
 
           #booking-invoice-print-area,
           #booking-invoice-print-area * {
-            visibility: visible;
+            visibility: visible !important;
           }
 
           #booking-invoice-print-area {
-            position: absolute;
+            position: static !important;
             top: 0;
             left: 0;
-            width: 100%;
-            background: white;
-            color: black;
+            width: 100% !important;
+            padding: 0 !important;
+            background: white !important;
+            color: black !important;
           }
 
           .booking-invoice-no-print {
@@ -853,7 +907,7 @@ export default function PosBookingsClient({
           }
         }
       `}</style>
-    <main className="theme-surface min-h-screen px-4 py-6 sm:px-6 lg:px-8">
+    <main className="booking-page-screen-shell theme-surface min-h-screen px-4 py-6 sm:px-6 lg:px-8">
       <div className="mx-auto max-w-7xl space-y-6">
         <section className="border theme-border bg-white p-5 shadow-sm">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
@@ -1518,8 +1572,8 @@ export default function PosBookingsClient({
     </main>
 
       {isDocumentOpen && documentData && documentSnapshot && (
-        <div className="booking-invoice-no-print fixed inset-0 z-50 overflow-y-auto bg-black/55 px-4 py-6">
-          <div className="mx-auto max-w-4xl bg-white shadow-2xl">
+        <div className="booking-invoice-print-modal fixed inset-0 z-50 overflow-y-auto bg-black/55 px-4 py-6">
+          <div className="booking-invoice-print-frame mx-auto max-w-4xl bg-white shadow-2xl">
             <div className="booking-invoice-no-print flex flex-col gap-3 border-b border-neutral-200 p-4 sm:flex-row sm:items-center sm:justify-between">
               <div>
                 <p className="font-mono text-[10px] font-bold uppercase tracking-widest text-neutral-400">

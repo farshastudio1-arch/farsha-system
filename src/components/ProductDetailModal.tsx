@@ -724,11 +724,11 @@ export default function ProductDetailModal({
                   </li>
                   <li className="flex items-start gap-2">
                     <span className="text-emerald-600 font-bold shrink-0">✓</span>
-                    <span><strong>Uang Jaminan:</strong> Rp 100.000 (titipan aman saat pelunasan, dikembalikan 100% setelah kebaya kembali).</span>
+                    <span><strong>Uang Jaminan:</strong> Rp100.000 (titipan aman saat pelunasan, dikembalikan 100% setelah kebaya kembali).</span>
                   </li>
                   <li className="flex items-start gap-2">
                     <span className="text-emerald-600 font-bold shrink-0">✓</span>
-                    <span><strong>Biaya Booking:</strong> Rp 100.000 per kebaya untuk keep tanggal sewa.</span>
+                    <span><strong>Biaya Booking:</strong> Rp100.000 per kebaya untuk keep tanggal sewa.</span>
                   </li>
                   <li className="flex items-start gap-2">
                     <span className="text-emerald-600 font-bold shrink-0">✓</span>

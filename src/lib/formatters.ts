@@ -6,5 +6,5 @@ export function formatRupiah(amount: number) {
     .toString()
     .replace(/\B(?=(\d{3})+(?!\d))/g, '.');
 
-  return `${sign}Rp ${formattedAmount}`;
+  return `${sign}Rp${formattedAmount}`;
 }
