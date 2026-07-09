@@ -150,6 +150,8 @@ export async function savePosLedgerAction(
     revalidatePath('/admin/catalog');
     revalidatePath('/pos');
     revalidatePath('/pos/dashboard');
+    revalidatePath('/pos/transactions');
+    revalidatePath('/pos/finance');
 
     return { ok: true, data: savedLedger };
   } catch (error) {

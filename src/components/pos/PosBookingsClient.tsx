@@ -355,15 +355,18 @@ function canCloseBooking(booking: BookingQueueRow) {
 export default function PosBookingsClient({
   initialItems,
   initialItemId,
+  initialBookingId,
   initialBookings,
 }: {
   initialItems: KebayaItem[];
   initialItemId: string;
+  initialBookingId: string;
   initialBookings: BookingQueueRow[];
 }) {
   const [bookings, setBookings] = useState<BookingQueueRow[]>(initialBookings);
   const [selectedBookingId, setSelectedBookingId] = useState(
-    initialBookings.find((booking) => !closedBookingStatuses.includes(booking.status))?.id ??
+    initialBookings.find((booking) => booking.id === initialBookingId)?.id ??
+      initialBookings.find((booking) => !closedBookingStatuses.includes(booking.status))?.id ??
       initialBookings[0]?.id ??
       '',
   );

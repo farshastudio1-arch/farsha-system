@@ -114,9 +114,10 @@ function getDayDiff(startValue: string, endValue: string) {
 
 interface PosWorkspaceClientProps {
   initialLedger: PosLedgerState;
+  initialTransactionId?: string;
 }
 
-export default function PosWorkspaceClient({ initialLedger }: PosWorkspaceClientProps) {
+export default function PosWorkspaceClient({ initialLedger, initialTransactionId = '' }: PosWorkspaceClientProps) {
   const catalogItems = useSavedCatalogItems();
   const ledger = useSavedPosLedger(initialLedger);
   const [isLoadingCatalog, setIsLoadingCatalog] = useState(true);
@@ -133,7 +134,7 @@ export default function PosWorkspaceClient({ initialLedger }: PosWorkspaceClient
   // Main UI States
   const [activeTab, setActiveTab] = useState<PosTab>('rent');
   const [selectedItemId, setSelectedItemId] = useState<string>('');
-  const [selectedTransactionId, setSelectedTransactionId] = useState<string>('');
+  const [selectedTransactionId, setSelectedTransactionId] = useState<string>(initialTransactionId);
   const [selectedMaintenanceId, setSelectedMaintenanceId] = useState<string>('');
 
   // Search and Filter States
@@ -479,35 +480,52 @@ export default function PosWorkspaceClient({ initialLedger }: PosWorkspaceClient
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       {/* 1. Clean Header without Summary Metrics */}
-      <section className="border border-[var(--theme-border)] bg-white p-5 shadow-sm">
-        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+      <section className="border border-neutral-200 bg-white p-4 shadow-sm">
+        <div className="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
           <div>
             <p className="font-mono text-[10px] font-bold uppercase tracking-widest text-neutral-400">
-              Kasir Farsha Studio
+              Transactions
             </p>
-            <h1 className="mt-1 text-2xl font-serif font-semibold tracking-tight text-neutral-900 sm:text-3xl">
-              Workspace Transaksi Offline
+            <h1 className="mt-1 font-serif text-2xl font-semibold tracking-tight text-neutral-950 sm:text-3xl">
+              Cashier Workspace
             </h1>
-            <p className="mt-1 text-sm text-neutral-500">
-              Kelola persewaan kebaya, pengembalian, dan kontrol kebersihan pakaian.
+            <p className="mt-1 max-w-2xl text-sm text-neutral-500">
+              Sewa baru, pengembalian, deposit/refund, denda, dan status cuci dalam satu alur kasir.
             </p>
           </div>
 
           <div className="flex flex-wrap gap-2">
             <Link
-              href="/pos/dashboard"
-              className="inline-flex items-center gap-2 border border-neutral-300 bg-white hover:bg-neutral-50 px-4 py-2.5 text-xs font-semibold uppercase tracking-widest text-neutral-700 transition-all"
+              href="/pos"
+              className="inline-flex min-h-10 items-center gap-2 border border-neutral-300 bg-white px-3 text-xs font-bold uppercase tracking-wider text-neutral-700 transition-colors hover:border-neutral-900"
             >
               <BarChart3 className="h-4 w-4" /> Lihat Dashboard
             </Link>
             <Link
               href="/pos/bookings"
-              className="inline-flex items-center gap-2 bg-neutral-900 hover:bg-neutral-800 px-4 py-2.5 text-xs font-semibold uppercase tracking-widest text-white transition-all"
+              className="inline-flex min-h-10 items-center gap-2 bg-neutral-950 px-3 text-xs font-bold uppercase tracking-wider text-white transition-colors hover:bg-neutral-800"
             >
-              <CalendarCheck className="h-4 w-4" /> Booking Preview
+              <CalendarCheck className="h-4 w-4" /> Booking Desk
             </Link>
+          </div>
+        </div>
+
+        <div className="mt-4 grid gap-2 border-t border-neutral-100 pt-3 sm:grid-cols-3">
+          <div className="flex items-center justify-between border border-neutral-200 bg-neutral-50 px-3 py-2">
+            <span className="text-xs font-semibold text-neutral-500">Active rentals</span>
+            <strong className="text-sm text-neutral-950">{activeRentals.length}</strong>
+          </div>
+          <div className="flex items-center justify-between border border-neutral-200 bg-neutral-50 px-3 py-2">
+            <span className="text-xs font-semibold text-neutral-500">Overdue</span>
+            <strong className={overdueTransactions.length > 0 ? 'text-sm text-red-700' : 'text-sm text-neutral-950'}>
+              {overdueTransactions.length}
+            </strong>
+          </div>
+          <div className="flex items-center justify-between border border-neutral-200 bg-neutral-50 px-3 py-2">
+            <span className="text-xs font-semibold text-neutral-500">In laundry</span>
+            <strong className="text-sm text-neutral-950">{openMaintenanceHolds.length}</strong>
           </div>
         </div>
       </section>
@@ -553,13 +571,13 @@ export default function PosWorkspaceClient({ initialLedger }: PosWorkspaceClient
       )}
 
       {/* Main Split Layout Workspace */}
-      <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_400px]">
+      <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_420px]">
         
         {/* LEFT COLUMN: The Sub-views for Cashier Flow tabs */}
-        <section className="border border-[var(--theme-border)] bg-white shadow-sm flex flex-col">
+        <section className="flex flex-col border border-neutral-200 bg-white shadow-sm">
           
           {/* Sub-navigation Tabs (Clean 3-Tab Layout) */}
-          <div className="border-b border-[var(--theme-border)] bg-neutral-50 p-2 flex flex-wrap gap-1">
+          <div className="grid gap-2 border-b border-neutral-200 bg-neutral-50 p-2 sm:grid-cols-3">
             {(
               [
                 { id: 'rent', label: '1. Sewa Kebaya', desc: 'Sewa offline baru' },
@@ -572,21 +590,21 @@ export default function PosWorkspaceClient({ initialLedger }: PosWorkspaceClient
                 onClick={() => {
                   setActiveTab(t.id);
                 }}
-                className={`flex-1 text-left px-4 py-2 border transition-all duration-200 ${
+                className={`min-h-14 border px-3 py-2 text-left transition-colors ${
                   activeTab === t.id
-                    ? 'border-neutral-900 bg-neutral-900 text-white font-semibold'
-                    : 'border-transparent text-neutral-600 hover:bg-neutral-200/50'
+                    ? 'border-neutral-900 bg-neutral-950 text-white'
+                    : 'border-neutral-200 bg-white text-neutral-600 hover:border-neutral-400'
                 }`}
               >
-                <span className="block text-xs uppercase tracking-wide">{t.label}</span>
-                <span className={`block text-[9px] ${activeTab === t.id ? 'text-neutral-300' : 'text-neutral-400'}`}>
+                <span className="block text-[11px] font-bold uppercase tracking-wider">{t.label}</span>
+                <span className={`mt-0.5 block text-[10px] ${activeTab === t.id ? 'text-neutral-300' : 'text-neutral-400'}`}>
                   {t.desc}
                 </span>
               </button>
             ))}
           </div>
 
-          <div className="p-4 flex-grow">
+          <div className="flex-grow p-3 sm:p-4">
             
             {/* FLOW 1: Rent Kebaya View */}
             {activeTab === 'rent' && (
@@ -598,7 +616,7 @@ export default function PosWorkspaceClient({ initialLedger }: PosWorkspaceClient
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
                       placeholder="Cari nama kebaya, kode inventaris, warna..."
-                      className="w-full border border-[var(--theme-border)] bg-neutral-50 py-2 pl-9 pr-4 text-xs focus:bg-white focus:outline-none focus:ring-1 focus:ring-neutral-900"
+                      className="h-10 w-full border border-neutral-200 bg-neutral-50 py-2 pl-9 pr-4 text-sm focus:bg-white focus:outline-none focus:ring-1 focus:ring-neutral-900"
                     />
                   </div>
 
@@ -607,7 +625,7 @@ export default function PosWorkspaceClient({ initialLedger }: PosWorkspaceClient
                     <select
                       value={statusFilter}
                       onChange={(e) => setStatusFilter(e.target.value as CatalogStatusFilter)}
-                      className="w-full border border-[var(--theme-border)] bg-neutral-50 py-2 pl-9 pr-3 text-xs focus:bg-white focus:outline-none focus:ring-1 focus:ring-neutral-900"
+                      className="h-10 w-full border border-neutral-200 bg-neutral-50 py-2 pl-9 pr-3 text-sm focus:bg-white focus:outline-none focus:ring-1 focus:ring-neutral-900"
                     >
                       <option value="all">Semua Status</option>
                       <option value="available">AVAILABLE</option>
@@ -618,7 +636,7 @@ export default function PosWorkspaceClient({ initialLedger }: PosWorkspaceClient
                 </div>
 
                 {/* Catalog Grid */}
-                <div className="grid gap-3 sm:grid-cols-2 max-h-[600px] overflow-y-auto pr-1">
+                <div className="grid max-h-[620px] gap-2 overflow-y-auto pr-1 sm:grid-cols-2">
                   {filteredCatalog.map((item) => {
                     const projection = projections[item.id];
                     const effStatus = projection?.effectiveStatus ?? item.status;
@@ -639,13 +657,13 @@ export default function PosWorkspaceClient({ initialLedger }: PosWorkspaceClient
                           setSelectedTransactionId('');
                           setSelectedMaintenanceId('');
                         }}
-                        className={`flex gap-3 text-left border p-3 transition duration-150 ${
+                        className={`flex min-h-[92px] gap-3 border p-2.5 text-left transition-colors ${
                           isSelected
                             ? 'border-neutral-900 bg-neutral-50 ring-1 ring-neutral-900'
-                            : 'border-[var(--theme-border)] bg-white hover:border-neutral-400'
+                            : 'border-neutral-200 bg-white hover:border-neutral-400'
                         }`}
                       >
-                        <div className="h-16 w-16 bg-neutral-100 shrink-0 overflow-hidden">
+                        <div className="h-16 w-14 shrink-0 overflow-hidden bg-neutral-100">
                           {/* eslint-disable-next-line @next/next/no-img-element */}
                           <img
                             src={item.imageUrls[0]}
@@ -656,7 +674,7 @@ export default function PosWorkspaceClient({ initialLedger }: PosWorkspaceClient
                         <div className="min-w-0 flex-1 flex flex-col justify-between">
                           <div>
                             <div className="flex items-start justify-between gap-1">
-                              <h3 className="font-serif text-sm font-semibold text-neutral-900 leading-tight truncate">
+                              <h3 className="truncate text-sm font-semibold leading-tight text-neutral-950">
                                 {item.name}
                               </h3>
                               <span className={`text-[9px] font-mono shrink-0 border px-1.5 py-0.5 uppercase ${statusColor}`}>
@@ -698,23 +716,23 @@ export default function PosWorkspaceClient({ initialLedger }: PosWorkspaceClient
                     value={historySearchQuery}
                     onChange={(e) => setHistorySearchQuery(e.target.value)}
                     placeholder="Cari transaksi sewa aktif..."
-                    className="w-full border border-[var(--theme-border)] bg-neutral-50 py-2 pl-9 pr-4 text-xs focus:bg-white focus:outline-none focus:ring-1 focus:ring-neutral-900"
+                    className="h-10 w-full border border-neutral-200 bg-neutral-50 py-2 pl-9 pr-4 text-sm focus:bg-white focus:outline-none focus:ring-1 focus:ring-neutral-900"
                   />
                 </div>
 
-                <div className="space-y-3.5 max-h-[600px] overflow-y-auto pr-1">
+                <div className="max-h-[620px] space-y-2 overflow-y-auto pr-1">
                   {activeRentals.map((trx) => {
                     const isOverdue = overdueTransactions.some((o) => o.id === trx.id);
 
                     return (
                       <div
                         key={trx.id}
-                        className={`border p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 ${
+                        className={`flex flex-col gap-3 border p-3 sm:flex-row sm:items-center sm:justify-between ${
                           selectedTransactionId === trx.id
                             ? 'border-neutral-900 bg-neutral-50 ring-1 ring-neutral-900'
                             : isOverdue
                               ? 'border-red-300 bg-red-50/50'
-                              : 'border-[var(--theme-border)] bg-white'
+                              : 'border-neutral-200 bg-white'
                         }`}
                       >
                         <div className="space-y-1">
@@ -787,18 +805,18 @@ export default function PosWorkspaceClient({ initialLedger }: PosWorkspaceClient
                     value={historySearchQuery}
                     onChange={(e) => setHistorySearchQuery(e.target.value)}
                     placeholder="Cari baju cuci..."
-                    className="w-full border border-[var(--theme-border)] bg-neutral-50 py-2 pl-9 pr-4 text-xs focus:bg-white focus:outline-none focus:ring-1 focus:ring-neutral-900"
+                    className="h-10 w-full border border-neutral-200 bg-neutral-50 py-2 pl-9 pr-4 text-sm focus:bg-white focus:outline-none focus:ring-1 focus:ring-neutral-900"
                   />
                 </div>
 
-                <div className="space-y-3.5 max-h-[600px] overflow-y-auto pr-1">
+                <div className="max-h-[620px] space-y-2 overflow-y-auto pr-1">
                   {openMaintenanceHolds.map((hold) => (
                     <div
                       key={hold.id}
-                      className={`border p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 ${
+                      className={`flex flex-col gap-3 border p-3 sm:flex-row sm:items-center sm:justify-between ${
                         selectedMaintenanceId === hold.id
                           ? 'border-neutral-900 bg-neutral-50 ring-1 ring-neutral-900'
-                          : 'border-[var(--theme-border)] bg-white'
+                          : 'border-neutral-200 bg-white'
                       }`}
                     >
                       <div className="space-y-1">
@@ -848,7 +866,7 @@ export default function PosWorkspaceClient({ initialLedger }: PosWorkspaceClient
         </section>
 
         {/* RIGHT COLUMN: Dynamic Action Workspace (Cashier operations context) */}
-        <aside className="border border-[var(--theme-border)] bg-white p-5 flex flex-col justify-between min-h-[600px] shadow-sm">
+        <aside className="sticky top-4 flex max-h-[calc(100vh-2rem)] min-h-[620px] flex-col justify-between overflow-y-auto border border-neutral-200 bg-white p-4 shadow-sm">
           
           {/* Status alerting container */}
           {statusMessage && (
@@ -866,16 +884,16 @@ export default function PosWorkspaceClient({ initialLedger }: PosWorkspaceClient
             
             {/* IDLE VIEW */}
             {!selectedItem && !selectedTransaction && !selectedMaintenance && (
-              <div className="py-20 text-center space-y-4">
-                <div className="mx-auto h-12 w-12 border border-dashed border-neutral-400 bg-neutral-50 flex items-center justify-center text-neutral-400">
+              <div className="space-y-4 px-4 py-20 text-center">
+                <div className="mx-auto flex h-12 w-12 items-center justify-center border border-dashed border-neutral-400 bg-neutral-50 text-neutral-400">
                   <Sparkles className="h-6 w-6" />
                 </div>
-                <div className="space-y-1 max-w-xs mx-auto">
-                  <h3 className="font-serif text-sm font-semibold text-neutral-900 uppercase tracking-wide">
-                    Workspace Siap
+                <div className="mx-auto max-w-xs space-y-1">
+                  <h3 className="text-sm font-semibold uppercase tracking-wide text-neutral-900">
+                    Select a work item
                   </h3>
                   <p className="text-xs text-neutral-500">
-                    Pilih baju dari katalog untuk membuat persewaan baru, atau pilih dari daftar antrean aktif untuk kembali sewa.
+                    Pilih baju, transaksi aktif, atau item laundry untuk membuka aksi kasir di panel ini.
                   </p>
                 </div>
               </div>
@@ -886,13 +904,13 @@ export default function PosWorkspaceClient({ initialLedger }: PosWorkspaceClient
               <div className="space-y-5 animate-in fade-in duration-200">
                 
                 {/* Item card overview */}
-                <div className="border border-[var(--theme-border)] bg-neutral-50 p-3.5 flex gap-3">
-                  <div className="h-16 w-16 bg-neutral-100 shrink-0 overflow-hidden">
+                <div className="flex gap-3 border border-neutral-200 bg-neutral-50 p-3">
+                  <div className="h-16 w-14 shrink-0 overflow-hidden bg-neutral-100">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img src={selectedItem.imageUrls[0]} alt={selectedItem.name} className="h-full w-full object-cover" />
                   </div>
                   <div className="min-w-0">
-                    <h3 className="font-serif text-sm font-semibold text-neutral-900 leading-tight truncate">
+                    <h3 className="truncate text-sm font-semibold leading-tight text-neutral-950">
                       {selectedItem.name}
                     </h3>
                     <p className="text-[10px] font-mono text-neutral-400 uppercase mt-0.5">{selectedItem.code}</p>
@@ -902,9 +920,9 @@ export default function PosWorkspaceClient({ initialLedger }: PosWorkspaceClient
                   </div>
                 </div>
 
-                <div className="space-y-3.5">
-                  <h4 className="font-serif text-sm font-semibold text-neutral-900 border-b border-neutral-100 pb-1.5">
-                    Formulir Sewa Baru
+                <div className="space-y-3">
+                  <h4 className="border-b border-neutral-100 pb-2 text-xs font-bold uppercase tracking-wider text-neutral-500">
+                    Rental Details
                   </h4>
 
                   <label className="block space-y-1">
@@ -913,7 +931,7 @@ export default function PosWorkspaceClient({ initialLedger }: PosWorkspaceClient
                       value={customerName}
                       onChange={(e) => setCustomerName(e.target.value)}
                       placeholder="e.g. Adelia Safitri"
-                      className="w-full border border-[var(--theme-border)] bg-white px-3 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-neutral-900"
+                      className="h-10 w-full border border-neutral-200 bg-white px-3 text-sm focus:outline-none focus:ring-1 focus:ring-neutral-900"
                     />
                   </label>
 
@@ -923,7 +941,7 @@ export default function PosWorkspaceClient({ initialLedger }: PosWorkspaceClient
                       value={customerPhone}
                       onChange={(e) => setCustomerPhone(e.target.value)}
                       placeholder="e.g. 081234567890"
-                      className="w-full border border-[var(--theme-border)] bg-white px-3 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-neutral-900"
+                      className="h-10 w-full border border-neutral-200 bg-white px-3 text-sm focus:outline-none focus:ring-1 focus:ring-neutral-900"
                     />
                   </label>
 
@@ -944,7 +962,7 @@ export default function PosWorkspaceClient({ initialLedger }: PosWorkspaceClient
                               : currentDueDate,
                           );
                         }}
-                        className="w-full border border-[var(--theme-border)] bg-white px-3 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-neutral-900 font-mono"
+                        className="h-10 w-full border border-neutral-200 bg-white px-3 text-sm focus:outline-none focus:ring-1 focus:ring-neutral-900 font-mono"
                       />
                     </label>
 
@@ -955,7 +973,7 @@ export default function PosWorkspaceClient({ initialLedger }: PosWorkspaceClient
                         value={dueDate}
                         min={defaultDueDate}
                         onChange={(e) => setDueDate(e.target.value)}
-                        className="w-full border border-[var(--theme-border)] bg-white px-3 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-neutral-900 font-mono"
+                        className="h-10 w-full border border-neutral-200 bg-white px-3 text-sm focus:outline-none focus:ring-1 focus:ring-neutral-900 font-mono"
                       />
                       <span className="block text-[10px] leading-relaxed text-neutral-400">
                         Default 3 hari. Tambahan {formatCurrency(extraReturnDayPenalty)} per hari setelah {formatDate(defaultDueDate)}.
@@ -970,7 +988,7 @@ export default function PosWorkspaceClient({ initialLedger }: PosWorkspaceClient
                         inputMode="numeric"
                         value={priceOverride}
                         onChange={(e) => setPriceOverride(formatCurrencyInput(e.target.value))}
-                        className="w-full border border-[var(--theme-border)] bg-white px-3 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-neutral-900 font-mono"
+                        className="h-10 w-full border border-neutral-200 bg-white px-3 text-sm focus:outline-none focus:ring-1 focus:ring-neutral-900 font-mono"
                       />
                     </label>
 
@@ -980,7 +998,7 @@ export default function PosWorkspaceClient({ initialLedger }: PosWorkspaceClient
                         inputMode="numeric"
                         value={depositReceived}
                         onChange={(e) => setDepositReceived(formatCurrencyInput(e.target.value))}
-                        className="w-full border border-[var(--theme-border)] bg-white px-3 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-neutral-900 font-mono"
+                        className="h-10 w-full border border-neutral-200 bg-white px-3 text-sm focus:outline-none focus:ring-1 focus:ring-neutral-900 font-mono"
                       />
                     </label>
                   </div>
@@ -990,7 +1008,7 @@ export default function PosWorkspaceClient({ initialLedger }: PosWorkspaceClient
                     <select
                       value={paymentMethod}
                       onChange={(e) => setPaymentMethod(e.target.value as PosPaymentMethod)}
-                      className="w-full border border-[var(--theme-border)] bg-white px-3 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-neutral-900"
+                      className="h-10 w-full border border-neutral-200 bg-white px-3 text-sm focus:outline-none focus:ring-1 focus:ring-neutral-900"
                     >
                       {paymentMethods.map((m) => (
                         <option key={m.value} value={m.value}>
@@ -1007,13 +1025,13 @@ export default function PosWorkspaceClient({ initialLedger }: PosWorkspaceClient
                       value={rentalNotes}
                       onChange={(e) => setRentalNotes(e.target.value)}
                       placeholder="e.g. Diambil sore, kancing kendur"
-                      className="w-full border border-[var(--theme-border)] bg-white px-3 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-neutral-900 resize-none"
+                      className="min-h-20 w-full resize-none border border-neutral-200 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-neutral-900"
                     />
                   </label>
                 </div>
 
                 {/* Total Summary Box */}
-                <div className="border border-neutral-900 bg-neutral-900 p-4 text-white space-y-2 mt-4">
+                <div className="mt-4 space-y-2 border border-neutral-900 bg-neutral-950 p-4 text-white">
                   <div className="flex justify-between text-xs text-neutral-300">
                     <span>Biaya Sewa Pakaian</span>
                     <span>{formatCurrency(baseRentalPrice)}</span>
@@ -1091,9 +1109,9 @@ export default function PosWorkspaceClient({ initialLedger }: PosWorkspaceClient
                 </div>
 
                 {/* Return Form fields */}
-                <div className="space-y-3.5 border-t border-neutral-100 pt-3">
-                  <h4 className="font-serif text-sm font-semibold text-neutral-900">
-                    Form Pengembalian Kebaya
+                <div className="space-y-3 border-t border-neutral-100 pt-3">
+                  <h4 className="border-b border-neutral-100 pb-2 text-xs font-bold uppercase tracking-wider text-neutral-500">
+                    Return Details
                   </h4>
 
                   <label className="block space-y-1">
@@ -1102,7 +1120,7 @@ export default function PosWorkspaceClient({ initialLedger }: PosWorkspaceClient
                       type="date"
                       value={returnDate}
                       onChange={(e) => setReturnDate(e.target.value)}
-                      className="w-full border border-[var(--theme-border)] bg-white px-3 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-neutral-900 font-mono"
+                      className="h-10 w-full border border-neutral-200 bg-white px-3 text-sm focus:outline-none focus:ring-1 focus:ring-neutral-900 font-mono"
                     />
                   </label>
 
@@ -1113,7 +1131,7 @@ export default function PosWorkspaceClient({ initialLedger }: PosWorkspaceClient
                         type="number"
                         value={penaltyAmount}
                         onChange={(e) => setPenaltyAmount(e.target.value)}
-                        className="w-full border border-[var(--theme-border)] bg-white px-3 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-neutral-900 font-mono"
+                        className="h-10 w-full border border-neutral-200 bg-white px-3 text-sm focus:outline-none focus:ring-1 focus:ring-neutral-900 font-mono"
                       />
                     </label>
 
@@ -1123,7 +1141,7 @@ export default function PosWorkspaceClient({ initialLedger }: PosWorkspaceClient
                         type="number"
                         value={refundAmount}
                         onChange={(e) => setRefundAmount(e.target.value)}
-                        className="w-full border border-[var(--theme-border)] bg-white px-3 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-neutral-900 font-mono"
+                        className="h-10 w-full border border-neutral-200 bg-white px-3 text-sm focus:outline-none focus:ring-1 focus:ring-neutral-900 font-mono"
                       />
                     </label>
                   </div>
@@ -1136,7 +1154,7 @@ export default function PosWorkspaceClient({ initialLedger }: PosWorkspaceClient
                         value={returnAdjustmentAmount}
                         onChange={(e) => setReturnAdjustmentAmount(e.target.value)}
                         placeholder="e.g. -10000"
-                        className="w-full border border-[var(--theme-border)] bg-white px-3 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-neutral-900 font-mono"
+                        className="h-10 w-full border border-neutral-200 bg-white px-3 text-sm focus:outline-none focus:ring-1 focus:ring-neutral-900 font-mono"
                       />
                     </label>
 
@@ -1145,7 +1163,7 @@ export default function PosWorkspaceClient({ initialLedger }: PosWorkspaceClient
                       <select
                         value={returnPaymentMethod}
                         onChange={(e) => setReturnPaymentMethod(e.target.value as PosPaymentMethod)}
-                        className="w-full border border-[var(--theme-border)] bg-white px-3 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-neutral-900"
+                        className="h-10 w-full border border-neutral-200 bg-white px-3 text-sm focus:outline-none focus:ring-1 focus:ring-neutral-900"
                       >
                         {paymentMethods.map((m) => (
                           <option key={m.value} value={m.value}>
@@ -1162,13 +1180,13 @@ export default function PosWorkspaceClient({ initialLedger }: PosWorkspaceClient
                       value={returnNotes}
                       onChange={(e) => setReturnNotes(e.target.value)}
                       placeholder="Warna bersih, tidak melar"
-                      className="w-full border border-[var(--theme-border)] bg-white px-3 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-neutral-900"
+                      className="h-10 w-full border border-neutral-200 bg-white px-3 text-sm focus:outline-none focus:ring-1 focus:ring-neutral-900"
                     />
                   </label>
                 </div>
 
                 {/* Return Summary Calculator Box */}
-                <div className="border border-neutral-200 bg-neutral-50 p-4 space-y-2 text-xs">
+                <div className="space-y-2 border border-neutral-200 bg-neutral-50 p-4 text-xs">
                   <div className="flex justify-between">
                     <span className="text-neutral-500">Security Deposit Dikembalikan:</span>
                     <span className="font-semibold text-emerald-700">-{formatCurrency(Number(refundAmount) || 0)}</span>
@@ -1207,8 +1225,8 @@ export default function PosWorkspaceClient({ initialLedger }: PosWorkspaceClient
             {selectedMaintenance && selectedMaintenance.status === 'open' && (
               <div className="space-y-5 animate-in fade-in duration-200">
                 
-                <div className="border border-[var(--theme-border)] bg-neutral-50 p-4 space-y-3">
-                  <div className="flex justify-between items-start border-b border-neutral-200 pb-2">
+                <div className="space-y-3 border border-neutral-200 bg-neutral-50 p-4">
+                  <div className="flex items-start justify-between border-b border-neutral-200 pb-2">
                     <div>
                       <p className="font-mono text-[9px] font-bold text-neutral-400">PEMELIHARAAN</p>
                       <h3 className="font-mono text-sm font-semibold text-neutral-900">
@@ -1252,7 +1270,7 @@ export default function PosWorkspaceClient({ initialLedger }: PosWorkspaceClient
                       value={maintenanceNote}
                       onChange={(e) => setMaintenanceNote(e.target.value)}
                       placeholder="e.g. Dicuci kering, disetrika uap..."
-                      className="w-full border border-[var(--theme-border)] bg-white px-3 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-neutral-900 resize-none"
+                      className="min-h-24 w-full resize-none border border-neutral-200 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-neutral-900"
                     />
                   </label>
 

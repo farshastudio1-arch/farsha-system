@@ -1,8 +1,5 @@
-import PosDashboardClient from '@/components/pos/PosDashboardClient';
-import { listPosLedger } from '@/lib/pos-db';
+import { permanentRedirect } from 'next/navigation';
 
 export default async function PosDashboardPage() {
-  const initialLedger = await listPosLedger();
-
-  return <PosDashboardClient initialLedger={initialLedger} />;
+  permanentRedirect('/pos');
 }
