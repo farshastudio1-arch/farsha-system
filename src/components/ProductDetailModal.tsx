@@ -760,7 +760,7 @@ export default function ProductDetailModal({
                       type="button"
                       onClick={openAvailabilityCheck}
                       aria-expanded={isBookingCalendarOpen}
-                      className="inline-flex min-h-10 shrink-0 items-center justify-center gap-2 border border-emerald-200 bg-emerald-50 px-4 py-2 text-xs font-semibold uppercase tracking-wider text-emerald-900 transition-colors hover:border-emerald-500 hover:bg-emerald-100 sm:min-w-44"
+                      className="inline-flex min-h-12 shrink-0 items-center justify-center gap-2 border border-neutral-900 bg-white px-4 py-3 text-xs font-bold uppercase tracking-wider text-neutral-950 transition-colors hover:bg-neutral-50 sm:min-w-44"
                     >
                       <CalendarDays className="h-4 w-4" aria-hidden="true" />
                       Cek tanggal
