@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { CalendarCheck, Clock3, Compass, DoorOpen, MapPin, ShieldCheck, Sparkles } from 'lucide-react';
+import { CalendarCheck, Compass, DoorOpen, MapPin } from 'lucide-react';
 
 import LandingCategoryCard from '@/components/LandingCategoryCard';
 import PublicFooter from '@/components/PublicFooter';
@@ -12,35 +12,19 @@ const rentalPaths = [
   {
     title: 'Datang Langsung',
     icon: DoorOpen,
-    suitableFor: 'Acara mendadak/mepet',
+    suitableFor: 'Cocok untuk: acara mendadak/mepet',
     benefit: 'Tanpa appointment dan tanpa biaya booking.',
     note: 'Pilih, fitting, langsung bawa pulang. Stok mengikuti ketersediaan hari itu.',
   },
   {
     title: 'Booking Dulu',
     icon: CalendarCheck,
-    suitableFor: 'Acara jauh-jauh hari',
-    benefit: 'Kunci style favorit lebih awal tanpa takut slot habis.',
+    suitableFor: 'Cocok untuk: acara jauh-jauh hari',
+    benefit: 'Pilih kebaya/dress favorit lebih awal tanpa takut slot habis.',
     note:
       'Isi tanggal lewat "Cek Tanggal" di katalog, lalu bayar booking Rp100.000/kebaya.',
-  },
-];
-
-const rentalTerms = [
-  {
-    title: 'Uang Jaminan',
-    icon: ShieldCheck,
-    detail: 'Rp100.000, dikembalikan 100% setelah kebaya kembali aman.',
-  },
-  {
-    title: 'Premium Laundry',
-    icon: Sparkles,
-    detail: 'Gratis. Kebaya sudah steril dan tidak perlu dicuci setelah dipakai.',
-  },
-  {
-    title: 'Durasi Sewa',
-    icon: Clock3,
-    detail: 'Standar 3 hari sejak pengambilan. Keterlambatan dikenakan biaya tambahan.',
+    ctaLabel: 'Cek Tanggal di Katalog',
+    ctaHref: '/catalog?view=all',
   },
 ];
 
@@ -186,16 +170,9 @@ export default async function Home() {
                   Cara Sewa di Farsha Studio
                 </h2>
                 <p className="theme-muted-strong mt-3 text-sm leading-relaxed sm:mt-4 sm:text-base">
-                  Pilih sesuai jarak acara. Walk-in untuk kebutuhan cepat, booking untuk mengunci
-                  kebaya dan tanggal lebih awal.
+                  Ada dua cara untuk sewa kebaya/dress di Farsha Studio. Pertama, datang langsung,
+                  kedua, booking dulu.
                 </p>
-                <Link
-                  href="/catalog?view=all"
-                  className="theme-primary-action mt-5 inline-flex w-full items-center justify-center gap-3 px-5 py-3.5 text-center text-[11px] font-semibold uppercase tracking-widest transition-all sm:mt-6 sm:w-auto sm:px-6 sm:py-4 sm:text-xs"
-                >
-                  <CalendarCheck className="h-4 w-4 shrink-0" />
-                  Cek Tanggal di Katalog
-                </Link>
               </div>
 
               <div className="landing-rental-path-list">
@@ -227,53 +204,21 @@ export default async function Home() {
                         <li>{path.benefit}</li>
                         <li>{path.note}</li>
                       </ul>
+                      {path.ctaHref && path.ctaLabel && (
+                        <Link
+                          href={path.ctaHref}
+                          className="theme-primary-action mt-4 inline-flex w-full items-center justify-center gap-3 px-5 py-3.5 text-center text-[11px] font-semibold uppercase tracking-widest transition-all sm:w-auto sm:px-6 sm:py-4 sm:text-xs"
+                        >
+                          <CalendarCheck className="h-4 w-4 shrink-0" />
+                          {path.ctaLabel}
+                        </Link>
+                      )}
                     </article>
                   );
                 })}
               </div>
             </div>
 
-            <div className="theme-border mt-5 border-y py-4 sm:mt-6 sm:py-5">
-              <div className="mb-3 flex flex-col gap-1.5 sm:mb-4 sm:flex-row sm:items-end sm:justify-between sm:gap-2">
-                <div>
-                  <span className="theme-muted font-mono text-[10px] font-semibold uppercase tracking-widest">
-                    wajib tahu
-                  </span>
-                  <h3 className="mt-1 font-serif text-xl font-semibold text-[var(--theme-text)] sm:text-2xl">
-                    Ketentuan Sewa
-                  </h3>
-                </div>
-                <p className="theme-muted-strong hidden max-w-xl text-sm leading-relaxed sm:block">
-                  Biaya ini dibuat jelas di awal supaya pengambilan dan pengembalian tetap rapi.
-                </p>
-              </div>
-
-              <div className="landing-rental-term-grid divide-y divide-[var(--theme-border)] sm:divide-x sm:divide-y-0">
-                {rentalTerms.map((term) => {
-                  const Icon = term.icon;
-
-                  return (
-                    <div
-                      key={term.title}
-                      className="grid grid-cols-[36px_minmax(0,1fr)] gap-x-3 py-3 sm:block sm:px-5 sm:py-4 sm:first:pl-0 sm:last:pr-0"
-                    >
-                      <span className="theme-soft-surface theme-border row-span-2 flex h-9 w-9 shrink-0 items-center justify-center border text-[var(--theme-text)] sm:hidden">
-                        <Icon className="h-4 w-4" aria-hidden="true" />
-                      </span>
-                      <div className="flex min-w-0 items-center gap-3">
-                        <span className="theme-soft-surface theme-border hidden h-9 w-9 shrink-0 items-center justify-center border text-[var(--theme-text)] sm:flex">
-                          <Icon className="h-4 w-4" aria-hidden="true" />
-                        </span>
-                        <h4 className="text-sm font-semibold text-[var(--theme-text)]">
-                          {term.title}
-                        </h4>
-                      </div>
-                      <p className="theme-muted-strong mt-1 text-sm leading-relaxed sm:mt-3">{term.detail}</p>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
           </div>
         </section>
 

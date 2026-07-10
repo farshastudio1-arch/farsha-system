@@ -17,7 +17,11 @@ import {
 import { formatRupiah } from '@/lib/formatters';
 import { matchesLandingCategory, occasionCategories } from '@/lib/landing-categories';
 import { useSavedPosLedger } from '@/lib/pos-ledger-client';
-import { getFutureBookingBlockWindow } from '@/lib/availability-windows';
+import {
+  getFutureBookingBlockWindow,
+  getPresentTransactionBlockWindow,
+  normalizeAvailabilityDatePart,
+} from '@/lib/availability-windows';
 
 interface ProductDetailModalProps {
   product: KebayaItem | null;
@@ -77,6 +81,14 @@ function calculatePickupAvailabilityDates(pickupDate: string) {
     blockStartDate: blockWindow.startDate,
     bufferUntilDate: blockWindow.endDate,
   };
+}
+
+function getTodayDatePart() {
+  return formatDateInputValue(new Date());
+}
+
+function getNextAvailableDate(blockedUntilDate: string) {
+  return addPreviewDays(blockedUntilDate, 1);
 }
 
 function doDateRangesOverlap(
@@ -251,6 +263,54 @@ export default function ProductDetailModal({
       ) ?? null
     );
   }, [bookingDates, product, serverAvailabilityBlocks]);
+  const currentRentalAvailability = useMemo(() => {
+    if (!product || product.status !== 'rented') {
+      return null;
+    }
+
+    const openTransaction = ledger.transactions.find(
+      (transaction) =>
+        transaction.itemId === product.id &&
+        transaction.kind === 'rental' &&
+        transaction.status === 'open',
+    );
+
+    if (openTransaction) {
+      const blockWindow = getPresentTransactionBlockWindow(openTransaction.startDate);
+
+      if (blockWindow) {
+        return {
+          blockedUntilDate: blockWindow.endDate,
+          readyDate: getNextAvailableDate(blockWindow.endDate),
+        };
+      }
+    }
+
+    const today = getTodayDatePart();
+    const activeServerBlock = serverAvailabilityBlocks.find(
+      (block) =>
+        block.itemId === product.id &&
+        block.reason === 'rented' &&
+        block.startDate <= today &&
+        today <= block.endDate,
+    );
+
+    if (activeServerBlock) {
+      return {
+        blockedUntilDate: activeServerBlock.endDate,
+        readyDate: getNextAvailableDate(activeServerBlock.endDate),
+      };
+    }
+
+    const legacyBlockedUntilDate = normalizeAvailabilityDatePart(product.rentalEndDate);
+
+    return legacyBlockedUntilDate
+      ? {
+          blockedUntilDate: legacyBlockedUntilDate,
+          readyDate: getNextAvailableDate(legacyBlockedUntilDate),
+        }
+      : null;
+  }, [ledger.transactions, product, serverAvailabilityBlocks]);
   const monthOptions = useMemo(
     () =>
       Array.from({ length: 12 }, (_, month) => ({
@@ -966,7 +1026,7 @@ export default function ProductDetailModal({
               </div>
 
               {/* Rented State Info Box */}
-              {product.status === 'rented' && product.rentalEndDate && (
+              {product.status === 'rented' && currentRentalAvailability && (
                 <div className="mb-6 p-4 bg-amber-50 border border-amber-200 flex items-start gap-3">
                   <svg
                     className="w-5 h-5 text-amber-700 shrink-0 mt-0.5"
@@ -986,7 +1046,7 @@ export default function ProductDetailModal({
                       Sedang Disewa Pihak Lain
                     </h5>
                     <p className="text-xs text-amber-700 mt-1 leading-relaxed">
-                      Kebaya ini sedang disewa. Estimasi kembali dan siap disewa lagi tanggal <strong>{formatDate(product.rentalEndDate)}</strong>. Hubungi admin untuk sewa tanggal berikutnya.
+                      Kebaya ini sedang disewa. Kalender tidak tersedia sampai <strong>{formatDate(currentRentalAvailability.blockedUntilDate)}</strong>. Siap disewa lagi mulai <strong>{formatDate(currentRentalAvailability.readyDate)}</strong>. Hubungi admin untuk sewa tanggal berikutnya.
                     </p>
                   </div>
                 </div>
@@ -1010,10 +1070,10 @@ export default function ProductDetailModal({
                   </svg>
                   <div>
                     <h5 className="text-xs font-semibold text-rose-800 uppercase tracking-wider font-mono">
-                      Dalam Perawatan (Maintenance)
+                      Dalam Perawatan (Pembersihan)
                     </h5>
                     <p className="text-xs text-rose-700 mt-1 leading-relaxed">
-                      Item ini sedang dalam perawatan/pembersihan. Silakan hubungi admin untuk menanyakan kapan tersedia kembali.
+                      Item ini hari ini sedang dalam perawatan/pembersihan. Silakan lihat tanggal yang warna hijau di kalender di atas untuk melihat tanggal yang tersedia, atau kamu bisa menghubungi admin untuk tanya-tanya.
                     </p>
                   </div>
                 </div>
@@ -1044,7 +1104,7 @@ export default function ProductDetailModal({
             <div
               className={`sticky bottom-0 z-10 theme-border bg-[var(--theme-surface)] px-4 py-3 shadow-[0_-10px_30px_rgba(0,0,0,0.08)] sm:px-6 md:px-8 md:py-4 md:shadow-none border-t shrink-0 ${
                 bookingDates
-                  ? 'grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2 md:grid-cols-2 md:items-stretch md:gap-3'
+                  ? 'grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2 md:grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)] md:items-stretch md:gap-3'
                   : 'grid grid-cols-[minmax(0,1fr)_auto_auto] items-center gap-2 md:flex md:flex-row md:justify-between md:gap-4'
               }`}
             >
@@ -1080,15 +1140,7 @@ export default function ProductDetailModal({
 
               {bookingDates ? (
                 <>
-                  <div className="hidden min-h-[4.25rem] flex-col justify-center border theme-border bg-white px-3 py-2.5 md:flex">
-                    <span className="block text-[10px] font-bold uppercase tracking-wider text-neutral-400">
-                      Biaya Booking
-                    </span>
-                    <strong className="mt-1 block font-mono text-lg text-neutral-950">
-                      {formatRupiah(previewDpAmount)}
-                    </strong>
-                  </div>
-                  <div className="flex items-center gap-2 md:col-span-2">
+                  <div className="flex items-center gap-2">
                     <button
                       type="button"
                       onClick={() => setBookingEventDate('')}
