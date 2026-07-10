@@ -21,6 +21,7 @@ import {
   previewDpAmount,
   previewExtraReturnDayFee,
 } from '@/lib/booking-preview';
+import { getFutureBookingBlockWindow } from '@/lib/availability-windows';
 import { formatRupiah } from '@/lib/formatters';
 
 type BookingStep = 'order' | 'identity' | 'payment';
@@ -68,11 +69,19 @@ function calculateBookingDatesFromPickup(pickupDate: string) {
     return null;
   }
 
+  const returnDate = addDays(pickupDate, 2);
+  const blockWindow = getFutureBookingBlockWindow(pickupDate, returnDate);
+
+  if (!blockWindow) {
+    return null;
+  }
+
   return {
     pickupDate,
     eventDate: addDays(pickupDate, 1),
-    returnDate: addDays(pickupDate, 2),
-    bufferUntilDate: addDays(pickupDate, 5),
+    returnDate,
+    blockStartDate: blockWindow.startDate,
+    bufferUntilDate: blockWindow.endDate,
   };
 }
 

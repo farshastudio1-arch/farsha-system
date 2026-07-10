@@ -17,6 +17,7 @@ import {
 import { formatRupiah } from '@/lib/formatters';
 import { matchesLandingCategory, occasionCategories } from '@/lib/landing-categories';
 import { useSavedPosLedger } from '@/lib/pos-ledger-client';
+import { getFutureBookingBlockWindow } from '@/lib/availability-windows';
 
 interface ProductDetailModalProps {
   product: KebayaItem | null;
@@ -62,11 +63,19 @@ function calculatePickupAvailabilityDates(pickupDate: string) {
     return null;
   }
 
+  const returnDate = addPreviewDays(pickupDate, 2);
+  const blockWindow = getFutureBookingBlockWindow(pickupDate, returnDate);
+
+  if (!blockWindow) {
+    return null;
+  }
+
   return {
     pickupDate,
     eventDate: addPreviewDays(pickupDate, 1),
-    returnDate: addPreviewDays(pickupDate, 2),
-    bufferUntilDate: addPreviewDays(pickupDate, 5),
+    returnDate,
+    blockStartDate: blockWindow.startDate,
+    bufferUntilDate: blockWindow.endDate,
   };
 }
 
@@ -77,6 +86,22 @@ function doDateRangesOverlap(
   secondEndDate: string,
 ) {
   return firstStartDate <= secondEndDate && secondStartDate <= firstEndDate;
+}
+
+function doesCandidateDateOverlapBlock(
+  dates: NonNullable<ReturnType<typeof calculatePickupAvailabilityDates>>,
+  block: ServerAvailabilityBlock,
+) {
+  if (block.source === 'booking') {
+    return doDateRangesOverlap(
+      dates.blockStartDate,
+      dates.bufferUntilDate,
+      block.startDate,
+      block.endDate,
+    );
+  }
+
+  return doDateRangesOverlap(dates.pickupDate, dates.pickupDate, block.startDate, block.endDate);
 }
 
 export default function ProductDetailModal({
@@ -201,10 +226,6 @@ export default function ProductDetailModal({
     () => (selectedPickupDate ? addPreviewDays(selectedPickupDate, 4) : ''),
     [selectedPickupDate],
   );
-  const selectedCleaningEndDate = useMemo(
-    () => (selectedPickupDate ? addPreviewDays(selectedPickupDate, 5) : ''),
-    [selectedPickupDate],
-  );
   const bookingDates = useMemo(
     () => calculatePickupAvailabilityDates(selectedPickupDate),
     [selectedPickupDate],
@@ -226,12 +247,7 @@ export default function ProductDetailModal({
       serverAvailabilityBlocks.find(
         (block) =>
           block.itemId === product.id &&
-          doDateRangesOverlap(
-            bookingDates.pickupDate,
-            bookingDates.bufferUntilDate,
-            block.startDate,
-            block.endDate,
-          ),
+          doesCandidateDateOverlapBlock(bookingDates, block),
       ) ?? null
     );
   }, [bookingDates, product, serverAvailabilityBlocks]);
@@ -267,16 +283,11 @@ export default function ProductDetailModal({
           ? serverAvailabilityBlocks.find(
               (block) =>
                 block.itemId === product.id &&
-                doDateRangesOverlap(
-                  dates.pickupDate,
-                  dates.bufferUntilDate,
-                  block.startDate,
-                  block.endDate,
-                ),
+                doesCandidateDateOverlapBlock(dates, block),
             )
           : null;
       const isCurrentMonth = date.getMonth() === calendarMonth && date.getFullYear() === calendarYear;
-      const isPastOrToday = date <= today;
+      const isPastDate = date < today;
       const isBooked = Boolean(conflict || posBlock || serverBlock);
 
       return {
@@ -285,7 +296,8 @@ export default function ProductDetailModal({
         isCurrentMonth,
         isBooked,
         blockLabel: serverBlock?.label ?? posBlock?.label ?? null,
-        disabled: !isCurrentMonth || isPastOrToday || isBooked,
+        isPastDate,
+        disabled: !isCurrentMonth || isPastDate || isBooked,
       };
     });
   }, [bookingQueue, calendarMonth, calendarYear, ledger, product, serverAvailabilityBlocks]);
@@ -710,35 +722,41 @@ export default function ProductDetailModal({
               )}
 
               <div className="mb-6 space-y-5">
-                <h4 className="theme-muted text-xs font-semibold uppercase tracking-wider font-mono mb-3">
-                  Cara Sewa
+                <h4 className="theme-muted text-xs font-semibold uppercase tracking-wider font-mono">
+                  Cara Sewa di Farsha Studio
                 </h4>
-                <p className="text-xs leading-relaxed theme-muted-strong">
-                  Di Farsha Studio ada 2 cara sewa: pertama dengan cara{' '}
-                  <strong>Datang Langsung</strong>, kedua dengan cara{' '}
-                  <strong>Booking Baju Terlebih Dahulu</strong>.
-                </p>
 
                 <div className="space-y-4 text-xs leading-relaxed theme-muted-strong">
-                  <section className="space-y-1.5">
-                    <h5 className="text-sm font-semibold text-[var(--theme-text)]">Cara Datang Langsung</h5>
-                    <p>
-                      Cara ini cocok jika acaramu sudah mepet, jadi kamu bisa datang langsung ke alamat kami,
-                      pilih baju yang tersedia di hari itu, fitting, lalu bawa pulang. Dengan cara ini kamu
-                      tidak perlu membayar biaya booking baju dan tidak perlu appointment, cukup datang saja
-                      selama jam operasional toko. Kekurangannya, kamu hanya bisa menyewa baju sesuai
-                      ketersediaan hari itu saja.
-                    </p>
+                  <section className="space-y-2">
+                    <h5 className="text-sm font-semibold text-[var(--theme-text)]">1. Datang Langsung</h5>
+                    <ul className="space-y-1.5">
+                      <li>
+                        <strong>Cocok untuk:</strong> Acara mendadak/mepet.
+                      </li>
+                      <li>
+                        <strong>Benefit:</strong> Tanpa appointment, tanpa biaya booking. Cukup datang di jam
+                        operasional, pilih, fitting, dan langsung bawa pulang.
+                      </li>
+                      <li>
+                        <strong>Catatan:</strong> Pilihan baju terbatas pada ketersediaan di hari tersebut.
+                      </li>
+                    </ul>
                   </section>
 
-                  <section className="space-y-1.5">
-                    <h5 className="text-sm font-semibold text-[var(--theme-text)]">Cara Booking Dulu</h5>
-                    <p>
-                      Cara ini cocok jika acaramu masih nanti, jadi kamu bisa memilih style baju yang sesuai
-                      dengan keinginan & kebutuhan jauh-jauh hari tanpa takut bajunya tidak tersedia. Dengan
-                      cara ini kamu perlu membayar biaya booking sebesar Rp100.000 per kebaya untuk meng-keep
-                      tanggal. Jika kamu mau booking, silakan pilih tanggal di tombol &quot;cek tanggal&quot; di bawah ya.
-                    </p>
+                  <section className="space-y-2">
+                    <h5 className="text-sm font-semibold text-[var(--theme-text)]">2. Booking Dulu</h5>
+                    <ul className="space-y-1.5">
+                      <li>
+                        <strong>Cocok untuk:</strong> Acara jauh-jauh hari.
+                      </li>
+                      <li>
+                        <strong>Benefit:</strong> Bebas pilih style favorit tanpa takut kehabisan slot.
+                      </li>
+                      <li>
+                        <strong>Catatan:</strong> Mengisi tanggal di tombol &quot;Cek Tanggal&quot; bawah &
+                        membayar biaya booking Rp100.000/kebaya untuk kunci tanggal.
+                      </li>
+                    </ul>
                   </section>
                 </div>
 
@@ -746,31 +764,21 @@ export default function ProductDetailModal({
                   <h4 className="theme-muted text-xs font-semibold uppercase tracking-wider font-mono mb-3">
                     Ketentuan Sewa
                   </h4>
-                  <ul className="space-y-2.5 text-xs theme-muted-strong leading-relaxed">
-                    <li className="flex items-start gap-2">
-                      <span className="text-emerald-600 font-bold shrink-0">✓</span>
-                      <span>
-                        <strong>Uang Jaminan:</strong> Rp100.000 (titipan aman saat pelunasan, dikembalikan
-                        100% setelah kebaya kembali).
-                      </span>
+                  <ul className="space-y-2 text-xs theme-muted-strong leading-relaxed">
+                    <li>
+                      <strong>Uang Jaminan:</strong> Rp100.000 (dikembalikan 100% setelah kebaya kembali aman).
                     </li>
-                    <li className="flex items-start gap-2">
-                      <span className="text-emerald-600 font-bold shrink-0">✓</span>
-                      <span>
-                        <strong>Laundry Premium:</strong> Gratis laundry (cuci & setrika steril dari studio,
-                        tidak perlu dicuci setelah disewa).
-                      </span>
+                    <li>
+                      <strong>Premium Laundry:</strong> Gratis! Kebaya sudah steril & tidak perlu dicuci setelah
+                      dipakai.
                     </li>
-                    <li className="flex items-start gap-2">
-                      <span className="text-emerald-600 font-bold shrink-0">✓</span>
-                      <span>
-                        <strong>Durasi Sewa:</strong> Standar 3 hari (dihitung sejak pengambilan di studio,
-                        dikenakan extra charge jika ingin mengembalikan baju lebih dari waktu standar).
-                      </span>
+                    <li>
+                      <strong>Durasi Sewa:</strong> Standar 3 hari (sejak pengambilan). Keterlambatan dikenakan
+                      biaya tambahan.
                     </li>
                   </ul>
                   <p className="mt-3 text-xs leading-relaxed theme-muted-strong">
-                    Masih bingung? klik tombol &quot;WA ADMIN&quot; untuk tanya-tanya dulu ya.
+                    Masih bingung? Klik tombol &quot;WA ADMIN&quot; untuk tanya-tanya langsung!
                   </p>
                 </div>
               </div>
@@ -859,8 +867,7 @@ export default function ProductDetailModal({
                         const isReturnEstimate = selectedReturnStartDate === day.value;
                         const isCleaningBuffer =
                           selectedBufferStartDate === day.value ||
-                          selectedCleaningStartDate === day.value ||
-                          selectedCleaningEndDate === day.value;
+                          selectedCleaningStartDate === day.value;
                         const dayRoleLabel = isPickup
                           ? 'Pickup'
                           : isEvent
@@ -868,6 +875,10 @@ export default function ProductDetailModal({
                             : isReturnEstimate
                               ? 'Return'
                               : '';
+                        const disabledLabel =
+                          !day.isCurrentMonth || day.isPastDate
+                            ? 'Tidak tersedia'
+                            : day.blockLabel ?? 'Tidak tersedia';
 
                         return (
                           <button
@@ -884,13 +895,13 @@ export default function ProductDetailModal({
                                     ? 'border-black/60 bg-black/60 text-white'
                                     : isCleaningBuffer
                                       ? 'border-black/55 bg-black/55 text-white'
-                                      : day.isBooked
-                                        ? 'cursor-not-allowed border-orange-200 bg-orange-50 text-orange-700'
-                                        : day.disabled
+                                      : !day.isCurrentMonth || day.isPastDate
                                           ? 'cursor-not-allowed border-neutral-100 bg-neutral-100 text-neutral-300'
-                                          : 'border-emerald-200 bg-emerald-50 text-emerald-900 hover:border-emerald-500 hover:bg-emerald-100'
+                                          : day.isBooked
+                                            ? 'cursor-not-allowed border-orange-200 bg-orange-50 text-orange-700'
+                                            : 'border-emerald-200 bg-emerald-50 text-emerald-900 hover:border-emerald-500 hover:bg-emerald-100'
                             }`}
-                            aria-label={`${day.disabled ? day.blockLabel ?? 'Tidak tersedia' : 'Pilih pickup'} ${formatDate(day.value)}`}
+                            aria-label={`${day.disabled ? disabledLabel : 'Pilih pickup'} ${formatDate(day.value)}`}
                           >
                             <span>{day.date.getDate()}</span>
                             {dayRoleLabel && (

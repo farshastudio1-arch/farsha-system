@@ -1,5 +1,9 @@
 import { getD1Database } from '@/lib/cloudflare';
 import { mediaKeyToUrl } from '@/lib/media-library';
+import {
+  getFutureBookingBlockWindow,
+  getPresentTransactionBlockWindow,
+} from '@/lib/availability-windows';
 
 export type BookingStatus =
   | 'requested'
@@ -413,29 +417,37 @@ async function getCatalogItemsByIds(db: D1Database, itemIds: string[]) {
 async function getBlockingBookingConflict(
   db: D1Database,
   itemId: string,
-  dates: Pick<BookingDateSet, 'pickupDate' | 'maintenanceEndDate'>,
+  dates: Pick<BookingDateSet, 'pickupDate' | 'returnDueDate'>,
   excludedBookingId?: string,
 ) {
+  const requestedWindow = getFutureBookingBlockWindow(dates.pickupDate, dates.returnDueDate);
+
+  if (!requestedWindow) {
+    return null;
+  }
+
   const excludedClause = excludedBookingId ? 'AND b.id != ?' : '';
   const params = excludedBookingId
     ? [
         itemId,
-        dates.maintenanceEndDate,
-        dates.pickupDate,
+        requestedWindow.endDate,
+        requestedWindow.startDate,
         excludedBookingId,
       ]
-    : [itemId, dates.maintenanceEndDate, dates.pickupDate];
+    : [itemId, requestedWindow.endDate, requestedWindow.startDate];
 
   return db
     .prepare(
-      `SELECT b.booking_number AS reference, bi.pickup_date AS start_date, bi.maintenance_end_date AS end_date
+      `SELECT b.booking_number AS reference,
+              date(bi.pickup_date, '-2 day') AS start_date,
+              date(bi.return_due_date, '+2 day') AS end_date
        FROM booking_items bi
        JOIN bookings b ON b.id = bi.booking_id
        WHERE bi.item_id = ?
          AND bi.item_status = 'active'
          AND b.status IN ('dp_confirmed', 'fitting_link_sent', 'picked_up')
-         AND bi.pickup_date <= ?
-         AND bi.maintenance_end_date >= ?
+         AND date(bi.pickup_date, '-2 day') <= ?
+         AND date(bi.return_due_date, '+2 day') >= ?
          ${excludedClause}
        ORDER BY bi.pickup_date ASC
        LIMIT 1`,
@@ -447,34 +459,46 @@ async function getBlockingBookingConflict(
 export async function getAvailabilityConflictForDates(
   db: D1Database,
   itemId: string,
-  dates: Pick<BookingDateSet, 'pickupDate' | 'maintenanceEndDate'>,
+  dates: Pick<BookingDateSet, 'pickupDate' | 'returnDueDate'>,
   excludedBookingId?: string,
 ): Promise<BookingAvailabilityBlock | null> {
+  const requestedWindow = getFutureBookingBlockWindow(dates.pickupDate, dates.returnDueDate);
+
+  if (!requestedWindow) {
+    return null;
+  }
+
   try {
     const posTransaction = await db
       .prepare(
-        `SELECT transaction_number, start_date, COALESCE(due_date, start_date) AS end_date
+        `SELECT transaction_number, start_date, date(start_date, '+4 day') AS end_date
          FROM pos_transactions
          WHERE item_id = ?
            AND kind = 'rental'
            AND status = 'open'
            AND start_date <= ?
-           AND COALESCE(due_date, start_date) >= ?
+           AND date(start_date, '+4 day') >= ?
          ORDER BY start_date ASC
          LIMIT 1`,
       )
-      .bind(itemId, dates.maintenanceEndDate, dates.pickupDate)
+      .bind(itemId, dates.pickupDate, dates.pickupDate)
       .first<{ transaction_number: string; start_date: string; end_date: string }>();
 
     if (posTransaction) {
+      const blockWindow = getPresentTransactionBlockWindow(posTransaction.start_date);
+
+      if (!blockWindow) {
+        return null;
+      }
+
       return {
         source: 'pos_transaction',
         reason: 'rented',
         label: 'Sedang disewa',
         reference: posTransaction.transaction_number,
         itemId,
-        startDate: posTransaction.start_date,
-        endDate: posTransaction.end_date,
+        startDate: blockWindow.startDate,
+        endDate: blockWindow.endDate,
       };
     }
 
@@ -491,7 +515,7 @@ export async function getAvailabilityConflictForDates(
          ORDER BY opened_at ASC
          LIMIT 1`,
       )
-      .bind(itemId, dates.maintenanceEndDate, dates.pickupDate)
+      .bind(itemId, dates.pickupDate, dates.pickupDate)
       .first<{ maintenance_number: string; start_date: string; end_date: string }>();
 
     if (maintenance) {
@@ -534,7 +558,7 @@ export async function getAvailabilityConflictForDates(
       const startDate = getTodayDatePart();
       const endDate = normalizeDatePart(legacyItem.rental_end_date) ?? startDate;
 
-      if (doesDateRangeOverlap(dates.pickupDate, dates.maintenanceEndDate, startDate, endDate)) {
+      if (doesDateRangeOverlap(dates.pickupDate, dates.pickupDate, startDate, endDate)) {
         return {
           source: 'legacy_catalog',
           reason: 'rented',
@@ -551,7 +575,7 @@ export async function getAvailabilityConflictForDates(
       const startDate = getTodayDatePart();
       const endDate = addDays(startDate, 2);
 
-      if (doesDateRangeOverlap(dates.pickupDate, dates.maintenanceEndDate, startDate, endDate)) {
+      if (doesDateRangeOverlap(dates.pickupDate, dates.pickupDate, startDate, endDate)) {
         return {
           source: 'legacy_catalog',
           reason: 'maintenance',
@@ -585,28 +609,36 @@ export async function listAvailabilityBlocksForItem(
   try {
     const transactions = await db
       .prepare(
-        `SELECT transaction_number, start_date, COALESCE(due_date, start_date) AS end_date
+        `SELECT transaction_number, start_date, date(start_date, '+4 day') AS end_date
          FROM pos_transactions
          WHERE item_id = ?
            AND kind = 'rental'
            AND status = 'open'
            AND start_date <= ?
-           AND COALESCE(due_date, start_date) >= ?
+           AND date(start_date, '+4 day') >= ?
          ORDER BY start_date ASC`,
       )
       .bind(itemId, rangeEndDate, rangeStartDate)
       .all<{ transaction_number: string; start_date: string; end_date: string }>();
 
     blocks.push(
-      ...transactions.results.map((transaction) => ({
-        source: 'pos_transaction' as const,
-        reason: 'rented' as const,
-        label: 'Sedang disewa',
-        reference: transaction.transaction_number,
-        itemId,
-        startDate: transaction.start_date,
-        endDate: transaction.end_date,
-      })),
+      ...transactions.results.flatMap((transaction) => {
+        const blockWindow = getPresentTransactionBlockWindow(transaction.start_date);
+
+        return blockWindow
+          ? [
+              {
+                source: 'pos_transaction' as const,
+                reason: 'rented' as const,
+                label: 'Sedang disewa',
+                reference: transaction.transaction_number,
+                itemId,
+                startDate: blockWindow.startDate,
+                endDate: blockWindow.endDate,
+              },
+            ]
+          : [];
+      }),
     );
 
     const maintenanceHolds = await db
@@ -638,18 +670,20 @@ export async function listAvailabilityBlocksForItem(
 
     const bookings = await db
       .prepare(
-        `SELECT b.booking_number, bi.pickup_date, bi.maintenance_end_date
+        `SELECT b.booking_number,
+                date(bi.pickup_date, '-2 day') AS start_date,
+                date(bi.return_due_date, '+2 day') AS end_date
          FROM booking_items bi
          JOIN bookings b ON b.id = bi.booking_id
          WHERE bi.item_id = ?
            AND bi.item_status = 'active'
            AND b.status IN ('dp_confirmed', 'fitting_link_sent', 'picked_up')
-           AND bi.pickup_date <= ?
-           AND bi.maintenance_end_date >= ?
+           AND date(bi.pickup_date, '-2 day') <= ?
+           AND date(bi.return_due_date, '+2 day') >= ?
          ORDER BY bi.pickup_date ASC`,
       )
       .bind(itemId, rangeEndDate, rangeStartDate)
-      .all<{ booking_number: string; pickup_date: string; maintenance_end_date: string }>();
+      .all<{ booking_number: string; start_date: string; end_date: string }>();
 
     blocks.push(
       ...bookings.results.map((booking) => ({
@@ -658,8 +692,8 @@ export async function listAvailabilityBlocksForItem(
         label: 'Tanggal sudah ter-booking',
         reference: booking.booking_number,
         itemId,
-        startDate: booking.pickup_date,
-        endDate: booking.maintenance_end_date,
+        startDate: booking.start_date,
+        endDate: booking.end_date,
       })),
     );
   } catch (error) {
@@ -1089,8 +1123,8 @@ export async function listBookingCatalogPressure(): Promise<BookingCatalogPressu
                   WHERE conflict_item.item_id = bi.item_id
                     AND conflict_item.item_status = 'active'
                     AND conflict_booking.status IN ('dp_confirmed', 'fitting_link_sent', 'picked_up')
-                    AND conflict_item.pickup_date <= bi.maintenance_end_date
-                    AND conflict_item.maintenance_end_date >= bi.pickup_date
+                    AND date(conflict_item.pickup_date, '-2 day') <= date(bi.return_due_date, '+2 day')
+                    AND date(conflict_item.return_due_date, '+2 day') >= date(bi.pickup_date, '-2 day')
                     AND conflict_booking.id != b.id
                   ORDER BY conflict_item.pickup_date ASC
                   LIMIT 1
@@ -1647,7 +1681,7 @@ export async function confirmBookingDp(bookingId: string, actor?: string | null)
       item.item_id,
       {
         pickupDate: item.pickup_date,
-        maintenanceEndDate: item.maintenance_end_date,
+        returnDueDate: item.return_due_date,
       },
       bookingId,
     );

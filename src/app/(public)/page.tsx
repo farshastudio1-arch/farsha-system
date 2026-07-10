@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { Compass, MapPin } from 'lucide-react';
+import { CalendarCheck, Clock3, Compass, DoorOpen, MapPin, ShieldCheck, Sparkles } from 'lucide-react';
 
 import LandingCategoryCard from '@/components/LandingCategoryCard';
 import PublicFooter from '@/components/PublicFooter';
@@ -7,6 +7,42 @@ import PublicHeader from '@/components/PublicHeader';
 import StoreStatusBadge from '@/components/StoreStatusBadge';
 import { mergeLandingCategories } from '@/lib/landing-categories';
 import { getCmsContent, getSiteSettings } from '@/lib/farsha-db';
+
+const rentalPaths = [
+  {
+    title: 'Datang Langsung',
+    icon: DoorOpen,
+    suitableFor: 'Acara mendadak/mepet',
+    benefit: 'Tanpa appointment dan tanpa biaya booking.',
+    note: 'Pilih, fitting, langsung bawa pulang. Stok mengikuti ketersediaan hari itu.',
+  },
+  {
+    title: 'Booking Dulu',
+    icon: CalendarCheck,
+    suitableFor: 'Acara jauh-jauh hari',
+    benefit: 'Kunci style favorit lebih awal tanpa takut slot habis.',
+    note:
+      'Isi tanggal lewat "Cek Tanggal" di katalog, lalu bayar booking Rp100.000/kebaya.',
+  },
+];
+
+const rentalTerms = [
+  {
+    title: 'Uang Jaminan',
+    icon: ShieldCheck,
+    detail: 'Rp100.000, dikembalikan 100% setelah kebaya kembali aman.',
+  },
+  {
+    title: 'Premium Laundry',
+    icon: Sparkles,
+    detail: 'Gratis. Kebaya sudah steril dan tidak perlu dicuci setelah dipakai.',
+  },
+  {
+    title: 'Durasi Sewa',
+    icon: Clock3,
+    detail: 'Standar 3 hari sejak pengambilan. Keterlambatan dikenakan biaya tambahan.',
+  },
+];
 
 export default async function Home() {
   const [cmsContent, siteSettings] = await Promise.all([getCmsContent(), getSiteSettings()]);
@@ -135,6 +171,108 @@ export default async function Home() {
               {landingCategories.map((category) => (
                 <LandingCategoryCard key={category.slug} category={category} />
               ))}
+            </div>
+          </div>
+        </section>
+
+        <section className="theme-surface theme-border border-t py-7 sm:py-14">
+          <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+            <div className="landing-rental-guide-grid">
+              <div className="max-w-xl">
+                <span className="theme-muted font-mono text-[10px] font-semibold uppercase tracking-widest">
+                  panduan sewa
+                </span>
+                <h2 className="mt-2 max-w-sm font-serif text-[2rem] font-semibold leading-[1.05] text-[var(--theme-text)] sm:max-w-xl sm:text-4xl">
+                  Cara Sewa di Farsha Studio
+                </h2>
+                <p className="theme-muted-strong mt-3 text-sm leading-relaxed sm:mt-4 sm:text-base">
+                  Pilih sesuai jarak acara. Walk-in untuk kebutuhan cepat, booking untuk mengunci
+                  kebaya dan tanggal lebih awal.
+                </p>
+                <Link
+                  href="/catalog?view=all"
+                  className="theme-primary-action mt-5 inline-flex w-full items-center justify-center gap-3 px-5 py-3.5 text-center text-[11px] font-semibold uppercase tracking-widest transition-all sm:mt-6 sm:w-auto sm:px-6 sm:py-4 sm:text-xs"
+                >
+                  <CalendarCheck className="h-4 w-4 shrink-0" />
+                  Cek Tanggal di Katalog
+                </Link>
+              </div>
+
+              <div className="landing-rental-path-list">
+                {rentalPaths.map((path, index) => {
+                  const Icon = path.icon;
+
+                  return (
+                    <article
+                      key={path.title}
+                      className="theme-border border bg-[var(--theme-surface)] p-4 shadow-xs sm:p-5"
+                    >
+                      <div className="flex items-center gap-3 sm:items-start sm:gap-4">
+                        <span className="theme-soft-surface theme-border flex h-10 w-10 shrink-0 items-center justify-center border text-[var(--theme-text)] sm:h-11 sm:w-11">
+                          <Icon className="h-4 w-4 sm:h-5 sm:w-5" aria-hidden="true" />
+                        </span>
+                        <div className="min-w-0">
+                          <span className="theme-muted font-mono text-[10px] font-semibold uppercase tracking-widest">
+                            {String(index + 1).padStart(2, '0')}
+                          </span>
+                          <h3 className="font-serif text-xl font-semibold text-[var(--theme-text)] sm:mt-1 sm:text-2xl">
+                            {path.title}
+                          </h3>
+                        </div>
+                      </div>
+                      <div className="theme-soft-surface theme-border mt-3 border px-3 py-2 text-sm font-semibold text-[var(--theme-text)] sm:mt-4">
+                        {path.suitableFor}
+                      </div>
+                      <ul className="landing-rental-point-list mt-3 text-sm leading-relaxed">
+                        <li>{path.benefit}</li>
+                        <li>{path.note}</li>
+                      </ul>
+                    </article>
+                  );
+                })}
+              </div>
+            </div>
+
+            <div className="theme-border mt-5 border-y py-4 sm:mt-6 sm:py-5">
+              <div className="mb-3 flex flex-col gap-1.5 sm:mb-4 sm:flex-row sm:items-end sm:justify-between sm:gap-2">
+                <div>
+                  <span className="theme-muted font-mono text-[10px] font-semibold uppercase tracking-widest">
+                    wajib tahu
+                  </span>
+                  <h3 className="mt-1 font-serif text-xl font-semibold text-[var(--theme-text)] sm:text-2xl">
+                    Ketentuan Sewa
+                  </h3>
+                </div>
+                <p className="theme-muted-strong hidden max-w-xl text-sm leading-relaxed sm:block">
+                  Biaya ini dibuat jelas di awal supaya pengambilan dan pengembalian tetap rapi.
+                </p>
+              </div>
+
+              <div className="landing-rental-term-grid divide-y divide-[var(--theme-border)] sm:divide-x sm:divide-y-0">
+                {rentalTerms.map((term) => {
+                  const Icon = term.icon;
+
+                  return (
+                    <div
+                      key={term.title}
+                      className="grid grid-cols-[36px_minmax(0,1fr)] gap-x-3 py-3 sm:block sm:px-5 sm:py-4 sm:first:pl-0 sm:last:pr-0"
+                    >
+                      <span className="theme-soft-surface theme-border row-span-2 flex h-9 w-9 shrink-0 items-center justify-center border text-[var(--theme-text)] sm:hidden">
+                        <Icon className="h-4 w-4" aria-hidden="true" />
+                      </span>
+                      <div className="flex min-w-0 items-center gap-3">
+                        <span className="theme-soft-surface theme-border hidden h-9 w-9 shrink-0 items-center justify-center border text-[var(--theme-text)] sm:flex">
+                          <Icon className="h-4 w-4" aria-hidden="true" />
+                        </span>
+                        <h4 className="text-sm font-semibold text-[var(--theme-text)]">
+                          {term.title}
+                        </h4>
+                      </div>
+                      <p className="theme-muted-strong mt-1 text-sm leading-relaxed sm:mt-3">{term.detail}</p>
+                    </div>
+                  );
+                })}
+              </div>
             </div>
           </div>
         </section>

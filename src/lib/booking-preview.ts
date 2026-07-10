@@ -1,5 +1,9 @@
 import type { KebayaItem } from '@/data/mockData';
 import type { PosLedgerState } from '@/lib/pos-ledger';
+import {
+  getFutureBookingBlockWindow,
+  getPresentTransactionBlockWindow,
+} from '@/lib/availability-windows';
 
 export type PreviewBookingStatus =
   | 'requested'
@@ -43,6 +47,7 @@ export interface BookingDateSet {
   eventDate: string;
   pickupDate: string;
   returnDate: string;
+  blockStartDate: string;
   bufferUntilDate: string;
 }
 
@@ -101,7 +106,7 @@ export const previewBookings: PreviewBooking[] = [
     eventDate: '2026-08-12',
     pickupDate: '2026-08-11',
     returnDate: '2026-08-13',
-    bufferUntilDate: '2026-08-16',
+    bufferUntilDate: '2026-08-15',
     status: 'dp_confirmed',
     dpAmount: previewDpAmount,
     securityDeposit: previewSecurityDeposit,
@@ -124,7 +129,7 @@ export const previewBookings: PreviewBooking[] = [
     eventDate: '2026-08-20',
     pickupDate: '2026-08-19',
     returnDate: '2026-08-21',
-    bufferUntilDate: '2026-08-22',
+    bufferUntilDate: '2026-08-23',
     status: 'payment_submitted',
     dpAmount: previewDpAmount,
     securityDeposit: previewSecurityDeposit,
@@ -146,7 +151,7 @@ export const previewBookings: PreviewBooking[] = [
     eventDate: '2026-08-28',
     pickupDate: '2026-08-27',
     returnDate: '2026-08-29',
-    bufferUntilDate: '2026-08-30',
+    bufferUntilDate: '2026-08-31',
     status: 'requested',
     dpAmount: previewDpAmount,
     securityDeposit: previewSecurityDeposit,
@@ -168,7 +173,7 @@ export const previewBookings: PreviewBooking[] = [
     eventDate: '2026-08-13',
     pickupDate: '2026-08-12',
     returnDate: '2026-08-14',
-    bufferUntilDate: '2026-08-15',
+    bufferUntilDate: '2026-08-16',
     status: 'requested',
     dpAmount: previewDpAmount,
     securityDeposit: previewSecurityDeposit,
@@ -191,7 +196,7 @@ export const previewBookings: PreviewBooking[] = [
     eventDate: '2026-07-10',
     pickupDate: '2026-07-09',
     returnDate: '2026-07-11',
-    bufferUntilDate: '2026-07-14',
+    bufferUntilDate: '2026-07-13',
     status: 'pickup_ready',
     dpAmount: previewDpAmount,
     securityDeposit: previewSecurityDeposit,
@@ -409,21 +414,30 @@ export function calculatePreviewBookingDates(eventDate: string): BookingDateSet 
     return null;
   }
 
+  const pickupDate = addDays(eventDate, -1);
+  const returnDate = addDays(eventDate, 1);
+  const blockWindow = getFutureBookingBlockWindow(pickupDate, returnDate);
+
+  if (!blockWindow) {
+    return null;
+  }
+
   return {
     eventDate,
-    pickupDate: addDays(eventDate, -1),
-    returnDate: addDays(eventDate, 1),
-    bufferUntilDate: addDays(eventDate, 2),
+    pickupDate,
+    returnDate,
+    blockStartDate: blockWindow.startDate,
+    bufferUntilDate: blockWindow.endDate,
   };
 }
 
 export function doPreviewBookingDatesOverlap(
-  first: Pick<BookingDateSet, 'pickupDate' | 'bufferUntilDate'>,
-  second: Pick<BookingDateSet, 'pickupDate' | 'bufferUntilDate'>,
+  first: Pick<BookingDateSet, 'pickupDate' | 'bufferUntilDate'> & { blockStartDate?: string },
+  second: Pick<BookingDateSet, 'pickupDate' | 'bufferUntilDate'> & { blockStartDate?: string },
 ) {
-  const firstStart = parseDate(first.pickupDate).getTime();
+  const firstStart = parseDate(first.blockStartDate ?? addDays(first.pickupDate, -2)).getTime();
   const firstEnd = parseDate(first.bufferUntilDate).getTime();
-  const secondStart = parseDate(second.pickupDate).getTime();
+  const secondStart = parseDate(second.blockStartDate ?? addDays(second.pickupDate, -2)).getTime();
   const secondEnd = parseDate(second.bufferUntilDate).getTime();
 
   return firstStart <= secondEnd && secondStart <= firstEnd;
@@ -456,10 +470,7 @@ function doesBlockOverlapDates(
   dates: BookingDateSet,
   block: Pick<PreviewAvailabilityBlock, 'startDate' | 'endDate'>,
 ) {
-  return doPreviewBookingDatesOverlap(dates, {
-    pickupDate: block.startDate,
-    bufferUntilDate: block.endDate,
-  });
+  return dates.pickupDate <= block.endDate && block.startDate <= dates.pickupDate;
 }
 
 function getTodayDatePart() {
@@ -486,15 +497,19 @@ export function getPosAvailabilityBlockForBooking(
   );
 
   if (openTransaction) {
-    const startDate = normalizeDatePart(openTransaction.startDate) ?? getTodayDatePart();
-    const endDate = normalizeDatePart(openTransaction.dueDate) ?? startDate;
+    const blockWindow = getPresentTransactionBlockWindow(openTransaction.startDate);
+
+    if (!blockWindow) {
+      return null;
+    }
+
     const block: PreviewAvailabilityBlock = {
       reason: 'rented',
       source: 'pos',
       label: 'Sedang disewa',
       reference: openTransaction.transactionNumber,
-      startDate,
-      endDate,
+      startDate: blockWindow.startDate,
+      endDate: blockWindow.endDate,
     };
 
     return doesBlockOverlapDates(dates, block) ? block : null;

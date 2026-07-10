@@ -260,7 +260,7 @@ export default function PosBookingsPreviewClient({
     const confirmedBooking = {
       ...booking,
       status: 'dp_confirmed' as const,
-      bufferUntilDate: addDays(booking.returnDate, 3),
+      bufferUntilDate: addDays(booking.returnDate, 2),
     };
 
     if (hasBlockingConflict(confirmedBooking, bookings)) {
@@ -312,7 +312,7 @@ export default function PosBookingsPreviewClient({
       eventDate: manualBookingDates.eventDate,
       pickupDate: manualBookingDates.pickupDate,
       returnDate: manualBookingDates.returnDate,
-      bufferUntilDate: addDays(manualBookingDates.returnDate, 3),
+      bufferUntilDate: addDays(manualBookingDates.returnDate, 2),
       status: 'requested',
       dpAmount,
       securityDeposit: 0,
