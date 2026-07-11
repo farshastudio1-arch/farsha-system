@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
   CalendarCheck,
+  CalendarDays,
   LayoutDashboard,
   LineChart,
   ReceiptText,
@@ -31,6 +32,12 @@ const navItems = [
     label: 'Bookings',
     description: 'Booking control',
     icon: CalendarCheck,
+  },
+  {
+    href: '/pos/fitting',
+    label: 'Fitting',
+    description: 'Schedule control',
+    icon: CalendarDays,
   },
   {
     href: '/pos/finance',
