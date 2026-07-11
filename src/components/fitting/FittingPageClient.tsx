@@ -14,7 +14,7 @@ import {
   UserRound,
 } from 'lucide-react';
 
-import type { FittingSlot } from '@/lib/fitting-db';
+import type { FittingBookingContext, FittingSlot } from '@/lib/fitting-db';
 
 type FittingSubmitResponse = {
   ok?: boolean;
@@ -87,19 +87,29 @@ function getJakartaDateTimeParts(date = new Date()) {
 export default function FittingPageClient({
   initialDate,
   initialSlots,
+  initialBookingContext,
+  bookingContextError,
+  bookingNumber,
+  bookingToken,
 }: {
   initialDate: string;
   initialSlots: FittingSlot[];
+  initialBookingContext: FittingBookingContext | null;
+  bookingContextError: string;
+  bookingNumber: string;
+  bookingToken: string;
 }) {
   const [appointmentDate, setAppointmentDate] = useState(initialDate);
   const [slots, setSlots] = useState(initialSlots);
   const [selectedStartTime, setSelectedStartTime] = useState(
     initialSlots.find((slot) => slot.available)?.startTime ?? '',
   );
-  const [customerName, setCustomerName] = useState('');
-  const [customerWhatsapp, setCustomerWhatsapp] = useState('');
-  const [customerEmail, setCustomerEmail] = useState('');
-  const [notes, setNotes] = useState('');
+  const [customerName, setCustomerName] = useState(initialBookingContext?.customerName ?? '');
+  const [customerWhatsapp, setCustomerWhatsapp] = useState(initialBookingContext?.customerWhatsapp ?? '');
+  const [customerEmail, setCustomerEmail] = useState(initialBookingContext?.customerEmail ?? '');
+  const [notes, setNotes] = useState(
+    initialBookingContext ? `Fitting untuk ${initialBookingContext.bookingNumber}` : '',
+  );
   const [isLoadingSlots, setIsLoadingSlots] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formError, setFormError] = useState('');
@@ -185,6 +195,8 @@ export default function FittingPageClient({
           customerWhatsapp,
           customerEmail,
           notes,
+          bookingNumber,
+          bookingToken,
         }),
       });
       const payload = (await response.json()) as FittingSubmitResponse;
@@ -225,7 +237,9 @@ export default function FittingPageClient({
                 Jadwal Fitting
               </h1>
               <p className="mt-2 max-w-2xl text-sm leading-relaxed text-neutral-500">
-                Pilih tanggal dan jam yang tersedia. Slot pending langsung ditahan agar tidak double booking.
+                {initialBookingContext
+                  ? 'Data customer dan item sudah diambil dari booking yang valid. Pilih slot fitting yang tersedia.'
+                  : 'Pilih tanggal dan jam yang tersedia. Slot pending langsung ditahan agar tidak double booking.'}
               </p>
             </div>
 
@@ -236,6 +250,56 @@ export default function FittingPageClient({
               </strong>
             </div>
           </div>
+
+          {bookingContextError && (
+            <div className="mt-5 flex gap-2 border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
+              <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
+              <p>{bookingContextError}</p>
+            </div>
+          )}
+
+          {initialBookingContext && (
+            <div className="mt-5 border border-neutral-200 bg-neutral-50 p-4">
+              <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+                <div>
+                  <p className="font-mono text-[10px] font-bold uppercase tracking-widest text-neutral-400">
+                    Linked Booking
+                  </p>
+                  <h2 className="mt-1 text-lg font-semibold text-neutral-950">
+                    {initialBookingContext.bookingNumber}
+                  </h2>
+                  <p className="mt-1 text-sm text-neutral-500">
+                    Pickup {initialBookingContext.firstPickupDate ? formatDate(initialBookingContext.firstPickupDate) : '-'} /
+                    Acara {initialBookingContext.firstEventDate ? ` ${formatDate(initialBookingContext.firstEventDate)}` : ' -'}
+                  </p>
+                </div>
+                <span className="inline-flex self-start border border-neutral-300 bg-white px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-neutral-600">
+                  {initialBookingContext.itemCount} item
+                </span>
+              </div>
+
+              <div className="mt-3 grid gap-2 md:grid-cols-2">
+                {initialBookingContext.items.map((item) => (
+                  <div key={`${item.itemId}:${item.itemCode}`} className="flex gap-3 border border-neutral-200 bg-white p-2">
+                    <div className="h-16 w-12 shrink-0 overflow-hidden bg-neutral-100">
+                      {item.imageUrl ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img src={item.imageUrl} alt="" className="h-full w-full object-cover" />
+                      ) : null}
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="font-mono text-[10px] font-bold uppercase tracking-wider text-neutral-400">
+                        {item.itemCode}
+                      </p>
+                      <p className="mt-1 line-clamp-2 text-sm font-semibold text-neutral-950">
+                        {item.itemName}
+                      </p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
 
           <div className="mt-5 grid gap-5 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]">
             <div className="space-y-4">
@@ -413,6 +477,12 @@ export default function FittingPageClient({
                 <span className="text-neutral-500">Customer</span>
                 <strong className="text-right text-neutral-950">{customerName.trim() || '-'}</strong>
               </div>
+              {initialBookingContext && (
+                <div className="flex justify-between gap-4">
+                  <span className="text-neutral-500">Booking</span>
+                  <strong className="text-right text-neutral-950">{initialBookingContext.bookingNumber}</strong>
+                </div>
+              )}
               <div className="flex justify-between gap-4">
                 <span className="text-neutral-500">WhatsApp</span>
                 <strong className="text-right text-neutral-950">

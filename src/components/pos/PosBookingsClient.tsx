@@ -38,6 +38,18 @@ type CreateBookingResponse = {
   bookingNumber: string;
 };
 
+type FittingLinkResponse = {
+  id: string;
+  bookingNumber: string;
+  status: BookingStatus;
+  fittingLink: {
+    bookingId: string;
+    bookingNumber: string;
+    fittingPath: string;
+    fittingUrl: string;
+  };
+};
+
 type BookingInvoiceSnapshot = {
   bookingNumber: string;
   customerName: string;
@@ -895,14 +907,23 @@ export default function PosBookingsClient({
       const response = await fetch(`/api/admin/bookings/${booking.id}/fitting-link`, {
         method: 'POST',
       });
-      const payload = (await response.json()) as ApiResponse<unknown>;
+      const payload = (await response.json()) as ApiResponse<FittingLinkResponse>;
 
-      if (!response.ok || !payload.ok) {
+      if (!response.ok || !payload.ok || !payload.data?.fittingLink?.fittingUrl) {
         throw new Error(payload.error ?? 'Status fitting belum bisa dikirim.');
       }
 
+      const fittingMessage = [
+        `Halo ${booking.customerName}, silakan pilih jadwal fitting Farsha Studio untuk booking ${booking.bookingNumber}.`,
+        payload.data.fittingLink.fittingUrl,
+      ].join('\n\n');
+      const fittingWhatsappUrl = `https://wa.me/${normalizeWhatsAppNumber(
+        booking.customerWhatsapp,
+      )}?text=${encodeURIComponent(fittingMessage)}`;
+
       await refreshBookings(booking.id);
-      setActionMessage(`${booking.bookingNumber} ditandai sudah dikirim link fitting.`);
+      window.open(fittingWhatsappUrl, '_blank', 'noopener,noreferrer');
+      setActionMessage(`${booking.bookingNumber} link fitting siap dikirim via WhatsApp.`);
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Status fitting belum bisa dikirim.';
       setActionError(message);

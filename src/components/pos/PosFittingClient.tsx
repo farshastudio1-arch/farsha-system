@@ -130,6 +130,7 @@ function matchesAppointment(appointment: FittingAppointment, query: string) {
     appointment.customerName,
     appointment.customerWhatsapp,
     appointment.customerEmail ?? '',
+    appointment.bookingNumber ?? '',
     appointment.notes,
     appointment.status,
     appointment.appointmentDate,
@@ -421,6 +422,11 @@ export default function PosFittingClient({
                       <span className={`border px-2 py-1 text-[10px] font-bold uppercase tracking-wider ${statusClass(appointment.status)}`}>
                         {statusLabels[appointment.status]}
                       </span>
+                      {appointment.bookingNumber && (
+                        <span className="border border-neutral-200 bg-neutral-50 px-2 py-1 font-mono text-[10px] font-bold uppercase tracking-wider text-neutral-500">
+                          {appointment.bookingNumber}
+                        </span>
+                      )}
                     </div>
 
                     <h2 className="mt-2 text-lg font-semibold text-neutral-950">

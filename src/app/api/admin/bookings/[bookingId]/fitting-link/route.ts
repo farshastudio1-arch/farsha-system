@@ -6,6 +6,7 @@ import {
   getBookingRelatedRevalidationPaths,
   markFittingLinkSent,
 } from '@/lib/booking-db';
+import { createBookingFittingLink, FittingDbError, getFittingRelatedRevalidationPaths } from '@/lib/fitting-db';
 
 export const dynamic = 'force-dynamic';
 
@@ -29,7 +30,7 @@ async function getAdminEmail() {
   return session.user.email ?? null;
 }
 
-export async function POST(_request: Request, context: FittingLinkRouteContext) {
+export async function POST(request: Request, context: FittingLinkRouteContext) {
   try {
     const adminEmail = await getAdminEmail();
 
@@ -39,11 +40,22 @@ export async function POST(_request: Request, context: FittingLinkRouteContext) 
 
     const { bookingId } = await context.params;
     const result = await markFittingLinkSent(bookingId, adminEmail);
+    const origin = new URL(request.url).origin;
+    const fittingLink = await createBookingFittingLink({
+      bookingId,
+      actor: adminEmail,
+      origin,
+    });
     getBookingRelatedRevalidationPaths().forEach((path) => revalidatePath(path));
+    getFittingRelatedRevalidationPaths().forEach((path) => revalidatePath(path));
 
-    return jsonResponse({ ok: true, data: result });
+    return jsonResponse({ ok: true, data: { ...result, fittingLink } });
   } catch (error) {
     if (error instanceof BookingDbError) {
+      return jsonResponse({ ok: false, error: error.message, code: error.code }, error.status);
+    }
+
+    if (error instanceof FittingDbError) {
       return jsonResponse({ ok: false, error: error.message, code: error.code }, error.status);
     }
 

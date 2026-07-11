@@ -15,6 +15,8 @@ type PublicFittingPayload = {
   customerWhatsapp?: unknown;
   customerEmail?: unknown;
   notes?: unknown;
+  bookingNumber?: unknown;
+  bookingToken?: unknown;
 };
 
 function jsonResponse(body: unknown, status = 200) {
@@ -35,6 +37,8 @@ export async function POST(request: Request) {
       customerWhatsapp: stringValue(body.customerWhatsapp),
       customerEmail: stringValue(body.customerEmail),
       notes: stringValue(body.notes),
+      bookingNumber: stringValue(body.bookingNumber),
+      bookingToken: stringValue(body.bookingToken),
       source: 'public',
     });
 

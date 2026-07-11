@@ -20,6 +20,8 @@ export type FittingAppointment = {
   id: string;
   fittingCode: string;
   status: FittingAppointmentStatus;
+  bookingId: string | null;
+  bookingNumber: string | null;
   customerName: string;
   customerWhatsapp: string;
   customerEmail: string | null;
@@ -38,6 +40,8 @@ type FittingAppointmentRow = {
   id: string;
   fitting_code: string;
   status: FittingAppointmentStatus;
+  booking_id?: string | null;
+  booking_number?: string | null;
   customer_name: string;
   customer_whatsapp: string;
   customer_email: string | null;
@@ -57,6 +61,31 @@ type BlockedSlotRow = {
   status: FittingAppointmentStatus;
 };
 
+type BookingContextRow = {
+  id: string;
+  booking_number: string;
+  status: string;
+  customer_name: string;
+  customer_whatsapp: string;
+  customer_email: string | null;
+  customer_instagram: string | null;
+  notes: string;
+  first_pickup_date: string | null;
+  first_event_date: string | null;
+  last_return_due_date: string | null;
+  item_count: number;
+};
+
+type BookingContextItemRow = {
+  item_id: string;
+  item_code: string;
+  item_name: string;
+  image_urls: string | null;
+  pickup_date: string;
+  event_date: string;
+  return_due_date: string;
+};
+
 export type CreateFittingAppointmentInput = {
   appointmentDate: string;
   startTime: string;
@@ -66,6 +95,40 @@ export type CreateFittingAppointmentInput = {
   notes?: string | null;
   source?: FittingAppointmentSource;
   createdBy?: string | null;
+  bookingNumber?: string | null;
+  bookingToken?: string | null;
+};
+
+export type FittingBookingContext = {
+  bookingId: string;
+  bookingNumber: string;
+  status: string;
+  customerName: string;
+  customerWhatsapp: string;
+  customerEmail: string | null;
+  customerInstagram: string | null;
+  notes: string;
+  firstPickupDate: string | null;
+  firstEventDate: string | null;
+  lastReturnDueDate: string | null;
+  itemCount: number;
+  items: Array<{
+    itemId: string;
+    itemCode: string;
+    itemName: string;
+    imageUrl: string | null;
+    pickupDate: string;
+    eventDate: string;
+    returnDueDate: string;
+  }>;
+};
+
+export type BookingFittingLink = {
+  bookingId: string;
+  bookingNumber: string;
+  token: string;
+  fittingPath: string;
+  fittingUrl: string;
 };
 
 export class FittingDbError extends Error {
@@ -153,6 +216,8 @@ function toAppointment(row: FittingAppointmentRow): FittingAppointment {
     id: row.id,
     fittingCode: row.fitting_code,
     status: row.status,
+    bookingId: row.booking_id ?? null,
+    bookingNumber: row.booking_number ?? null,
     customerName: row.customer_name,
     customerWhatsapp: row.customer_whatsapp,
     customerEmail: row.customer_email,
@@ -171,7 +236,11 @@ function toAppointment(row: FittingAppointmentRow): FittingAppointment {
 function hasMissingMigration(error: unknown) {
   const message = String(error);
 
-  return message.includes('no such table: fitting_appointments');
+  return (
+    message.includes('no such table: fitting_appointments') ||
+    message.includes('no such table: booking_fitting_links') ||
+    message.includes('no such column: booking_id')
+  );
 }
 
 function hasUniqueSlotConflict(error: unknown) {
@@ -188,6 +257,37 @@ function makeFittingCode(appointmentDate: string) {
   const randomPart = crypto.randomUUID().replaceAll('-', '').slice(0, 4).toUpperCase();
 
   return `FIT-${datePart}-${randomPart}`;
+}
+
+function createToken() {
+  const bytes = new Uint8Array(24);
+  crypto.getRandomValues(bytes);
+
+  return Array.from(bytes, (byte) => byte.toString(16).padStart(2, '0')).join('');
+}
+
+async function hashToken(token: string) {
+  const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(token));
+
+  return Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, '0')).join('');
+}
+
+function parseImageUrl(value: string | null) {
+  if (!value) {
+    return null;
+  }
+
+  try {
+    const parsed = JSON.parse(value);
+
+    return Array.isArray(parsed) && typeof parsed[0] === 'string' ? parsed[0] : null;
+  } catch {
+    return null;
+  }
+}
+
+function buildFittingPath(bookingNumber: string, token: string) {
+  return `/fitting?booking=${encodeURIComponent(bookingNumber)}&token=${encodeURIComponent(token)}`;
 }
 
 function validateAppointmentDate(value: string) {
@@ -234,6 +334,177 @@ export function getFittingRelatedRevalidationPaths() {
   return ['/fitting', '/pos', '/pos/fitting'];
 }
 
+export async function createBookingFittingLink(input: {
+  bookingId: string;
+  actor?: string | null;
+  origin?: string | null;
+}): Promise<BookingFittingLink> {
+  const bookingId = normalizeText(input.bookingId);
+  const actor = normalizeOptionalText(input.actor);
+  const db = await getD1Database();
+  const booking = await db
+    .prepare(
+      `SELECT id, booking_number
+       FROM bookings
+       WHERE id = ?
+       LIMIT 1`,
+    )
+    .bind(bookingId)
+    .first<{ id: string; booking_number: string }>();
+
+  if (!booking) {
+    throw new FittingDbError('Booking tidak ditemukan.', 404, 'BOOKING_NOT_FOUND');
+  }
+
+  const token = createToken();
+  const tokenHash = await hashToken(token);
+  const linkId = createId('booking-fitting-link');
+
+  try {
+    await db.batch([
+      db
+        .prepare(
+          `UPDATE booking_fitting_links
+           SET status = 'revoked',
+               updated_at = CURRENT_TIMESTAMP
+           WHERE booking_id = ?
+             AND status = 'active'`,
+        )
+        .bind(booking.id),
+      db
+        .prepare(
+          `INSERT INTO booking_fitting_links (
+            id,
+            booking_id,
+            token_hash,
+            status,
+            created_by
+          )
+          VALUES (?, ?, ?, 'active', ?)`,
+        )
+        .bind(linkId, booking.id, tokenHash, actor),
+    ]);
+  } catch (error) {
+    if (hasMissingMigration(error)) {
+      throw new FittingDbError('Database fitting link belum siap. Jalankan migration terlebih dahulu.', 500, 'MISSING_MIGRATION');
+    }
+
+    throw error;
+  }
+
+  const fittingPath = buildFittingPath(booking.booking_number, token);
+  const origin = normalizeText(input.origin).replace(/\/$/, '');
+
+  return {
+    bookingId: booking.id,
+    bookingNumber: booking.booking_number,
+    token,
+    fittingPath,
+    fittingUrl: origin ? `${origin}${fittingPath}` : fittingPath,
+  };
+}
+
+export async function getFittingBookingContext(input: {
+  bookingNumber: string;
+  token: string;
+}): Promise<FittingBookingContext> {
+  const bookingNumber = normalizeText(input.bookingNumber);
+  const token = normalizeText(input.token);
+
+  if (!bookingNumber || !token) {
+    throw new FittingDbError('Link fitting tidak valid.', 400, 'INVALID_FITTING_LINK');
+  }
+
+  const tokenHash = await hashToken(token);
+  const db = await getD1Database();
+
+  try {
+    const booking = await db
+      .prepare(
+        `SELECT b.id,
+                b.booking_number,
+                b.status,
+                b.customer_name,
+                b.customer_whatsapp,
+                b.customer_email,
+                b.customer_instagram,
+                b.notes,
+                MIN(bi.pickup_date) AS first_pickup_date,
+                MIN(bi.event_date) AS first_event_date,
+                MAX(bi.return_due_date) AS last_return_due_date,
+                COUNT(DISTINCT bi.id) AS item_count
+         FROM booking_fitting_links bfl
+         JOIN bookings b ON b.id = bfl.booking_id
+         LEFT JOIN booking_items bi ON bi.booking_id = b.id AND bi.item_status = 'active'
+         WHERE b.booking_number = ?
+           AND bfl.token_hash = ?
+           AND bfl.status = 'active'
+           AND b.status NOT IN ('rejected', 'cancelled', 'expired')
+           AND (bfl.expires_at IS NULL OR bfl.expires_at > CURRENT_TIMESTAMP)
+         GROUP BY b.id
+         LIMIT 1`,
+      )
+      .bind(bookingNumber, tokenHash)
+      .first<BookingContextRow>();
+
+    if (!booking) {
+      throw new FittingDbError('Link fitting tidak ditemukan atau sudah tidak aktif.', 404, 'FITTING_LINK_NOT_FOUND');
+    }
+
+    const items = await db
+      .prepare(
+        `SELECT bi.item_id,
+                bi.item_code,
+                bi.item_name,
+                ki.image_urls,
+                bi.pickup_date,
+                bi.event_date,
+                bi.return_due_date
+         FROM booking_items bi
+         LEFT JOIN kebaya_items ki ON ki.id = bi.item_id
+         WHERE bi.booking_id = ?
+           AND bi.item_status = 'active'
+         ORDER BY bi.created_at ASC`,
+      )
+      .bind(booking.id)
+      .all<BookingContextItemRow>();
+
+    return {
+      bookingId: booking.id,
+      bookingNumber: booking.booking_number,
+      status: booking.status,
+      customerName: booking.customer_name,
+      customerWhatsapp: booking.customer_whatsapp,
+      customerEmail: booking.customer_email,
+      customerInstagram: booking.customer_instagram,
+      notes: booking.notes,
+      firstPickupDate: booking.first_pickup_date,
+      firstEventDate: booking.first_event_date,
+      lastReturnDueDate: booking.last_return_due_date,
+      itemCount: booking.item_count,
+      items: items.results.map((item) => ({
+        itemId: item.item_id,
+        itemCode: item.item_code,
+        itemName: item.item_name,
+        imageUrl: parseImageUrl(item.image_urls),
+        pickupDate: item.pickup_date,
+        eventDate: item.event_date,
+        returnDueDate: item.return_due_date,
+      })),
+    };
+  } catch (error) {
+    if (error instanceof FittingDbError) {
+      throw error;
+    }
+
+    if (hasMissingMigration(error)) {
+      throw new FittingDbError('Database fitting link belum siap. Jalankan migration terlebih dahulu.', 500, 'MISSING_MIGRATION');
+    }
+
+    throw error;
+  }
+}
+
 export async function listFittingSlotsForDate(appointmentDateInput: string): Promise<FittingSlot[]> {
   const appointmentDate = validateAppointmentDate(appointmentDateInput);
   const db = await getD1Database();
@@ -278,6 +549,12 @@ export async function createFittingAppointment(input: CreateFittingAppointmentIn
   const notes = normalizeText(input.notes);
   const source = input.source ?? 'public';
   const createdBy = normalizeOptionalText(input.createdBy);
+  const bookingNumber = normalizeOptionalText(input.bookingNumber);
+  const bookingToken = normalizeOptionalText(input.bookingToken);
+  const bookingContext =
+    bookingNumber && bookingToken
+      ? await getFittingBookingContext({ bookingNumber, token: bookingToken })
+      : null;
 
   if (!customerName) {
     throw new FittingDbError('Nama customer wajib diisi.', 400, 'CUSTOMER_NAME_REQUIRED');
@@ -324,6 +601,7 @@ export async function createFittingAppointment(input: CreateFittingAppointmentIn
           customer_whatsapp,
           customer_email,
           notes,
+          booking_id,
           appointment_date,
           start_time,
           end_time,
@@ -331,7 +609,7 @@ export async function createFittingAppointment(input: CreateFittingAppointmentIn
           created_by,
           updated_by
         )
-        VALUES (?, ?, 'pending', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        VALUES (?, ?, 'pending', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       )
       .bind(
         id,
@@ -340,6 +618,7 @@ export async function createFittingAppointment(input: CreateFittingAppointmentIn
         customerWhatsapp,
         customerEmail,
         notes,
+        bookingContext?.bookingId ?? null,
         appointmentDate,
         slot.startTime,
         slot.endTime,
@@ -376,23 +655,26 @@ export async function listFittingAppointments(): Promise<FittingAppointment[]> {
   try {
     const result = await db
       .prepare(
-        `SELECT id,
-                fitting_code,
-                status,
-                customer_name,
-                customer_whatsapp,
-                customer_email,
-                notes,
-                appointment_date,
-                start_time,
-                end_time,
-                source,
-                created_by,
-                updated_by,
-                created_at,
-                updated_at
-         FROM fitting_appointments
-         ORDER BY appointment_date ASC, start_time ASC, created_at DESC
+        `SELECT fa.id,
+                fa.fitting_code,
+                fa.status,
+                fa.booking_id,
+                b.booking_number,
+                fa.customer_name,
+                fa.customer_whatsapp,
+                fa.customer_email,
+                fa.notes,
+                fa.appointment_date,
+                fa.start_time,
+                fa.end_time,
+                fa.source,
+                fa.created_by,
+                fa.updated_by,
+                fa.created_at,
+                fa.updated_at
+         FROM fitting_appointments fa
+         LEFT JOIN bookings b ON b.id = fa.booking_id
+         ORDER BY fa.appointment_date ASC, fa.start_time ASC, fa.created_at DESC
          LIMIT 500`,
       )
       .all<FittingAppointmentRow>();
@@ -459,23 +741,26 @@ export async function updateFittingAppointmentStatus(input: {
 
   const updated = await db
     .prepare(
-      `SELECT id,
-              fitting_code,
-              status,
-              customer_name,
-              customer_whatsapp,
-              customer_email,
-              notes,
-              appointment_date,
-              start_time,
-              end_time,
-              source,
-              created_by,
-              updated_by,
-              created_at,
-              updated_at
-       FROM fitting_appointments
-       WHERE id = ?
+      `SELECT fa.id,
+              fa.fitting_code,
+              fa.status,
+              fa.booking_id,
+              b.booking_number,
+              fa.customer_name,
+              fa.customer_whatsapp,
+              fa.customer_email,
+              fa.notes,
+              fa.appointment_date,
+              fa.start_time,
+              fa.end_time,
+              fa.source,
+              fa.created_by,
+              fa.updated_by,
+              fa.created_at,
+              fa.updated_at
+       FROM fitting_appointments fa
+       LEFT JOIN bookings b ON b.id = fa.booking_id
+       WHERE fa.id = ?
        LIMIT 1`,
     )
     .bind(appointmentId)
