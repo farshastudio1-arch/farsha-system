@@ -3,7 +3,6 @@
 import { useMemo, useState, useEffect } from 'react';
 import {
   AlertTriangle,
-  CalendarCheck,
   Filter,
   Receipt,
   Search,
@@ -14,10 +13,9 @@ import {
   MapPin,
   Sparkles,
   MessageCircle,
-  BarChart3,
+  RefreshCw,
   Phone,
 } from 'lucide-react';
-import Link from 'next/link';
 
 import {
   fetchAdminCatalogItemsAction,
@@ -35,6 +33,7 @@ import {
   writeSavedPosLedger,
   type PosLedgerState,
   type PosPaymentMethod,
+  type PosReceipt,
   type PosTransaction,
 } from '@/lib/pos-ledger';
 import { useSavedPosLedger } from '@/lib/pos-ledger-client';
@@ -44,6 +43,7 @@ type PosTab = 'rent' | 'return' | 'maintenance';
 type CatalogStatusFilter = 'all' | 'available' | 'rented' | 'maintenance';
 type PendingRentalAction = 'print' | 'cancel';
 type PendingPosAction = 'return' | 'maintenance';
+type ReceiptHistoryStatus = 'open' | 'closed';
 
 const extraReturnDayPenalty = 100000;
 const defaultSecurityDeposit = 100000;
@@ -73,6 +73,19 @@ function formatDate(value: string | null) {
     day: 'numeric',
     month: 'short',
     year: 'numeric',
+  }).format(date);
+}
+
+function formatDateTime(value: string | null) {
+  if (!value) return '-';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return '-';
+  return new Intl.DateTimeFormat('id-ID', {
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
   }).format(date);
 }
 
@@ -112,6 +125,52 @@ function getDayDiff(startValue: string, endValue: string) {
   return Math.round((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
 }
 
+function getReceiptActionLabel(action: PosReceipt['action']) {
+  switch (action) {
+    case 'create':
+      return 'Sewa dibuat';
+    case 'close':
+      return 'Sewa ditutup';
+    case 'deposit':
+      return 'Deposit';
+    case 'refund':
+      return 'Refund';
+    case 'penalty':
+      return 'Denda';
+    case 'adjustment':
+      return 'Adjustment';
+    case 'print':
+      return 'Cetak ulang';
+    case 'maintenance_open':
+      return 'Masuk cuci';
+    case 'maintenance_close':
+      return 'Selesai cuci';
+    case 'void':
+      return 'Void';
+    default:
+      return 'Update';
+  }
+}
+
+function getReceiptDisplayAmount(receipt: PosReceipt) {
+  return receipt.eventAmount !== 0 ? receipt.eventAmount : receipt.totalCollected;
+}
+
+function matchesReceiptHistory(receipt: PosReceipt, query: string) {
+  if (!query) return true;
+
+  return [
+    receipt.receiptNumber,
+    receipt.transactionNumber,
+    receipt.customerName,
+    receipt.customerPhone,
+    receipt.itemCode,
+    receipt.itemName,
+    receipt.paymentMethod,
+    receipt.title,
+  ].some((value) => value.toLowerCase().includes(query));
+}
+
 interface PosWorkspaceClientProps {
   initialLedger: PosLedgerState;
   initialTransactionId?: string;
@@ -141,6 +200,8 @@ export default function PosWorkspaceClient({ initialLedger, initialTransactionId
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<CatalogStatusFilter>('all');
   const [historySearchQuery, setHistorySearchQuery] = useState('');
+  const [receiptHistoryStatus, setReceiptHistoryStatus] = useState<ReceiptHistoryStatus>('open');
+  const [receiptSearchQuery, setReceiptSearchQuery] = useState('');
 
   // Flow 1: Rental Form States
   const [customerName, setCustomerName] = useState('');
@@ -374,6 +435,29 @@ export default function PosWorkspaceClient({ initialLedger, initialTransactionId
     [ledger, historySearchQuery]
   );
 
+  const receiptHistoryCounts = useMemo(
+    () => ({
+      open: ledger.receipts.filter((receipt) => receipt.status === 'open').length,
+      closed: ledger.receipts.filter((receipt) => receipt.status === 'closed').length,
+    }),
+    [ledger.receipts]
+  );
+
+  const visibleReceiptHistory = useMemo(() => {
+    const normalizedQuery = receiptSearchQuery.trim().toLowerCase();
+
+    return ledger.receipts
+      .filter((receipt) => receipt.status === receiptHistoryStatus)
+      .filter((receipt) => matchesReceiptHistory(receipt, normalizedQuery))
+      .slice()
+      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+  }, [ledger.receipts, receiptHistoryStatus, receiptSearchQuery]);
+
+  const transactionsById = useMemo(
+    () => new Map(ledger.transactions.map((transaction) => [transaction.id, transaction])),
+    [ledger.transactions]
+  );
+
   // FLOW ACTIONS
   const clearRentalSelection = () => {
     setSelectedItemId('');
@@ -479,6 +563,34 @@ export default function PosWorkspaceClient({ initialLedger, initialTransactionId
     setIsInvoiceOpen(true);
   };
 
+  const refreshWorkspaceData = async () => {
+    setIsLoadingCatalog(true);
+    setIsLoadingLedger(true);
+    setCatalogError('');
+    setLedgerError('');
+    setStatusMessage('');
+
+    const [catalogResult, ledgerResult] = await Promise.all([
+      fetchAdminCatalogItemsAction(),
+      fetchPosLedgerAction(),
+    ]);
+
+    if (catalogResult.ok) {
+      writeSavedCatalogItems(catalogResult.data);
+    } else {
+      setCatalogError(catalogResult.error);
+    }
+
+    if (ledgerResult.ok) {
+      writeSavedPosLedger(ledgerResult.data);
+    } else {
+      setLedgerError(ledgerResult.error);
+    }
+
+    setIsLoadingCatalog(false);
+    setIsLoadingLedger(false);
+  };
+
   return (
     <div className="space-y-4">
       {/* 1. Clean Header without Summary Metrics */}
@@ -497,18 +609,27 @@ export default function PosWorkspaceClient({ initialLedger, initialTransactionId
           </div>
 
           <div className="flex flex-wrap gap-2">
-            <Link
-              href="/pos"
+            <button
+              type="button"
+              onClick={() => {
+                document.getElementById('pos-receipt-history')?.scrollIntoView({
+                  behavior: 'smooth',
+                  block: 'start',
+                });
+              }}
               className="inline-flex min-h-10 items-center gap-2 border border-neutral-300 bg-white px-3 text-xs font-bold uppercase tracking-wider text-neutral-700 transition-colors hover:border-neutral-900"
             >
-              <BarChart3 className="h-4 w-4" /> Lihat Dashboard
-            </Link>
-            <Link
-              href="/pos/bookings"
+              <Receipt className="h-4 w-4" /> Lihat History Open and Close Receipt
+            </button>
+            <button
+              type="button"
+              onClick={() => void refreshWorkspaceData()}
+              disabled={isLoadingCatalog || isLoadingLedger}
               className="inline-flex min-h-10 items-center gap-2 bg-neutral-950 px-3 text-xs font-bold uppercase tracking-wider text-white transition-colors hover:bg-neutral-800"
             >
-              <CalendarCheck className="h-4 w-4" /> Booking Desk
-            </Link>
+              <RefreshCw className={`h-4 w-4 ${isLoadingCatalog || isLoadingLedger ? 'animate-spin' : ''}`} />
+              Refresh
+            </button>
           </div>
         </div>
 
@@ -1296,6 +1417,153 @@ export default function PosWorkspaceClient({ initialLedger, initialTransactionId
         </aside>
 
       </div>
+
+      <section id="pos-receipt-history" className="scroll-mt-6 border border-neutral-200 bg-white shadow-sm">
+        <div className="flex flex-col gap-3 border-b border-neutral-200 p-4 lg:flex-row lg:items-center lg:justify-between">
+          <div>
+            <p className="font-mono text-[10px] font-bold uppercase tracking-widest text-neutral-400">
+              Receipt History
+            </p>
+            <h2 className="mt-1 font-serif text-xl font-semibold text-neutral-950">
+              Open & Closed Receipts
+            </h2>
+            <p className="mt-1 text-xs text-neutral-500">
+              Riwayat bukti transaksi POS berdasarkan status receipt saat dibuat.
+            </p>
+          </div>
+
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+            <div className="grid grid-cols-2 gap-1 border border-neutral-200 bg-neutral-50 p-1">
+              {(
+                [
+                  { value: 'open', label: 'Open', count: receiptHistoryCounts.open },
+                  { value: 'closed', label: 'Closed', count: receiptHistoryCounts.closed },
+                ] as { value: ReceiptHistoryStatus; label: string; count: number }[]
+              ).map((tab) => (
+                <button
+                  key={tab.value}
+                  type="button"
+                  onClick={() => setReceiptHistoryStatus(tab.value)}
+                  className={`min-h-9 px-3 text-xs font-bold uppercase tracking-wider ${
+                    receiptHistoryStatus === tab.value
+                      ? 'bg-neutral-950 text-white'
+                      : 'bg-white text-neutral-500 hover:text-neutral-950'
+                  }`}
+                >
+                  {tab.label}
+                  <span className={receiptHistoryStatus === tab.value ? 'ml-2 text-neutral-300' : 'ml-2 text-neutral-400'}>
+                    {tab.count}
+                  </span>
+                </button>
+              ))}
+            </div>
+
+            <label className="flex min-h-10 items-center gap-2 border border-neutral-200 bg-neutral-50 px-3 text-sm text-neutral-500 sm:w-72">
+              <Search className="h-4 w-4" />
+              <input
+                value={receiptSearchQuery}
+                onChange={(event) => setReceiptSearchQuery(event.target.value)}
+                placeholder="Cari receipt, customer, baju..."
+                className="w-full bg-transparent text-sm text-neutral-900 outline-none placeholder:text-neutral-400"
+              />
+            </label>
+          </div>
+        </div>
+
+        <div className="overflow-x-auto">
+          <table className="w-full min-w-[860px] text-left text-sm">
+            <thead className="border-b border-neutral-200 bg-neutral-50 font-mono text-[10px] uppercase tracking-wider text-neutral-400">
+              <tr>
+                <th className="px-3 py-2">Receipt</th>
+                <th className="px-3 py-2">Transaction</th>
+                <th className="px-3 py-2">Customer</th>
+                <th className="px-3 py-2">Item</th>
+                <th className="px-3 py-2">Event</th>
+                <th className="px-3 py-2 text-right">Amount</th>
+                <th className="px-3 py-2">Issued</th>
+                <th className="px-3 py-2 text-right">Action</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-neutral-100">
+              {visibleReceiptHistory.map((receipt) => {
+                const transaction = transactionsById.get(receipt.transactionId) ?? null;
+                const amount = getReceiptDisplayAmount(receipt);
+
+                return (
+                  <tr key={receipt.id} className="hover:bg-neutral-50">
+                    <td className="px-3 py-2">
+                      <p className="font-mono text-xs font-semibold text-neutral-900">{receipt.receiptNumber}</p>
+                      <span
+                        className={`mt-1 inline-flex border px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider ${
+                          receipt.status === 'open'
+                            ? 'border-amber-200 bg-amber-50 text-amber-800'
+                            : 'border-emerald-200 bg-emerald-50 text-emerald-800'
+                        }`}
+                      >
+                        {receipt.status}
+                      </span>
+                    </td>
+                    <td className="px-3 py-2">
+                      <p className="font-mono text-xs font-semibold text-neutral-900">{receipt.transactionNumber}</p>
+                      {transaction && transaction.status !== receipt.status && (
+                        <p className="mt-0.5 text-[10px] text-neutral-400">
+                          Current: {transaction.status}
+                        </p>
+                      )}
+                    </td>
+                    <td className="px-3 py-2 text-neutral-700">
+                      <p>{receipt.customerName}</p>
+                      {receipt.customerPhone && (
+                        <p className="mt-0.5 text-[10px] text-neutral-400">{receipt.customerPhone}</p>
+                      )}
+                    </td>
+                    <td className="px-3 py-2 text-neutral-500">
+                      <p className="font-medium text-neutral-700">{receipt.itemName}</p>
+                      <p className="mt-0.5 font-mono text-[10px] text-neutral-400">{receipt.itemCode}</p>
+                    </td>
+                    <td className="px-3 py-2">
+                      <p className="text-xs font-semibold text-neutral-800">{getReceiptActionLabel(receipt.action)}</p>
+                      <p className="mt-0.5 text-[10px] text-neutral-400">{receipt.title}</p>
+                    </td>
+                    <td className={`px-3 py-2 text-right font-semibold ${amount < 0 ? 'text-red-600' : 'text-neutral-900'}`}>
+                      {amount < 0 ? '-' : ''}
+                      {formatCurrency(Math.abs(amount))}
+                      <p className="mt-0.5 text-[10px] font-normal uppercase text-neutral-400">{receipt.paymentMethod}</p>
+                    </td>
+                    <td className="px-3 py-2 text-xs text-neutral-500">{formatDateTime(receipt.createdAt)}</td>
+                    <td className="px-3 py-2 text-right">
+                      {transaction ? (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setSelectedTransactionId(transaction.id);
+                            setSelectedItemId(transaction.itemId);
+                            setSelectedMaintenanceId('');
+                            setInvoiceTransaction(transaction);
+                            setIsInvoiceOpen(true);
+                          }}
+                          className="inline-flex min-h-8 items-center gap-1 border border-neutral-300 bg-white px-2 text-xs font-semibold uppercase tracking-wider text-neutral-700 hover:border-neutral-900 hover:text-neutral-950"
+                        >
+                          <Receipt className="h-3.5 w-3.5" />
+                          Lihat
+                        </button>
+                      ) : (
+                        <span className="text-xs text-neutral-400">-</span>
+                      )}
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+
+        {visibleReceiptHistory.length === 0 && (
+          <div className="border-t border-neutral-100 px-4 py-10 text-center text-sm text-neutral-500">
+            Belum ada receipt {receiptHistoryStatus} yang cocok.
+          </div>
+        )}
+      </section>
 
       {pendingRentalAction && selectedItem && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">

@@ -24,6 +24,7 @@ import type { BookingQueueRow, BookingStatus } from '@/lib/booking-db';
 
 type QueueFilter = 'active' | 'all' | 'requested' | 'payment_submitted' | 'dp_confirmed' | 'closed';
 type CloseBookingAction = 'reject' | 'cancel';
+type DocumentHistoryKind = 'invoice' | 'receipt';
 
 type ApiResponse<T> = {
   ok?: boolean;
@@ -357,6 +358,28 @@ function canCloseBooking(booking: BookingQueueRow) {
   return !closedBookingStatuses.includes(booking.status);
 }
 
+function matchesBookingDocumentHistory(booking: BookingQueueRow, query: string, kind: DocumentHistoryKind) {
+  if (!query) return true;
+
+  const documentNumber = kind === 'invoice' ? booking.invoiceNumber : booking.receiptNumber;
+
+  return [
+    documentNumber ?? '',
+    booking.bookingNumber,
+    booking.customerName,
+    booking.customerWhatsapp,
+    booking.customerEmail ?? '',
+    booking.customerInstagram ?? '',
+    booking.paymentReference ?? '',
+    getItemLabel(booking),
+    ...booking.itemCodes,
+    ...booking.itemNames,
+  ]
+    .join(' ')
+    .toLowerCase()
+    .includes(query);
+}
+
 export default function PosBookingsClient({
   initialItems,
   initialItemId,
@@ -401,8 +424,11 @@ export default function PosBookingsClient({
   const [documentData, setDocumentData] = useState<BookingDocumentRecord | null>(null);
   const [documentKind, setDocumentKind] = useState<BookingDocumentKind>('invoice');
   const [documentBookingId, setDocumentBookingId] = useState('');
+  const [loadingDocumentKey, setLoadingDocumentKey] = useState('');
   const [isGeneratingInvoice, setIsGeneratingInvoice] = useState(false);
   const [isGeneratingReceipt, setIsGeneratingReceipt] = useState(false);
+  const [documentHistoryKind, setDocumentHistoryKind] = useState<DocumentHistoryKind>('invoice');
+  const [documentHistoryQuery, setDocumentHistoryQuery] = useState('');
   const [sendingFittingBookingId, setSendingFittingBookingId] = useState('');
   const [isManualFormOpen, setIsManualFormOpen] = useState(false);
   const [isCreatingManualBooking, setIsCreatingManualBooking] = useState(false);
@@ -522,6 +548,31 @@ export default function PosBookingsClient({
     : 0;
   const manualPayNowTotal = Math.max(manualDpTotal - manualInstagramDiscount, 0);
   const manualRentalEstimateTotal = (manualBookingItem?.rentalPrice ?? 0) + manualExtraReturnFee;
+
+  const documentHistoryCounts = useMemo(
+    () => ({
+      invoice: bookings.filter((booking) => booking.invoiceNumber).length,
+      receipt: bookings.filter((booking) => booking.receiptNumber).length,
+    }),
+    [bookings],
+  );
+
+  const visibleDocumentHistory = useMemo(() => {
+    const query = documentHistoryQuery.trim().toLowerCase();
+
+    return bookings
+      .filter((booking) =>
+        documentHistoryKind === 'invoice' ? Boolean(booking.invoiceNumber) : Boolean(booking.receiptNumber),
+      )
+      .filter((booking) => matchesBookingDocumentHistory(booking, query, documentHistoryKind))
+      .slice()
+      .sort((a, b) => {
+        const aIssuedAt = documentHistoryKind === 'invoice' ? a.invoiceIssuedAt : a.receiptIssuedAt;
+        const bIssuedAt = documentHistoryKind === 'invoice' ? b.invoiceIssuedAt : b.receiptIssuedAt;
+
+        return new Date(bIssuedAt ?? 0).getTime() - new Date(aIssuedAt ?? 0).getTime();
+      });
+  }, [bookings, documentHistoryKind, documentHistoryQuery]);
 
   const refreshBookings = async (preferredBookingId?: string) => {
     setIsRefreshing(true);
@@ -801,6 +852,40 @@ export default function PosBookingsClient({
     }
   };
 
+  const openExistingDocument = async (booking: BookingQueueRow, kind: DocumentHistoryKind) => {
+    const documentNumber = kind === 'invoice' ? booking.invoiceNumber : booking.receiptNumber;
+
+    if (!documentNumber) {
+      return;
+    }
+
+    const loadingKey = `${kind}:${booking.id}`;
+    setLoadingDocumentKey(loadingKey);
+    setActionError('');
+    setActionMessage('');
+
+    try {
+      const response = await fetch(`/api/admin/bookings/${booking.id}/${kind}`, {
+        method: 'GET',
+        cache: 'no-store',
+      });
+      const payload = (await response.json()) as ApiResponse<BookingDocumentRecord>;
+
+      if (!response.ok || !payload.ok || !payload.data) {
+        throw new Error(payload.error ?? `${kind === 'invoice' ? 'Invoice' : 'Receipt'} belum bisa dibuka.`);
+      }
+
+      setDocumentData(payload.data);
+      setDocumentKind(kind);
+      setIsDocumentOpen(true);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Dokumen booking belum bisa dibuka.';
+      setActionError(message);
+    } finally {
+      setLoadingDocumentKey('');
+    }
+  };
+
   const sendFittingLink = async (booking: BookingQueueRow) => {
     setSendingFittingBookingId(booking.id);
     setActionError('');
@@ -949,6 +1034,19 @@ export default function PosBookingsClient({
               </p>
             </div>
             <div className="flex flex-col gap-2 sm:flex-row">
+              <button
+                type="button"
+                onClick={() => {
+                  document.getElementById('booking-document-history')?.scrollIntoView({
+                    behavior: 'smooth',
+                    block: 'start',
+                  });
+                }}
+                className="inline-flex min-h-11 items-center justify-center gap-2 border border-neutral-900 bg-white px-4 py-2 text-xs font-bold uppercase tracking-wider text-neutral-950 hover:bg-neutral-50"
+              >
+                <ReceiptText className="h-4 w-4" />
+                History Dokumen
+              </button>
               <button
                 type="button"
                 onClick={() => setIsManualFormOpen((isOpen) => !isOpen)}
@@ -1593,6 +1691,149 @@ export default function PosBookingsClient({
               </div>
             )}
           </aside>
+        </section>
+
+        <section id="booking-document-history" className="scroll-mt-6 border theme-border bg-white shadow-sm">
+          <div className="flex flex-col gap-3 border-b border-neutral-200 p-4 lg:flex-row lg:items-center lg:justify-between">
+            <div>
+              <p className="font-mono text-[10px] font-bold uppercase tracking-widest text-neutral-400">
+                Booking Documents
+              </p>
+              <h2 className="mt-1 font-serif text-2xl font-semibold text-neutral-950">
+                Invoice & Paid Receipt History
+              </h2>
+              <p className="mt-1 text-sm text-neutral-500">
+                Riwayat invoice Biaya Booking dan receipt pembayaran yang sudah dibuat dari antrean booking.
+              </p>
+            </div>
+
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+              <div className="grid grid-cols-2 gap-1 border border-neutral-200 bg-neutral-50 p-1">
+                {(
+                  [
+                    { value: 'invoice', label: 'Invoice', count: documentHistoryCounts.invoice },
+                    { value: 'receipt', label: 'Paid Receipt', count: documentHistoryCounts.receipt },
+                  ] as { value: DocumentHistoryKind; label: string; count: number }[]
+                ).map((tab) => (
+                  <button
+                    key={tab.value}
+                    type="button"
+                    onClick={() => setDocumentHistoryKind(tab.value)}
+                    className={`min-h-9 px-3 text-xs font-bold uppercase tracking-wider ${
+                      documentHistoryKind === tab.value
+                        ? 'bg-neutral-950 text-white'
+                        : 'bg-white text-neutral-500 hover:text-neutral-950'
+                    }`}
+                  >
+                    {tab.label}
+                    <span className={documentHistoryKind === tab.value ? 'ml-2 text-neutral-300' : 'ml-2 text-neutral-400'}>
+                      {tab.count}
+                    </span>
+                  </button>
+                ))}
+              </div>
+
+              <label className="flex min-h-10 items-center gap-2 border border-neutral-200 bg-neutral-50 px-3 text-sm text-neutral-500 sm:w-80">
+                <Search className="h-4 w-4" />
+                <input
+                  value={documentHistoryQuery}
+                  onChange={(event) => setDocumentHistoryQuery(event.target.value)}
+                  placeholder="Cari dokumen, booking, customer..."
+                  className="w-full bg-transparent text-sm text-neutral-900 outline-none placeholder:text-neutral-400"
+                />
+              </label>
+            </div>
+          </div>
+
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[860px] text-left text-sm">
+              <thead className="border-b border-neutral-200 bg-neutral-50 font-mono text-[10px] uppercase tracking-wider text-neutral-400">
+                <tr>
+                  <th className="px-3 py-2">Document</th>
+                  <th className="px-3 py-2">Booking</th>
+                  <th className="px-3 py-2">Customer</th>
+                  <th className="px-3 py-2">Item</th>
+                  <th className="px-3 py-2">Status</th>
+                  <th className="px-3 py-2 text-right">Amount</th>
+                  <th className="px-3 py-2">Issued</th>
+                  <th className="px-3 py-2 text-right">Action</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-neutral-100">
+                {visibleDocumentHistory.map((booking) => {
+                  const isInvoice = documentHistoryKind === 'invoice';
+                  const documentNumber = isInvoice ? booking.invoiceNumber : booking.receiptNumber;
+                  const documentStatus = isInvoice ? booking.invoiceStatus : booking.receiptStatus;
+                  const documentAmount = isInvoice ? booking.invoiceTotalAmount : booking.receiptTotalAmount;
+                  const issuedAt = isInvoice ? booking.invoiceIssuedAt : booking.receiptIssuedAt;
+                  const loadingKey = `${documentHistoryKind}:${booking.id}`;
+
+                  return (
+                    <tr key={`${documentHistoryKind}-${booking.id}`} className="hover:bg-neutral-50">
+                      <td className="px-3 py-2">
+                        <p className="font-mono text-xs font-semibold text-neutral-900">{documentNumber}</p>
+                        <p className="mt-0.5 text-[10px] uppercase tracking-wider text-neutral-400">
+                          {isInvoice ? 'Booking invoice' : 'Paid receipt'}
+                        </p>
+                      </td>
+                      <td className="px-3 py-2">
+                        <p className="font-mono text-xs font-semibold text-neutral-900">{booking.bookingNumber}</p>
+                        <span
+                          className={`mt-1 inline-flex border px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider ${getStatusClass(
+                            booking.status,
+                          )}`}
+                        >
+                          {getStatusLabel(booking.status)}
+                        </span>
+                      </td>
+                      <td className="px-3 py-2 text-neutral-700">
+                        <p>{booking.customerName}</p>
+                        <p className="mt-0.5 text-[10px] text-neutral-400">{booking.customerWhatsapp}</p>
+                      </td>
+                      <td className="px-3 py-2 text-neutral-500">
+                        <p className="font-medium text-neutral-700">{getItemLabel(booking)}</p>
+                        <p className="mt-0.5 text-[10px] text-neutral-400">
+                          Pickup {formatDate(booking.firstPickupDate)}
+                        </p>
+                      </td>
+                      <td className="px-3 py-2">
+                        <span
+                          className={`inline-flex border px-2 py-1 text-[10px] font-bold uppercase tracking-wider ${
+                            documentStatus === 'paid'
+                              ? 'border-emerald-200 bg-emerald-50 text-emerald-800'
+                              : 'border-amber-200 bg-amber-50 text-amber-800'
+                          }`}
+                        >
+                          {documentStatus ?? (isInvoice ? 'issued' : 'paid')}
+                        </span>
+                      </td>
+                      <td className="px-3 py-2 text-right font-semibold text-neutral-900">
+                        {formatCurrency(documentAmount ?? 0)}
+                      </td>
+                      <td className="px-3 py-2 text-xs text-neutral-500">{formatDateTime(issuedAt)}</td>
+                      <td className="px-3 py-2 text-right">
+                        <button
+                          type="button"
+                          onClick={() => void openExistingDocument(booking, documentHistoryKind)}
+                          disabled={loadingDocumentKey === loadingKey}
+                          className="inline-flex min-h-8 items-center gap-1 border border-neutral-300 bg-white px-2 text-xs font-semibold uppercase tracking-wider text-neutral-700 hover:border-neutral-900 hover:text-neutral-950 disabled:cursor-wait disabled:opacity-60"
+                        >
+                          <ReceiptText className="h-3.5 w-3.5" />
+                          {loadingDocumentKey === loadingKey ? 'Buka...' : 'Lihat'}
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+
+          {visibleDocumentHistory.length === 0 && (
+            <div className="border-t border-neutral-100 px-4 py-10 text-center text-sm text-neutral-500">
+              Belum ada {documentHistoryKind === 'invoice' ? 'booking invoice' : 'paid receipt'} yang cocok.
+            </div>
+          )}
         </section>
       </div>
     </main>

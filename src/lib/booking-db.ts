@@ -97,7 +97,13 @@ export type BookingQueueRow = {
   proofCount: number;
   proofUrl: string | null;
   proofFilename: string | null;
+  invoiceNumber: string | null;
+  invoiceStatus: string | null;
+  invoiceTotalAmount: number | null;
+  invoiceIssuedAt: string | null;
   receiptNumber: string | null;
+  receiptStatus: string | null;
+  receiptTotalAmount: number | null;
   receiptIssuedAt: string | null;
 };
 
@@ -993,12 +999,19 @@ export async function listBookingQueue() {
                 COUNT(DISTINCT bpp.id) AS proofCount,
                 MAX(bpp.url) AS proofUrl,
                 MAX(bpp.filename) AS proofFilename,
+                MAX(binv.invoice_number) AS invoiceNumber,
+                MAX(binv.status) AS invoiceStatus,
+                MAX(binv.total_amount) AS invoiceTotalAmount,
+                MAX(binv.issued_at) AS invoiceIssuedAt,
                 MAX(br.receipt_number) AS receiptNumber,
+                MAX(br.status) AS receiptStatus,
+                MAX(br.total_amount) AS receiptTotalAmount,
                 MAX(br.issued_at) AS receiptIssuedAt
          FROM bookings b
          LEFT JOIN booking_items bi ON bi.booking_id = b.id
          LEFT JOIN booking_payments bp ON bp.booking_id = b.id
          LEFT JOIN booking_payment_proofs bpp ON bpp.booking_id = b.id
+         LEFT JOIN booking_invoices binv ON binv.booking_id = b.id
          LEFT JOIN booking_receipts br ON br.booking_id = b.id AND br.status = 'paid'
          GROUP BY b.id
          ORDER BY b.created_at DESC`,
