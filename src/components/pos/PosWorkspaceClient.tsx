@@ -2810,17 +2810,20 @@ export default function PosWorkspaceClient({ initialLedger, initialTransactionId
               </div>
             )}
 
-            <article id="farsha-statement-print-area" className="bg-white p-6 text-neutral-950 sm:p-10">
-              <header className="mb-6 text-center">
+            <article
+              id="farsha-statement-print-area"
+              className="farsha-statement-letter bg-white p-6 text-neutral-950 sm:p-10"
+            >
+              <header className="farsha-statement-header mb-6 text-center">
                 <p className="text-xs font-semibold uppercase tracking-[0.24em] text-neutral-500">
                   Farsha Studio
                 </p>
-                <h2 className="mt-2 text-xl font-bold uppercase tracking-wide text-neutral-950">
+                <h2 className="farsha-statement-title mt-2 text-xl font-bold uppercase tracking-wide text-neutral-950">
                   Surat Pernyataan dan Komitmen Penyewaan
                 </h2>
               </header>
 
-              <section className="space-y-3 text-sm leading-7 text-neutral-900">
+              <section className="farsha-statement-section farsha-statement-intro space-y-3 text-sm leading-7 text-neutral-900">
                 <p>Saya,</p>
                 <div className="ml-4 space-y-1">
                   <p>• Nama Penyewa : <strong>{statementTransaction.customerName}</strong></p>
@@ -2841,22 +2844,22 @@ export default function PosWorkspaceClient({ initialLedger, initialTransactionId
                 </p>
               </section>
 
-              <section className="mt-5 space-y-4 text-sm leading-7 text-neutral-900">
-                <div>
+              <section className="farsha-statement-section farsha-statement-rules mt-5 space-y-4 text-sm leading-7 text-neutral-900">
+                <div className="farsha-statement-rule">
                   <h3 className="font-bold">1. Petunjuk Pemakaian</h3>
                   <p>• a. Melepaskan ornamen atau aksesoris pribadi (seperti gelang, cincin, jam tangan, dll.) yang berpotensi merusak atau tersangkut pada serat kain busana.</p>
                   <p>• b. Membuka ritsleting (zipper) dan/atau kancing secara menyeluruh sebelum mengenakan busana guna menghindari kerusakan.</p>
                   <p>• c. Mengenakan dan melepaskan busana dengan penuh kehati-hatian.</p>
                 </div>
 
-                <div>
+                <div className="farsha-statement-rule">
                   <h3 className="font-bold">2. Petunjuk Perawatan</h3>
                   <p>• a. Tidak mencuci/melaundry busana, baik sebelum maupun sesudah pemakaian (perawatan kain sepenuhnya ditangani oleh pihak Farsha Studio).</p>
                   <p>• b. Tidak mengubah, memotong, atau menjahit ukuran maupun model busana dalam bentuk apa pun.</p>
                   <p>• c. Menghindari penggunaan aksesoris tambahan pada busana yang berisiko merusak material kain.</p>
                 </div>
 
-                <div>
+                <div className="farsha-statement-rule">
                   <h3 className="font-bold">3. Petunjuk Pengembalian</h3>
                   <p>• a. Mengembalikan busana dalam kondisi utuh (sama seperti saat pertama kali diambil/diterima).</p>
                   <p>• b. Mengembalikan busana secara lengkap beserta aksesoris bawaan (jika ada) serta seluruh kemasan (packing) penunjangnya.</p>
@@ -2864,7 +2867,7 @@ export default function PosWorkspaceClient({ initialLedger, initialTransactionId
                 </div>
               </section>
 
-              <section className="mt-5 space-y-3 text-sm leading-7 text-neutral-900">
+              <section className="farsha-statement-section farsha-statement-indemnity mt-5 space-y-3 text-sm leading-7 text-neutral-900">
                 <h3 className="font-bold">Pernyataan Kesanggupan &amp; Ganti Rugi</h3>
                 <p>
                   Apabila terjadi kerusakan, hilangnya komponen busana/aksesoris, atau kehilangan unit
@@ -2885,8 +2888,8 @@ export default function PosWorkspaceClient({ initialLedger, initialTransactionId
                 </p>
               </section>
 
-              <section className="mt-6 grid grid-cols-2 gap-4">
-                <div className="border border-neutral-300 p-2">
+              <section className="farsha-statement-photos mt-6 grid grid-cols-2 gap-4">
+                <div className="farsha-statement-photo-box border border-neutral-300 p-2">
                   <p className="mb-2 text-center text-xs font-bold uppercase tracking-wider text-neutral-600">
                     Foto Identitas
                   </p>
@@ -2895,15 +2898,15 @@ export default function PosWorkspaceClient({ initialLedger, initialTransactionId
                     <img
                       src={getAttachmentUrl(statementAttachments.idDocument)}
                       alt="Foto identitas customer"
-                      className="h-48 w-full object-cover"
+                      className="farsha-statement-photo-media h-48 w-full object-cover"
                     />
                   ) : (
-                    <div className="flex h-48 items-center justify-center bg-neutral-100 text-xs text-neutral-400">
+                    <div className="farsha-statement-photo-media flex h-48 items-center justify-center bg-neutral-100 text-xs text-neutral-400">
                       Belum tersedia
                     </div>
                   )}
                 </div>
-                <div className="border border-neutral-300 p-2">
+                <div className="farsha-statement-photo-box border border-neutral-300 p-2">
                   <p className="mb-2 text-center text-xs font-bold uppercase tracking-wider text-neutral-600">
                     Foto Penyewa
                   </p>
@@ -2912,10 +2915,10 @@ export default function PosWorkspaceClient({ initialLedger, initialTransactionId
                     <img
                       src={getAttachmentUrl(statementAttachments.customerPhoto)}
                       alt="Foto customer"
-                      className="h-48 w-full object-cover"
+                      className="farsha-statement-photo-media h-48 w-full object-cover"
                     />
                   ) : (
-                    <div className="flex h-48 items-center justify-center bg-neutral-100 text-xs text-neutral-400">
+                    <div className="farsha-statement-photo-media flex h-48 items-center justify-center bg-neutral-100 text-xs text-neutral-400">
                       Belum tersedia
                     </div>
                   )}
@@ -2929,6 +2932,11 @@ export default function PosWorkspaceClient({ initialLedger, initialTransactionId
       {/* Global CSS Inject to support clean full page printing of POS documents */}
       <style jsx global>{`
         @media print {
+          @page {
+            size: A4 portrait;
+            margin: 0;
+          }
+
           /* Hide everything in layout and background */
           body * {
             visibility: hidden;
@@ -2947,12 +2955,102 @@ export default function PosWorkspaceClient({ initialLedger, initialTransactionId
             position: absolute;
             left: 0;
             top: 0;
-            width: 100% !important;
-            min-height: 100vh;
-            padding: 0.55in !important;
+            width: 210mm !important;
+            min-height: 297mm !important;
+            height: 297mm !important;
+            overflow: hidden !important;
+            padding: 9mm 11mm 8mm !important;
             margin: 0 !important;
             box-shadow: none !important;
             border: none !important;
+            color: #111 !important;
+            font-size: 9.25pt !important;
+            line-height: 1.32 !important;
+            page-break-after: avoid;
+            page-break-before: avoid;
+            page-break-inside: avoid;
+          }
+
+          .farsha-statement-letter * {
+            line-height: 1.32 !important;
+            break-inside: avoid;
+          }
+
+          .farsha-statement-header {
+            margin-bottom: 4mm !important;
+          }
+
+          .farsha-statement-header p {
+            font-size: 7.5pt !important;
+            letter-spacing: 0.16em !important;
+          }
+
+          .farsha-statement-title {
+            margin-top: 1.5mm !important;
+            font-size: 13pt !important;
+            letter-spacing: 0.04em !important;
+          }
+
+          .farsha-statement-section {
+            margin-top: 0 !important;
+            font-size: 9.25pt !important;
+          }
+
+          .farsha-statement-section p,
+          .farsha-statement-section h3 {
+            margin: 0 !important;
+          }
+
+          .farsha-statement-intro {
+            display: grid !important;
+            gap: 1.8mm !important;
+          }
+
+          .farsha-statement-intro > div {
+            margin-left: 5mm !important;
+          }
+
+          .farsha-statement-rules {
+            display: grid !important;
+            gap: 2mm !important;
+            margin-top: 3mm !important;
+          }
+
+          .farsha-statement-rule h3,
+          .farsha-statement-indemnity h3 {
+            font-size: 9.5pt !important;
+            margin-bottom: 0.5mm !important;
+          }
+
+          .farsha-statement-indemnity {
+            display: grid !important;
+            gap: 1.7mm !important;
+            margin-top: 3mm !important;
+          }
+
+          .farsha-statement-photos {
+            display: grid !important;
+            grid-template-columns: 1fr 1fr !important;
+            gap: 5mm !important;
+            margin-top: 4mm !important;
+          }
+
+          .farsha-statement-photo-box {
+            padding: 2mm !important;
+            border: 1px solid #d4d4d4 !important;
+            break-inside: avoid;
+          }
+
+          .farsha-statement-photo-box p {
+            margin-bottom: 1.5mm !important;
+            font-size: 7.5pt !important;
+            letter-spacing: 0.08em !important;
+          }
+
+          .farsha-statement-photo-media {
+            height: 39mm !important;
+            width: 100% !important;
+            object-fit: cover !important;
           }
           `
               : `
