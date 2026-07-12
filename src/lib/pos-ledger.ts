@@ -26,6 +26,7 @@ export interface PosTransaction {
   itemCode: string;
   itemName: string;
   itemPrice: number;
+  customerId: string | null;
   customerName: string;
   customerPhone: string;
   startDate: string;
@@ -133,6 +134,7 @@ export interface AvailabilityProjection {
 
 export interface CreateRentalInput {
   item: KebayaItem;
+  customerId?: string | null;
   customerName: string;
   customerPhone: string;
   startDate: string;
@@ -294,6 +296,7 @@ function normalizeTransaction(value: Partial<PosTransaction>, ordinal: number): 
     itemCode,
     itemName,
     itemPrice: normalizeNumber(value.itemPrice),
+    customerId: typeof value.customerId === 'string' && value.customerId.trim() ? value.customerId.trim() : null,
     customerName: normalizeText(value.customerName, 'Pelanggan Umum'),
     customerPhone: normalizeText(value.customerPhone),
     startDate: normalizeText(value.startDate, createdAt.slice(0, 10)),
@@ -757,6 +760,7 @@ export function createRentalTransaction(input: CreateRentalInput) {
       itemCode: input.item.code,
       itemName: input.item.name,
       itemPrice: input.itemPrice !== undefined ? input.itemPrice : input.item.rentalPrice,
+      customerId: input.customerId ?? null,
       customerName: input.customerName.trim() || 'Pelanggan Umum',
       customerPhone: input.customerPhone.trim(),
       startDate: input.startDate,

@@ -10,6 +10,7 @@ import {
   ReceiptText,
   ShoppingBag,
   Store,
+  Users,
 } from 'lucide-react';
 
 import LogoutButton from '@/components/admin/LogoutButton';
@@ -32,6 +33,12 @@ const navItems = [
     label: 'Bookings',
     description: 'Booking control',
     icon: CalendarCheck,
+  },
+  {
+    href: '/pos/customers',
+    label: 'Customers',
+    description: 'Customer control',
+    icon: Users,
   },
   {
     href: '/pos/fitting',

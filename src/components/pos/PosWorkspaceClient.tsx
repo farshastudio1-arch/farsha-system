@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { useMemo, useState, useEffect } from 'react';
 import {
   AlertTriangle,
@@ -15,13 +16,17 @@ import {
   MessageCircle,
   RefreshCw,
   Phone,
+  Users,
 } from 'lucide-react';
 
 import {
+  ensurePosCustomerAction,
   fetchAdminCatalogItemsAction,
+  fetchCustomersAction,
   fetchPosLedgerAction,
   savePosLedgerAction,
 } from '@/lib/farsha-actions';
+import type { CustomerRecord } from '@/lib/customer-db';
 import { useSavedCatalogItems, writeSavedCatalogItems } from '@/lib/catalog-storage';
 import {
   closeRentalTransaction,
@@ -183,6 +188,9 @@ export default function PosWorkspaceClient({ initialLedger, initialTransactionId
   const [catalogError, setCatalogError] = useState('');
   const [isLoadingLedger, setIsLoadingLedger] = useState(true);
   const [ledgerError, setLedgerError] = useState('');
+  const [customers, setCustomers] = useState<CustomerRecord[]>([]);
+  const [isLoadingCustomers, setIsLoadingCustomers] = useState(true);
+  const [customerError, setCustomerError] = useState('');
 
   // Projections and Metrics
   const projections = useMemo(
@@ -204,6 +212,8 @@ export default function PosWorkspaceClient({ initialLedger, initialTransactionId
   const [receiptSearchQuery, setReceiptSearchQuery] = useState('');
 
   // Flow 1: Rental Form States
+  const [selectedCustomerId, setSelectedCustomerId] = useState('');
+  const [customerLookupQuery, setCustomerLookupQuery] = useState('');
   const [customerName, setCustomerName] = useState('');
   const [customerPhone, setCustomerPhone] = useState('');
   const [startDate, setStartDate] = useState(getTodayInputValue());
@@ -239,6 +249,30 @@ export default function PosWorkspaceClient({ initialLedger, initialTransactionId
     startDate && dueDate ? Math.max(getDayDiff(defaultDueDate || startDate, dueDate), 0) : 0;
   const extraReturnPenalty = extraReturnDays * extraReturnDayPenalty;
   const rentTotalDue = baseRentalPrice + securityDepositAmount + extraReturnPenalty;
+  const customerLookupMatches = useMemo(() => {
+    const query = customerLookupQuery.trim().toLowerCase();
+
+    if (!query) {
+      return customers.slice(0, 5);
+    }
+
+    return customers
+      .filter((customer) =>
+        [
+          customer.displayName,
+          customer.primaryPhone,
+          customer.normalizedPhone,
+          customer.email ?? '',
+          customer.instagram ?? '',
+        ].some((value) => value.toLowerCase().includes(query)),
+      )
+      .slice(0, 5);
+  }, [customers, customerLookupQuery]);
+
+  const selectedCustomer = useMemo(
+    () => customers.find((customer) => customer.id === selectedCustomerId) ?? null,
+    [customers, selectedCustomerId],
+  );
 
   useEffect(() => {
     let active = true;
@@ -262,6 +296,34 @@ export default function PosWorkspaceClient({ initialLedger, initialTransactionId
     }
 
     loadCatalogItems();
+
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    let active = true;
+
+    async function loadCustomers() {
+      setIsLoadingCustomers(true);
+      const result = await fetchCustomersAction({ status: 'active', limit: 300 });
+
+      if (!active) {
+        return;
+      }
+
+      if (result.ok) {
+        setCustomers(result.data);
+        setCustomerError('');
+      } else {
+        setCustomerError(result.error);
+      }
+
+      setIsLoadingCustomers(false);
+    }
+
+    loadCustomers();
 
     return () => {
       active = false;
@@ -309,6 +371,21 @@ export default function PosWorkspaceClient({ initialLedger, initialTransactionId
     return nextLedger;
   }
 
+  function rememberCustomer(customer: CustomerRecord) {
+    setCustomers((current) => {
+      const withoutCustomer = current.filter((entry) => entry.id !== customer.id);
+      return [customer, ...withoutCustomer].slice(0, 300);
+    });
+  }
+
+  function selectCustomer(customer: CustomerRecord) {
+    setSelectedCustomerId(customer.id);
+    setCustomerName(customer.displayName);
+    setCustomerPhone(customer.primaryPhone);
+    setCustomerLookupQuery('');
+    setCustomerError('');
+  }
+
   // Auto-calculated defaults when selecting items or transactions
   const selectedItem = useMemo(
     () => catalogItems.find((item) => item.id === selectedItemId) ?? null,
@@ -350,6 +427,8 @@ export default function PosWorkspaceClient({ initialLedger, initialTransactionId
         setDueDate(addDaysToInputDate(getTodayInputValue(), 3));
         setCustomerName('');
         setCustomerPhone('');
+        setSelectedCustomerId('');
+        setCustomerLookupQuery('');
         setRentalNotes('');
         setPaymentMethod('cash');
         setStatusMessage('');
@@ -474,15 +553,35 @@ export default function PosWorkspaceClient({ initialLedger, initialTransactionId
       return;
     }
 
+    if (!customerPhone.trim()) {
+      setStatusMessage('No. WhatsApp pelanggan wajib diisi untuk customer database.');
+      return;
+    }
+
     if (!dueDate) {
       setStatusMessage('Tanggal pengembalian wajib diisi.');
       return;
     }
 
     const price = baseRentalPrice || selectedItem.rentalPrice;
+    const customerResult = await ensurePosCustomerAction({
+      displayName: customerName.trim(),
+      primaryPhone: customerPhone.trim(),
+    });
+
+    if (!customerResult.ok) {
+      setCustomerError(customerResult.error);
+      setStatusMessage(customerResult.error);
+      setPendingRentalAction(null);
+      return;
+    }
+
+    rememberCustomer(customerResult.data);
+    setSelectedCustomerId(customerResult.data.id);
 
     const nextLedger = createRentalTransaction({
       item: selectedItem,
+      customerId: customerResult.data.id,
       customerName: customerName.trim(),
       customerPhone: customerPhone.trim(),
       startDate,
@@ -509,6 +608,8 @@ export default function PosWorkspaceClient({ initialLedger, initialTransactionId
     // Reset fields
     setCustomerName('');
     setCustomerPhone('');
+    setSelectedCustomerId('');
+    setCustomerLookupQuery('');
     setRentalNotes('');
     setSelectedItemId('');
     setStatusMessage('');
@@ -566,14 +667,17 @@ export default function PosWorkspaceClient({ initialLedger, initialTransactionId
   const refreshWorkspaceData = async () => {
     setIsLoadingCatalog(true);
     setIsLoadingLedger(true);
+    setIsLoadingCustomers(true);
     setCatalogError('');
     setLedgerError('');
+    setCustomerError('');
     setStatusMessage('');
 
     const [catalogResult, ledgerResult] = await Promise.all([
       fetchAdminCatalogItemsAction(),
       fetchPosLedgerAction(),
     ]);
+    const customersResult = await fetchCustomersAction({ status: 'active', limit: 300 });
 
     if (catalogResult.ok) {
       writeSavedCatalogItems(catalogResult.data);
@@ -587,8 +691,16 @@ export default function PosWorkspaceClient({ initialLedger, initialTransactionId
       setLedgerError(ledgerResult.error);
     }
 
+    if (customersResult.ok) {
+      setCustomers(customersResult.data);
+      setCustomerError('');
+    } else {
+      setCustomerError(customersResult.error);
+    }
+
     setIsLoadingCatalog(false);
     setIsLoadingLedger(false);
+    setIsLoadingCustomers(false);
   };
 
   return (
@@ -624,10 +736,10 @@ export default function PosWorkspaceClient({ initialLedger, initialTransactionId
             <button
               type="button"
               onClick={() => void refreshWorkspaceData()}
-              disabled={isLoadingCatalog || isLoadingLedger}
+              disabled={isLoadingCatalog || isLoadingLedger || isLoadingCustomers}
               className="inline-flex min-h-10 items-center gap-2 bg-neutral-950 px-3 text-xs font-bold uppercase tracking-wider text-white transition-colors hover:bg-neutral-800"
             >
-              <RefreshCw className={`h-4 w-4 ${isLoadingCatalog || isLoadingLedger ? 'animate-spin' : ''}`} />
+              <RefreshCw className={`h-4 w-4 ${isLoadingCatalog || isLoadingLedger || isLoadingCustomers ? 'animate-spin' : ''}`} />
               Refresh
             </button>
           </div>
@@ -1045,6 +1157,83 @@ export default function PosWorkspaceClient({ initialLedger, initialTransactionId
                   <h4 className="border-b border-neutral-100 pb-2 text-xs font-bold uppercase tracking-wider text-neutral-500">
                     Rental Details
                   </h4>
+
+                  <div className="space-y-2 border border-neutral-200 bg-neutral-50 p-3">
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-neutral-600">
+                        <Users className="h-3.5 w-3.5" />
+                        Customer database
+                      </span>
+                      <Link
+                        href="/pos/customers"
+                        className="text-[10px] font-bold uppercase tracking-wider text-neutral-500 underline hover:text-neutral-950"
+                      >
+                        Open
+                      </Link>
+                    </div>
+
+                    <label className="block space-y-1">
+                      <span className="text-xs font-semibold text-neutral-600">Cari / pilih customer lama</span>
+                      <input
+                        value={customerLookupQuery}
+                        onChange={(event) => {
+                          setCustomerLookupQuery(event.target.value);
+                          setSelectedCustomerId('');
+                        }}
+                        placeholder={isLoadingCustomers ? 'Memuat customer...' : 'Nama, WhatsApp, email, Instagram'}
+                        className="h-10 w-full border border-neutral-200 bg-white px-3 text-sm focus:outline-none focus:ring-1 focus:ring-neutral-900"
+                      />
+                    </label>
+
+                    {customerError && (
+                      <p className="border border-red-200 bg-red-50 px-2 py-1.5 text-[11px] text-red-700">
+                        {customerError}
+                      </p>
+                    )}
+
+                    {selectedCustomer ? (
+                      <div className="flex items-center justify-between gap-2 border border-emerald-200 bg-emerald-50 px-2 py-1.5 text-[11px] text-emerald-800">
+                        <span className="min-w-0 truncate">
+                          Linked: <strong>{selectedCustomer.displayName}</strong> ({selectedCustomer.primaryPhone})
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => setSelectedCustomerId('')}
+                          className="shrink-0 font-bold uppercase tracking-wider text-emerald-900 underline"
+                        >
+                          Clear
+                        </button>
+                      </div>
+                    ) : customerLookupQuery || customerLookupMatches.length > 0 ? (
+                      <div className="max-h-36 overflow-y-auto border border-neutral-200 bg-white">
+                        {customerLookupMatches.map((customer) => (
+                          <button
+                            key={customer.id}
+                            type="button"
+                            onClick={() => selectCustomer(customer)}
+                            className="flex w-full items-center justify-between gap-2 border-b border-neutral-100 px-2 py-2 text-left text-xs last:border-b-0 hover:bg-neutral-50"
+                          >
+                            <span className="min-w-0">
+                              <span className="block truncate font-semibold text-neutral-950">{customer.displayName}</span>
+                              <span className="block truncate text-[11px] text-neutral-500">
+                                {customer.primaryPhone}
+                                {customer.instagram ? ` / @${customer.instagram.replace(/^@/, '')}` : ''}
+                              </span>
+                            </span>
+                            <span className="shrink-0 font-mono text-[10px] text-neutral-400">
+                              {customer.posTransactionCount + customer.bookingCount + customer.fittingCount}x
+                            </span>
+                          </button>
+                        ))}
+
+                        {customerLookupMatches.length === 0 && (
+                          <p className="px-2 py-3 text-xs text-neutral-500">
+                            Tidak ada customer cocok. Data baru akan dibuat saat transaksi disimpan.
+                          </p>
+                        )}
+                      </div>
+                    ) : null}
+                  </div>
 
                   <label className="block space-y-1">
                     <span className="text-xs font-semibold text-neutral-600">Nama Pelanggan</span>

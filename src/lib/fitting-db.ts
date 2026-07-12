@@ -1,4 +1,5 @@
 import { getD1Database } from '@/lib/cloudflare';
+import { upsertCustomerFromContact } from '@/lib/customer-db';
 
 export type FittingAppointmentStatus =
   | 'pending'
@@ -589,6 +590,13 @@ export async function createFittingAppointment(input: CreateFittingAppointmentIn
 
   const id = createId('fitting');
   const fittingCode = makeFittingCode(appointmentDate);
+  const customer = await upsertCustomerFromContact({
+    displayName: customerName,
+    primaryPhone: customerWhatsapp,
+    email: customerEmail,
+    source: 'fitting',
+    actor: createdBy,
+  });
 
   try {
     await db
@@ -600,6 +608,7 @@ export async function createFittingAppointment(input: CreateFittingAppointmentIn
           customer_name,
           customer_whatsapp,
           customer_email,
+          customer_id,
           notes,
           booking_id,
           appointment_date,
@@ -609,7 +618,7 @@ export async function createFittingAppointment(input: CreateFittingAppointmentIn
           created_by,
           updated_by
         )
-        VALUES (?, ?, 'pending', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        VALUES (?, ?, 'pending', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       )
       .bind(
         id,
@@ -617,6 +626,7 @@ export async function createFittingAppointment(input: CreateFittingAppointmentIn
         customerName,
         customerWhatsapp,
         customerEmail,
+        customer.id,
         notes,
         bookingContext?.bookingId ?? null,
         appointmentDate,

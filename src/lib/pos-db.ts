@@ -24,6 +24,7 @@ type PosTransactionRow = {
   item_code: string;
   item_name: string;
   item_price: number;
+  customer_id?: string | null;
   customer_name: string;
   customer_phone: string | null;
   start_date: string;
@@ -118,6 +119,7 @@ function transactionRowToModel(row: PosTransactionRow): PosTransaction {
     itemCode: row.item_code,
     itemName: row.item_name,
     itemPrice: row.item_price,
+    customerId: row.customer_id ?? null,
     customerName: row.customer_name,
     customerPhone: row.customer_phone ?? '',
     startDate: row.start_date,
@@ -269,11 +271,11 @@ function transactionStatement(db: D1Database, transaction: PosTransaction) {
     .prepare(
       `INSERT INTO pos_transactions (
         id, transaction_number, kind, status, item_id, item_code, item_name, item_price,
-        customer_name, customer_phone, start_date, due_date, closed_at, deposit_received,
+        customer_id, customer_name, customer_phone, start_date, due_date, closed_at, deposit_received,
         refunded_amount, penalty_amount, adjustment_amount, payment_method, notes, revision,
         created_at, updated_at
       )
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       ON CONFLICT(id) DO UPDATE SET
         transaction_number = excluded.transaction_number,
         kind = excluded.kind,
@@ -282,6 +284,7 @@ function transactionStatement(db: D1Database, transaction: PosTransaction) {
         item_code = excluded.item_code,
         item_name = excluded.item_name,
         item_price = excluded.item_price,
+        customer_id = excluded.customer_id,
         customer_name = excluded.customer_name,
         customer_phone = excluded.customer_phone,
         start_date = excluded.start_date,
@@ -305,6 +308,7 @@ function transactionStatement(db: D1Database, transaction: PosTransaction) {
       transaction.itemCode,
       transaction.itemName,
       transaction.itemPrice,
+      transaction.customerId,
       transaction.customerName,
       transaction.customerPhone,
       transaction.startDate,

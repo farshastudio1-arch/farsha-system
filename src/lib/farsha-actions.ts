@@ -3,6 +3,20 @@
 import { revalidatePath } from 'next/cache';
 
 import { auth } from '../../auth';
+import {
+  archiveCustomer,
+  attachCustomerToRecord,
+  getCustomerProfile,
+  listCustomers,
+  updateCustomer,
+  upsertCustomerFromContact,
+  type CreateCustomerInput,
+  type CustomerDateBasis,
+  type CustomerProfile,
+  type CustomerRecord,
+  type CustomerStatus,
+  type UpdateCustomerInput,
+} from '@/lib/customer-db';
 import { CMSContent, KebayaItem, SiteSettings } from '@/data/mockData';
 import { BookingCatalogPressureMap, listBookingCatalogPressure } from '@/lib/booking-db';
 import {
@@ -86,7 +100,9 @@ function getActionErrorMessage(error: unknown, fallback: string) {
     message.includes('no such table: media_assets') ||
     message.includes('no such table: media_albums') ||
     message.includes('no such table: name_generator_pool_entries') ||
-    message.includes('no such table: name_generator_used_names')
+    message.includes('no such table: name_generator_used_names') ||
+    message.includes('no such table: customers') ||
+    message.includes('no such column: customer_id')
   ) {
     return catalogSchemaError;
   }
@@ -166,6 +182,7 @@ export async function savePosLedgerAction(
     revalidatePath('/pos');
     revalidatePath('/pos/dashboard');
     revalidatePath('/pos/transactions');
+    revalidatePath('/pos/customers');
     revalidatePath('/pos/finance');
 
     return { ok: true, data: savedLedger };
@@ -173,6 +190,163 @@ export async function savePosLedgerAction(
     return {
       ok: false,
       error: getActionErrorMessage(error, 'Failed to save POS ledger.'),
+    };
+  }
+}
+
+export async function fetchCustomersAction(input: {
+  query?: string;
+  status?: CustomerStatus | 'all';
+  dateFrom?: string;
+  dateTo?: string;
+  dateBasis?: CustomerDateBasis;
+  limit?: number;
+} = {}): Promise<ActionResult<CustomerRecord[]>> {
+  try {
+    await ensureAdmin();
+    return { ok: true, data: await listCustomers(input) };
+  } catch (error) {
+    return {
+      ok: false,
+      error: getActionErrorMessage(error, 'Failed to load customers.'),
+    };
+  }
+}
+
+export async function fetchCustomerProfileAction(
+  customerId: string,
+  input: {
+    dateFrom?: string;
+    dateTo?: string;
+  } = {},
+): Promise<ActionResult<CustomerProfile | null>> {
+  try {
+    await ensureAdmin();
+    return { ok: true, data: await getCustomerProfile(customerId, input) };
+  } catch (error) {
+    return {
+      ok: false,
+      error: getActionErrorMessage(error, 'Failed to load customer profile.'),
+    };
+  }
+}
+
+function revalidateCustomerPaths() {
+  revalidatePath('/pos');
+  revalidatePath('/pos/transactions');
+  revalidatePath('/pos/bookings');
+  revalidatePath('/pos/fitting');
+  revalidatePath('/pos/customers');
+  revalidatePath('/pos/finance');
+}
+
+export async function saveCustomerAction(input: CreateCustomerInput | UpdateCustomerInput): Promise<ActionResult<CustomerRecord>> {
+  try {
+    const session = await auth();
+
+    if (session?.user?.role !== 'admin') {
+      throw new Error('Unauthorized');
+    }
+
+    const actor = session.user.email ?? null;
+    let savedCustomer: CustomerRecord;
+
+    if ('id' in input && input.id) {
+      savedCustomer = await updateCustomer({ ...input, actor });
+    } else {
+      const createInput = input as CreateCustomerInput;
+      savedCustomer = await upsertCustomerFromContact({
+        ...createInput,
+        source: createInput.source ?? 'manual',
+        actor,
+      });
+    }
+
+    revalidateCustomerPaths();
+
+    return { ok: true, data: savedCustomer };
+  } catch (error) {
+    return {
+      ok: false,
+      error: getActionErrorMessage(error, 'Failed to save customer.'),
+    };
+  }
+}
+
+export async function archiveCustomerAction(customerId: string): Promise<ActionResult<CustomerRecord>> {
+  try {
+    const session = await auth();
+
+    if (session?.user?.role !== 'admin') {
+      throw new Error('Unauthorized');
+    }
+
+    const archived = await archiveCustomer(customerId, session.user.email ?? null);
+
+    revalidateCustomerPaths();
+
+    return { ok: true, data: archived };
+  } catch (error) {
+    return {
+      ok: false,
+      error: getActionErrorMessage(error, 'Failed to archive customer.'),
+    };
+  }
+}
+
+export async function attachCustomerToRecordAction(input: {
+  customerId: string;
+  targetType: 'pos_transaction' | 'booking' | 'fitting';
+  targetId: string;
+}): Promise<ActionResult<CustomerProfile | null>> {
+  try {
+    const session = await auth();
+
+    if (session?.user?.role !== 'admin') {
+      throw new Error('Unauthorized');
+    }
+
+    const profile = await attachCustomerToRecord({
+      ...input,
+      actor: session.user.email ?? null,
+    });
+
+    revalidateCustomerPaths();
+
+    return { ok: true, data: profile };
+  } catch (error) {
+    return {
+      ok: false,
+      error: getActionErrorMessage(error, 'Failed to link customer.'),
+    };
+  }
+}
+
+export async function ensurePosCustomerAction(input: {
+  displayName: string;
+  primaryPhone: string;
+}): Promise<ActionResult<CustomerRecord>> {
+  try {
+    const session = await auth();
+
+    if (session?.user?.role !== 'admin') {
+      throw new Error('Unauthorized');
+    }
+
+    const customer = await upsertCustomerFromContact({
+      displayName: input.displayName,
+      primaryPhone: input.primaryPhone,
+      source: 'pos',
+      actor: session.user.email ?? null,
+    });
+
+    revalidatePath('/pos/customers');
+
+    return { ok: true, data: customer };
+  } catch (error) {
+    return {
+      ok: false,
+      error: getActionErrorMessage(error, 'Failed to save POS customer.'),
     };
   }
 }

@@ -1,4 +1,5 @@
 import { getD1Database } from '@/lib/cloudflare';
+import { upsertCustomerFromContact } from '@/lib/customer-db';
 import { mediaKeyToUrl } from '@/lib/media-library';
 import {
   getFutureBookingBlockWindow,
@@ -814,6 +815,14 @@ export async function createBooking(input: CreateBookingInput) {
       : items.reduce((sum, item) => sum + item.rental_price, 0) + extraReturnFeeTotal;
   const paymentId = createId('booking-payment');
   const status = input.status === 'payment_submitted' ? 'payment_submitted' : 'requested';
+  const customer = await upsertCustomerFromContact({
+    displayName: customerName,
+    primaryPhone: customerWhatsapp,
+    email: input.customerEmail,
+    instagram: input.customerInstagram,
+    source: 'booking',
+    actor: input.createdBy,
+  });
 
   const statements = [
     db
@@ -827,6 +836,7 @@ export async function createBooking(input: CreateBookingInput) {
           customer_whatsapp,
           customer_email,
           customer_instagram,
+          customer_id,
           pickup_method,
           delivery_address,
           notes,
@@ -837,7 +847,7 @@ export async function createBooking(input: CreateBookingInput) {
           created_by,
           updated_by
         )
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       )
       .bind(
         bookingId,
@@ -848,6 +858,7 @@ export async function createBooking(input: CreateBookingInput) {
         customerWhatsapp,
         normalizeOptionalText(input.customerEmail),
         normalizeOptionalText(input.customerInstagram),
+        customer.id,
         input.pickupMethod === 'gosend' ? 'gosend' : 'store',
         normalizeOptionalText(input.deliveryAddress),
         normalizeText(input.notes),
