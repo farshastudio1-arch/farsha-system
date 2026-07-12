@@ -61,6 +61,7 @@ type PendingRentalAction = 'print' | 'cancel';
 type PendingPosAction = 'return' | 'maintenance';
 type ReceiptHistoryStatus = 'open' | 'closed';
 type RentalPhotoField = 'customerPhoto' | 'idDocumentPhoto';
+type PrintDocumentTarget = 'receipt' | 'statement';
 
 type RentalPhotoDraft = {
   file: File;
@@ -483,6 +484,8 @@ export default function PosWorkspaceClient({ initialLedger, initialTransactionId
   // Invoice Modal State
   const [isInvoiceOpen, setIsInvoiceOpen] = useState(false);
   const [invoiceTransaction, setInvoiceTransaction] = useState<PosTransaction | null>(null);
+  const [statementTransaction, setStatementTransaction] = useState<PosTransaction | null>(null);
+  const [printDocumentTarget, setPrintDocumentTarget] = useState<PrintDocumentTarget>('receipt');
   const baseRentalPrice = parseCurrencyInput(priceOverride);
   const securityDepositAmount = parseCurrencyInput(depositReceived);
   const defaultDueDate = startDate ? addDaysToInputDate(startDate, 3) : '';
@@ -500,6 +503,16 @@ export default function PosWorkspaceClient({ initialLedger, initialTransactionId
 
     return grouped;
   }, [transactionAttachments]);
+  const statementAttachments = useMemo(() => {
+    const attachments = statementTransaction
+      ? attachmentsByTransaction.get(statementTransaction.id) ?? []
+      : [];
+
+    return {
+      customerPhoto: attachments.find((attachment) => attachment.kind === 'customer_photo') ?? null,
+      idDocument: attachments.find((attachment) => attachment.kind === 'id_document') ?? null,
+    };
+  }, [attachmentsByTransaction, statementTransaction]);
   const customerLookupMatches = useMemo(() => {
     const query = customerLookupQuery.trim().toLowerCase();
 
@@ -1122,6 +1135,29 @@ export default function PosWorkspaceClient({ initialLedger, initialTransactionId
   const triggerInvoiceModal = (trx: PosTransaction) => {
     setInvoiceTransaction(trx);
     setIsInvoiceOpen(true);
+  };
+
+  const printReceipt = () => {
+    setPrintDocumentTarget('receipt');
+    window.setTimeout(() => window.print(), 0);
+  };
+
+  const openStatementLetter = (transaction: PosTransaction) => {
+    const attachments = attachmentsByTransaction.get(transaction.id) ?? [];
+    const hasCustomerPhoto = attachments.some((attachment) => attachment.kind === 'customer_photo');
+    const hasIdDocument = attachments.some((attachment) => attachment.kind === 'id_document');
+
+    if (!hasCustomerPhoto || !hasIdDocument) {
+      setStatusMessage('Surat pernyataan membutuhkan customer photo dan ID document photo.');
+      return;
+    }
+
+    setStatementTransaction(transaction);
+  };
+
+  const printStatementLetter = () => {
+    setPrintDocumentTarget('statement');
+    window.setTimeout(() => window.print(), 0);
   };
 
   const refreshWorkspaceData = async () => {
@@ -2567,15 +2603,22 @@ export default function PosWorkspaceClient({ initialLedger, initialTransactionId
               </h3>
               <div className="flex gap-2">
                 <button
-                  onClick={() => window.print()}
+                  onClick={printReceipt}
                   className="inline-flex items-center justify-center px-3 py-1.5 border border-neutral-900 bg-neutral-900 text-white text-xs font-semibold hover:bg-neutral-800"
                 >
                   <Printer className="h-3.5 w-3.5 mr-1" /> Cetak (Print)
                 </button>
                 <button
+                  onClick={() => openStatementLetter(invoiceTransaction)}
+                  className="inline-flex items-center justify-center px-3 py-1.5 border border-neutral-300 bg-white text-xs font-semibold text-neutral-700 hover:border-neutral-900 hover:text-neutral-950"
+                >
+                  <Printer className="h-3.5 w-3.5 mr-1" /> Cetak Surat Pernyataan
+                </button>
+                <button
                   onClick={() => {
                     setIsInvoiceOpen(false);
                     setInvoiceTransaction(null);
+                    setStatementTransaction(null);
                   }}
                   className="text-neutral-500 hover:text-neutral-800 p-1"
                 >
@@ -2729,7 +2772,161 @@ export default function PosWorkspaceClient({ initialLedger, initialTransactionId
         </div>
       )}
 
-      {/* Global CSS Inject to support clean full page printing of receipt */}
+      {statementTransaction && (
+        <div className="fixed inset-0 z-[60] overflow-y-auto bg-black/60 px-4 py-6 print:bg-white print:p-0">
+          <div className="mx-auto max-w-4xl bg-white shadow-2xl print:shadow-none print:max-w-none">
+            <div className="flex flex-col gap-3 border-b border-neutral-200 bg-neutral-50 p-4 print:hidden sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <p className="font-mono text-[10px] font-bold uppercase tracking-widest text-neutral-400">
+                  Surat Pernyataan
+                </p>
+                <h3 className="mt-1 font-serif text-xl font-semibold text-neutral-950">
+                  Komitmen Penyewaan
+                </h3>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  onClick={printStatementLetter}
+                  disabled={!statementAttachments.customerPhoto || !statementAttachments.idDocument}
+                  className="inline-flex min-h-9 items-center justify-center gap-2 border border-neutral-900 bg-neutral-900 px-3 text-xs font-semibold uppercase tracking-wider text-white hover:bg-neutral-800 disabled:cursor-not-allowed disabled:border-neutral-300 disabled:bg-neutral-300"
+                >
+                  <Printer className="h-3.5 w-3.5" />
+                  Print Surat
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setStatementTransaction(null)}
+                  className="inline-flex min-h-9 items-center justify-center border border-neutral-300 bg-white px-3 text-xs font-semibold uppercase tracking-wider text-neutral-700 hover:border-neutral-900"
+                >
+                  Tutup
+                </button>
+              </div>
+            </div>
+
+            {(!statementAttachments.customerPhoto || !statementAttachments.idDocument) && (
+              <div className="border-b border-amber-200 bg-amber-50 px-5 py-3 text-sm text-amber-900 print:hidden">
+                Surat pernyataan membutuhkan customer photo dan ID document photo aktif.
+              </div>
+            )}
+
+            <article id="farsha-statement-print-area" className="bg-white p-6 text-neutral-950 sm:p-10">
+              <header className="mb-6 text-center">
+                <p className="text-xs font-semibold uppercase tracking-[0.24em] text-neutral-500">
+                  Farsha Studio
+                </p>
+                <h2 className="mt-2 text-xl font-bold uppercase tracking-wide text-neutral-950">
+                  Surat Pernyataan dan Komitmen Penyewaan
+                </h2>
+              </header>
+
+              <section className="space-y-3 text-sm leading-7 text-neutral-900">
+                <p>Saya,</p>
+                <div className="ml-4 space-y-1">
+                  <p>• Nama Penyewa : <strong>{statementTransaction.customerName}</strong></p>
+                  <p>• No. WhatsApp : <strong>{statementTransaction.customerPhone || '-'}</strong></p>
+                  <p>• No. Transaksi : <strong>{statementTransaction.transactionNumber}</strong></p>
+                </div>
+
+                <p>
+                  Dengan ini menyatakan bahwa saya telah menyewa busana (baju/kebaya/dress) dari
+                  Farsha Studio pada tanggal <strong>{formatDate(statementTransaction.startDate)}</strong>, dan
+                  berkomitmen untuk mengembalikannya pada tanggal{' '}
+                  <strong>{formatDate(statementTransaction.dueDate)}</strong> dalam kondisi yang sama baiknya
+                  seperti saat pertama kali diterima.
+                </p>
+                <p>
+                  Sebagai bentuk tanggung jawab, saya menyatakan setuju dan bersedia mematuhi seluruh
+                  ketentuan yang tercantum dalam poin-poin di bawah ini:
+                </p>
+              </section>
+
+              <section className="mt-5 space-y-4 text-sm leading-7 text-neutral-900">
+                <div>
+                  <h3 className="font-bold">1. Petunjuk Pemakaian</h3>
+                  <p>• a. Melepaskan ornamen atau aksesoris pribadi (seperti gelang, cincin, jam tangan, dll.) yang berpotensi merusak atau tersangkut pada serat kain busana.</p>
+                  <p>• b. Membuka ritsleting (zipper) dan/atau kancing secara menyeluruh sebelum mengenakan busana guna menghindari kerusakan.</p>
+                  <p>• c. Mengenakan dan melepaskan busana dengan penuh kehati-hatian.</p>
+                </div>
+
+                <div>
+                  <h3 className="font-bold">2. Petunjuk Perawatan</h3>
+                  <p>• a. Tidak mencuci/melaundry busana, baik sebelum maupun sesudah pemakaian (perawatan kain sepenuhnya ditangani oleh pihak Farsha Studio).</p>
+                  <p>• b. Tidak mengubah, memotong, atau menjahit ukuran maupun model busana dalam bentuk apa pun.</p>
+                  <p>• c. Menghindari penggunaan aksesoris tambahan pada busana yang berisiko merusak material kain.</p>
+                </div>
+
+                <div>
+                  <h3 className="font-bold">3. Petunjuk Pengembalian</h3>
+                  <p>• a. Mengembalikan busana dalam kondisi utuh (sama seperti saat pertama kali diambil/diterima).</p>
+                  <p>• b. Mengembalikan busana secara lengkap beserta aksesoris bawaan (jika ada) serta seluruh kemasan (packing) penunjangnya.</p>
+                  <p>• c. Mengembalikan busana tepat waktu sesuai dengan tanggal yang telah disepakati bersama.</p>
+                </div>
+              </section>
+
+              <section className="mt-5 space-y-3 text-sm leading-7 text-neutral-900">
+                <h3 className="font-bold">Pernyataan Kesanggupan &amp; Ganti Rugi</h3>
+                <p>
+                  Apabila terjadi kerusakan, hilangnya komponen busana/aksesoris, atau kehilangan unit
+                  busana yang disewa, saya bersedia bertanggung jawab penuh untuk melakukan ganti rugi
+                  sesuai dengan ketentuan yang berlaku di Farsha Studio.
+                </p>
+                <p>
+                  Selain itu, jika terjadi keterlambatan pengembalian dari waktu yang telah ditentukan,
+                  saya bersedia dikenakan denda keterlambatan sebesar Rp100.000,- (seratus ribu rupiah)
+                  per hari untuk setiap unit busana.
+                </p>
+                <p>
+                  Demikian surat pernyataan ini saya buat dengan kesadaran penuh, tanpa paksaan dari
+                  pihak mana pun, dan untuk dipergunakan sebagaimana mestinya.
+                </p>
+                <p className="font-semibold">
+                  Foto Identitas dan foto saya berlaku sebagai pengganti tandatangan.
+                </p>
+              </section>
+
+              <section className="mt-6 grid grid-cols-2 gap-4">
+                <div className="border border-neutral-300 p-2">
+                  <p className="mb-2 text-center text-xs font-bold uppercase tracking-wider text-neutral-600">
+                    Foto Identitas
+                  </p>
+                  {statementAttachments.idDocument ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={getAttachmentUrl(statementAttachments.idDocument)}
+                      alt="Foto identitas customer"
+                      className="h-48 w-full object-cover"
+                    />
+                  ) : (
+                    <div className="flex h-48 items-center justify-center bg-neutral-100 text-xs text-neutral-400">
+                      Belum tersedia
+                    </div>
+                  )}
+                </div>
+                <div className="border border-neutral-300 p-2">
+                  <p className="mb-2 text-center text-xs font-bold uppercase tracking-wider text-neutral-600">
+                    Foto Penyewa
+                  </p>
+                  {statementAttachments.customerPhoto ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={getAttachmentUrl(statementAttachments.customerPhoto)}
+                      alt="Foto customer"
+                      className="h-48 w-full object-cover"
+                    />
+                  ) : (
+                    <div className="flex h-48 items-center justify-center bg-neutral-100 text-xs text-neutral-400">
+                      Belum tersedia
+                    </div>
+                  )}
+                </div>
+              </section>
+            </article>
+          </div>
+        </div>
+      )}
+
+      {/* Global CSS Inject to support clean full page printing of POS documents */}
       <style jsx global>{`
         @media print {
           /* Hide everything in layout and background */
@@ -2738,13 +2935,32 @@ export default function PosWorkspaceClient({ initialLedger, initialTransactionId
             background: none !important;
           }
           
-          /* Only display the designated print area div */
+          ${
+            printDocumentTarget === 'statement'
+              ? `
+          #farsha-statement-print-area,
+          #farsha-statement-print-area * {
+            visibility: visible;
+          }
+
+          #farsha-statement-print-area {
+            position: absolute;
+            left: 0;
+            top: 0;
+            width: 100% !important;
+            min-height: 100vh;
+            padding: 0.55in !important;
+            margin: 0 !important;
+            box-shadow: none !important;
+            border: none !important;
+          }
+          `
+              : `
           #farsha-invoice-print-area,
           #farsha-invoice-print-area * {
             visibility: visible;
           }
           
-          /* Position the print block correctly at absolute top left page boundary */
           #farsha-invoice-print-area {
             position: absolute;
             left: 0;
@@ -2754,6 +2970,8 @@ export default function PosWorkspaceClient({ initialLedger, initialTransactionId
             margin: 0 !important;
             box-shadow: none !important;
             border: none !important;
+          }
+          `
           }
           
           /* Hide scrollbars, dialog controls, and close buttons on printed paper */
