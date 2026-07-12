@@ -671,6 +671,78 @@ function mutateLedger(
   return nextLedger;
 }
 
+export function buildRentalTransactionLedger(
+  ledgerInput: PosLedgerState,
+  input: CreateRentalInput,
+) {
+  const ledger = normalizePosLedger(ledgerInput);
+  const createdAt = nowIso();
+  const nextOrdinal = ledger.counters.transaction + 1;
+  const transaction: PosTransaction = {
+    id: createId('trx', nextOrdinal),
+    transactionNumber: formatReference('TRX', nextOrdinal),
+    kind: 'rental',
+    status: 'open',
+    itemId: input.item.id,
+    itemCode: input.item.code,
+    itemName: input.item.name,
+    itemPrice: input.itemPrice !== undefined ? input.itemPrice : input.item.rentalPrice,
+    customerId: input.customerId ?? null,
+    customerName: input.customerName.trim() || 'Pelanggan Umum',
+    customerPhone: input.customerPhone.trim(),
+    startDate: input.startDate,
+    dueDate: input.dueDate,
+    closedAt: null,
+    depositReceived: Math.max(input.depositReceived, 0),
+    refundedAmount: 0,
+    penaltyAmount: 0,
+    adjustmentAmount: 0,
+    paymentMethod: input.paymentMethod ?? 'cash',
+    notes: input.notes?.trim() ?? '',
+    revision: 1,
+    createdAt,
+    updatedAt: createdAt,
+  };
+
+  const receipt = makeReceipt(
+    transaction,
+    'create',
+    'Rental created',
+    input.notes?.trim() ?? '',
+    ledger.counters.receipt + 1,
+    {
+      eventAmount: transaction.itemPrice + Math.max(input.depositReceived, 0),
+      paymentMethod: input.paymentMethod ?? 'cash',
+    },
+  );
+  const historyEntry = makeHistoryEntry(
+    transaction,
+    'create',
+    'Rental created',
+    null,
+    ledger.counters.history + 1,
+    input.notes?.trim() ?? '',
+  );
+
+  const nextLedger = {
+    ...ledger,
+    transactions: [transaction, ...ledger.transactions],
+    receipts: [...ledger.receipts, receipt],
+    history: [...ledger.history, historyEntry],
+    counters: {
+      transaction: nextOrdinal,
+      receipt: ledger.counters.receipt + 1,
+      history: ledger.counters.history + 1,
+      maintenance: ledger.counters.maintenance,
+    },
+  };
+
+  return {
+    ledger: nextLedger,
+    transaction,
+  };
+}
+
 function findTransaction(ledger: PosLedgerState, transactionId: string) {
   return ledger.transactions.find((transaction) => transaction.id === transactionId) ?? null;
 }
@@ -749,66 +821,7 @@ function replaceTransaction(
 
 export function createRentalTransaction(input: CreateRentalInput) {
   return mutateLedger((ledger) => {
-    const createdAt = nowIso();
-    const nextOrdinal = ledger.counters.transaction + 1;
-    const transaction: PosTransaction = {
-      id: createId('trx', nextOrdinal),
-      transactionNumber: formatReference('TRX', nextOrdinal),
-      kind: 'rental',
-      status: 'open',
-      itemId: input.item.id,
-      itemCode: input.item.code,
-      itemName: input.item.name,
-      itemPrice: input.itemPrice !== undefined ? input.itemPrice : input.item.rentalPrice,
-      customerId: input.customerId ?? null,
-      customerName: input.customerName.trim() || 'Pelanggan Umum',
-      customerPhone: input.customerPhone.trim(),
-      startDate: input.startDate,
-      dueDate: input.dueDate,
-      closedAt: null,
-      depositReceived: Math.max(input.depositReceived, 0),
-      refundedAmount: 0,
-      penaltyAmount: 0,
-      adjustmentAmount: 0,
-      paymentMethod: input.paymentMethod ?? 'cash',
-      notes: input.notes?.trim() ?? '',
-      revision: 1,
-      createdAt,
-      updatedAt: createdAt,
-    };
-
-    const receipt = makeReceipt(
-      transaction,
-      'create',
-      'Rental created',
-      input.notes?.trim() ?? '',
-      ledger.counters.receipt + 1,
-      {
-        eventAmount: transaction.itemPrice + Math.max(input.depositReceived, 0),
-        paymentMethod: input.paymentMethod ?? 'cash',
-      },
-    );
-    const historyEntry = makeHistoryEntry(
-      transaction,
-      'create',
-      'Rental created',
-      null,
-      ledger.counters.history + 1,
-      input.notes?.trim() ?? '',
-    );
-
-    return {
-      ...ledger,
-      transactions: [transaction, ...ledger.transactions],
-      receipts: [...ledger.receipts, receipt],
-      history: [...ledger.history, historyEntry],
-      counters: {
-        transaction: nextOrdinal,
-        receipt: ledger.counters.receipt + 1,
-        history: ledger.counters.history + 1,
-        maintenance: ledger.counters.maintenance,
-      },
-    };
+    return buildRentalTransactionLedger(ledger, input).ledger;
   });
 }
 

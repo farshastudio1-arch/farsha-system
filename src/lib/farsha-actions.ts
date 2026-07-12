@@ -49,7 +49,12 @@ import {
 } from '@/lib/farsha-db';
 import { MediaAlbum, MediaAsset, MediaAssetUpdate, deleteMediaObjectByKey } from '@/lib/media-library';
 import { listPosLedger, savePosLedgerSnapshot } from '@/lib/pos-db';
-import { PosLedgerState } from '@/lib/pos-ledger';
+import { type PosLedgerState } from '@/lib/pos-ledger';
+import {
+  deletePosTransactionAttachment,
+  listPosTransactionAttachments,
+  type PosTransactionAttachment,
+} from '@/lib/pos-attachments';
 
 type ActionResult<T> =
   | {
@@ -102,7 +107,8 @@ function getActionErrorMessage(error: unknown, fallback: string) {
     message.includes('no such table: name_generator_pool_entries') ||
     message.includes('no such table: name_generator_used_names') ||
     message.includes('no such table: customers') ||
-    message.includes('no such column: customer_id')
+    message.includes('no such column: customer_id') ||
+    message.includes('no such table: pos_transaction_attachments')
   ) {
     return catalogSchemaError;
   }
@@ -190,6 +196,48 @@ export async function savePosLedgerAction(
     return {
       ok: false,
       error: getActionErrorMessage(error, 'Failed to save POS ledger.'),
+    };
+  }
+}
+
+export async function fetchPosTransactionAttachmentsAction(
+  transactionIds: string[],
+): Promise<ActionResult<PosTransactionAttachment[]>> {
+  try {
+    await ensureAdmin();
+    return { ok: true, data: await listPosTransactionAttachments(transactionIds) };
+  } catch (error) {
+    return {
+      ok: false,
+      error: getActionErrorMessage(error, 'Failed to load POS attachments.'),
+    };
+  }
+}
+
+export async function deletePosTransactionAttachmentAction(input: {
+  transactionId: string;
+  attachmentId: string;
+}): Promise<ActionResult<{ deleted: boolean }>> {
+  try {
+    const session = await auth();
+
+    if (session?.user?.role !== 'admin') {
+      throw new Error('Unauthorized');
+    }
+
+    const deleted = await deletePosTransactionAttachment({
+      ...input,
+      actor: session.user.email ?? null,
+    });
+
+    revalidatePath('/pos');
+    revalidatePath('/pos/transactions');
+
+    return { ok: true, data: { deleted } };
+  } catch (error) {
+    return {
+      ok: false,
+      error: getActionErrorMessage(error, 'Failed to delete POS attachment.'),
     };
   }
 }

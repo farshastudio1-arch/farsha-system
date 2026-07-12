@@ -1,16 +1,20 @@
 'use client';
 
 import Link from 'next/link';
-import { useMemo, useState, useEffect } from 'react';
+import { useMemo, useState, useEffect, useRef } from 'react';
 import {
   AlertTriangle,
+  Camera,
   ChevronDown,
   ChevronUp,
   Filter,
+  Image as ImageIcon,
   Receipt,
   Search,
   CheckCircle2,
   Printer,
+  Trash2,
+  Upload,
   X,
   Store,
   MapPin,
@@ -22,17 +26,22 @@ import {
 } from 'lucide-react';
 
 import {
-  ensurePosCustomerAction,
+  deletePosTransactionAttachmentAction,
   fetchAdminCatalogItemsAction,
   fetchCustomersAction,
   fetchPosLedgerAction,
+  fetchPosTransactionAttachmentsAction,
   savePosLedgerAction,
 } from '@/lib/farsha-actions';
 import type { CustomerRecord } from '@/lib/customer-db';
+import type {
+  PosAttachmentCaptureSource,
+  PosAttachmentKind,
+  PosTransactionAttachment,
+} from '@/lib/pos-attachments';
 import { useSavedCatalogItems, writeSavedCatalogItems } from '@/lib/catalog-storage';
 import {
   closeRentalTransaction,
-  createRentalTransaction,
   completeMaintenanceHold,
   deriveAvailabilityProjection,
   getOpenMaintenanceHolds,
@@ -51,6 +60,35 @@ type CatalogStatusFilter = 'all' | 'available' | 'rented' | 'maintenance';
 type PendingRentalAction = 'print' | 'cancel';
 type PendingPosAction = 'return' | 'maintenance';
 type ReceiptHistoryStatus = 'open' | 'closed';
+type RentalPhotoField = 'customerPhoto' | 'idDocumentPhoto';
+
+type RentalPhotoDraft = {
+  file: File;
+  previewUrl: string;
+  captureSource: PosAttachmentCaptureSource;
+  width: number | null;
+  height: number | null;
+};
+
+type CameraState = {
+  field: RentalPhotoField;
+  stream: MediaStream;
+};
+
+type RentalWithAttachmentsResponse =
+  | {
+      ok: true;
+      data: {
+        ledger: PosLedgerState;
+        transactionId: string;
+        customer: CustomerRecord;
+        attachments: PosTransactionAttachment[];
+      };
+    }
+  | {
+      ok: false;
+      error: string;
+    };
 
 const extraReturnDayPenalty = 100000;
 const defaultSecurityDeposit = 100000;
@@ -108,6 +146,194 @@ function parseCurrencyInput(value: string) {
 function formatCurrencyInput(value: string | number) {
   const amount = typeof value === 'number' ? value : parseCurrencyInput(value);
   return amount ? new Intl.NumberFormat('id-ID').format(amount) : '';
+}
+
+function getAttachmentLabel(kind: PosAttachmentKind) {
+  return kind === 'customer_photo' ? 'Customer photo' : 'ID document';
+}
+
+function getAttachmentUrl(attachment: PosTransactionAttachment) {
+  return `/api/admin/pos/transactions/${encodeURIComponent(attachment.transactionId)}/attachments/${encodeURIComponent(attachment.id)}`;
+}
+
+function RentalPhotoControl({
+  title,
+  description,
+  draft,
+  field,
+  onUpload,
+  onOpenCamera,
+  onClear,
+}: {
+  title: string;
+  description: string;
+  draft: RentalPhotoDraft | null;
+  field: RentalPhotoField;
+  onUpload: (field: RentalPhotoField, file: File | null) => void;
+  onOpenCamera: (field: RentalPhotoField) => void;
+  onClear: (field: RentalPhotoField) => void;
+}) {
+  const inputId = `pos-${field}-upload`;
+
+  return (
+    <div className="border border-neutral-200 bg-white p-3">
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <p className="text-xs font-bold uppercase tracking-wider text-neutral-700">{title}</p>
+          <p className="mt-1 text-[11px] leading-relaxed text-neutral-500">{description}</p>
+        </div>
+        <span
+          className={`shrink-0 border px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider ${
+            draft
+              ? 'border-emerald-200 bg-emerald-50 text-emerald-800'
+              : 'border-red-200 bg-red-50 text-red-700'
+          }`}
+        >
+          {draft ? 'Ready' : 'Required'}
+        </span>
+      </div>
+
+      {draft ? (
+        <div className="mt-3 flex gap-3">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={draft.previewUrl}
+            alt={title}
+            className="h-24 w-20 shrink-0 border border-neutral-200 object-cover"
+          />
+          <div className="min-w-0 flex-1 space-y-2">
+            <p className="truncate text-xs font-semibold text-neutral-900">{draft.file.name}</p>
+            <p className="text-[11px] text-neutral-500">
+              {draft.captureSource === 'webcam' ? 'Taken from webcam' : 'Uploaded image'} / {(draft.file.size / 1024).toFixed(0)} KB
+            </p>
+            <div className="flex flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={() => onOpenCamera(field)}
+                className="inline-flex min-h-8 items-center gap-1 border border-neutral-300 bg-white px-2 text-[10px] font-bold uppercase tracking-wider text-neutral-700 hover:border-neutral-900"
+              >
+                <Camera className="h-3.5 w-3.5" />
+                Retake
+              </button>
+              <label
+                htmlFor={inputId}
+                className="inline-flex min-h-8 cursor-pointer items-center gap-1 border border-neutral-300 bg-white px-2 text-[10px] font-bold uppercase tracking-wider text-neutral-700 hover:border-neutral-900"
+              >
+                <Upload className="h-3.5 w-3.5" />
+                Replace
+              </label>
+              <button
+                type="button"
+                onClick={() => onClear(field)}
+                className="inline-flex min-h-8 items-center gap-1 border border-red-200 bg-red-50 px-2 text-[10px] font-bold uppercase tracking-wider text-red-700 hover:border-red-400"
+              >
+                <X className="h-3.5 w-3.5" />
+                Remove
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : (
+        <div className="mt-3 grid grid-cols-2 gap-2">
+          <button
+            type="button"
+            onClick={() => onOpenCamera(field)}
+            className="inline-flex min-h-10 items-center justify-center gap-2 border border-neutral-300 bg-neutral-50 px-3 text-xs font-bold uppercase tracking-wider text-neutral-700 hover:border-neutral-900 hover:bg-white"
+          >
+            <Camera className="h-4 w-4" />
+            Take photo
+          </button>
+          <label
+            htmlFor={inputId}
+            className="inline-flex min-h-10 cursor-pointer items-center justify-center gap-2 border border-neutral-300 bg-neutral-50 px-3 text-xs font-bold uppercase tracking-wider text-neutral-700 hover:border-neutral-900 hover:bg-white"
+          >
+            <Upload className="h-4 w-4" />
+            Upload photo
+          </label>
+        </div>
+      )}
+
+      <input
+        id={inputId}
+        type="file"
+        accept="image/jpeg,image/png,image/webp"
+        className="hidden"
+        onChange={(event) => {
+          onUpload(field, event.target.files?.[0] ?? null);
+          event.currentTarget.value = '';
+        }}
+      />
+    </div>
+  );
+}
+
+function TransactionAttachmentStrip({
+  attachments,
+  onDelete,
+  deletingAttachmentId,
+}: {
+  attachments: PosTransactionAttachment[];
+  onDelete: (attachment: PosTransactionAttachment) => void;
+  deletingAttachmentId: string;
+}) {
+  if (attachments.length === 0) {
+    return (
+      <div className="border border-dashed border-neutral-200 bg-white px-2 py-1.5 text-[11px] text-neutral-400">
+        No customer/ID photos attached.
+      </div>
+    );
+  }
+
+  return (
+    <div className="grid grid-cols-2 gap-2">
+      {attachments.map((attachment) => (
+        <div key={attachment.id} className="border border-neutral-200 bg-white p-2">
+          <a
+            href={getAttachmentUrl(attachment)}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="block"
+          >
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={getAttachmentUrl(attachment)}
+              alt={getAttachmentLabel(attachment.kind)}
+              className="h-20 w-full bg-neutral-100 object-cover"
+            />
+          </a>
+          <div className="mt-2 flex items-center justify-between gap-2">
+            <span className="truncate text-[10px] font-bold uppercase tracking-wider text-neutral-600">
+              {getAttachmentLabel(attachment.kind)}
+            </span>
+            <button
+              type="button"
+              onClick={() => onDelete(attachment)}
+              disabled={deletingAttachmentId === attachment.id}
+              className="shrink-0 text-red-600 hover:text-red-800 disabled:opacity-50"
+              aria-label={`Delete ${getAttachmentLabel(attachment.kind)}`}
+            >
+              <Trash2 className="h-3.5 w-3.5" />
+            </button>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function createRentalPhotoDraft(
+  file: File,
+  captureSource: PosAttachmentCaptureSource,
+  width: number | null,
+  height: number | null,
+): RentalPhotoDraft {
+  return {
+    file,
+    previewUrl: URL.createObjectURL(file),
+    captureSource,
+    width,
+    height,
+  };
 }
 
 function addDaysToInputDate(value: string, days: number) {
@@ -225,8 +451,20 @@ export default function PosWorkspaceClient({ initialLedger, initialTransactionId
   const [depositReceived, setDepositReceived] = useState(formatCurrencyInput(defaultSecurityDeposit));
   const [rentalNotes, setRentalNotes] = useState('');
   const [paymentMethod, setPaymentMethod] = useState<PosPaymentMethod>('cash');
+  const [customerPhoto, setCustomerPhoto] = useState<RentalPhotoDraft | null>(null);
+  const [idDocumentPhoto, setIdDocumentPhoto] = useState<RentalPhotoDraft | null>(null);
+  const [cameraState, setCameraState] = useState<CameraState | null>(null);
+  const [cameraError, setCameraError] = useState('');
+  const [isCreatingRental, setIsCreatingRental] = useState(false);
+  const [transactionAttachments, setTransactionAttachments] = useState<PosTransactionAttachment[]>([]);
+  const [attachmentError, setAttachmentError] = useState('');
+  const [deletingAttachmentId, setDeletingAttachmentId] = useState('');
   const [pendingRentalAction, setPendingRentalAction] = useState<PendingRentalAction | null>(null);
   const [pendingPosAction, setPendingPosAction] = useState<PendingPosAction | null>(null);
+  const cameraVideoRef = useRef<HTMLVideoElement | null>(null);
+  const customerPhotoRef = useRef<RentalPhotoDraft | null>(null);
+  const idDocumentPhotoRef = useRef<RentalPhotoDraft | null>(null);
+  const cameraStreamRef = useRef<MediaStream | null>(null);
 
   // Flow 2: Return Form States
   const [returnDate, setReturnDate] = useState(new Date().toISOString().slice(0, 10));
@@ -252,6 +490,16 @@ export default function PosWorkspaceClient({ initialLedger, initialTransactionId
     startDate && dueDate ? Math.max(getDayDiff(defaultDueDate || startDate, dueDate), 0) : 0;
   const extraReturnPenalty = extraReturnDays * extraReturnDayPenalty;
   const rentTotalDue = baseRentalPrice + securityDepositAmount + extraReturnPenalty;
+  const attachmentsByTransaction = useMemo(() => {
+    const grouped = new Map<string, PosTransactionAttachment[]>();
+
+    transactionAttachments.forEach((attachment) => {
+      const current = grouped.get(attachment.transactionId) ?? [];
+      grouped.set(attachment.transactionId, [...current, attachment]);
+    });
+
+    return grouped;
+  }, [transactionAttachments]);
   const customerLookupMatches = useMemo(() => {
     const query = customerLookupQuery.trim().toLowerCase();
 
@@ -304,6 +552,60 @@ export default function PosWorkspaceClient({ initialLedger, initialTransactionId
       active = false;
     };
   }, []);
+
+  useEffect(() => {
+    let active = true;
+
+    async function loadAttachments() {
+      const transactionIds = ledger.transactions.map((transaction) => transaction.id);
+
+      if (transactionIds.length === 0) {
+        setTransactionAttachments([]);
+        setAttachmentError('');
+        return;
+      }
+
+      const result = await fetchPosTransactionAttachmentsAction(transactionIds);
+
+      if (!active) {
+        return;
+      }
+
+      if (result.ok) {
+        setTransactionAttachments(result.data);
+        setAttachmentError('');
+      } else {
+        setAttachmentError(result.error);
+      }
+    }
+
+    void loadAttachments();
+
+    return () => {
+      active = false;
+    };
+  }, [ledger.transactions]);
+
+  useEffect(() => {
+    if (cameraVideoRef.current && cameraState?.stream) {
+      cameraVideoRef.current.srcObject = cameraState.stream;
+    }
+  }, [cameraState]);
+
+  useEffect(
+    () => () => {
+      if (customerPhotoRef.current) {
+        URL.revokeObjectURL(customerPhotoRef.current.previewUrl);
+      }
+
+      if (idDocumentPhotoRef.current) {
+        URL.revokeObjectURL(idDocumentPhotoRef.current.previewUrl);
+      }
+
+      cameraStreamRef.current?.getTracks().forEach((track) => track.stop());
+    },
+    [],
+  );
 
   useEffect(() => {
     let active = true;
@@ -390,6 +692,120 @@ export default function PosWorkspaceClient({ initialLedger, initialTransactionId
     setIsCustomerDatabaseOpen(false);
   }
 
+  function setPhotoDraft(field: RentalPhotoField, draft: RentalPhotoDraft | null) {
+    if (field === 'customerPhoto') {
+      setCustomerPhoto((current) => {
+        if (current) {
+          URL.revokeObjectURL(current.previewUrl);
+        }
+
+        customerPhotoRef.current = draft;
+        return draft;
+      });
+      return;
+    }
+
+    setIdDocumentPhoto((current) => {
+      if (current) {
+        URL.revokeObjectURL(current.previewUrl);
+      }
+
+      idDocumentPhotoRef.current = draft;
+      return draft;
+    });
+  }
+
+  async function handlePhotoUpload(field: RentalPhotoField, file: File | null) {
+    if (!file) {
+      return;
+    }
+
+    setPhotoDraft(field, createRentalPhotoDraft(file, 'upload', null, null));
+    setStatusMessage('');
+  }
+
+  async function openCamera(field: RentalPhotoField) {
+    if (!navigator.mediaDevices?.getUserMedia) {
+      setCameraError('Browser ini tidak mendukung akses kamera. Gunakan tombol upload photo.');
+      return;
+    }
+
+    try {
+      cameraState?.stream.getTracks().forEach((track) => track.stop());
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: {
+          facingMode: 'user',
+        },
+        audio: false,
+      });
+      setCameraError('');
+      cameraStreamRef.current = stream;
+      setCameraState({ field, stream });
+    } catch {
+      setCameraError('Kamera tidak bisa dibuka. Pastikan webcam terhubung dan izin kamera diberikan.');
+    }
+  }
+
+  function closeCamera() {
+    cameraState?.stream.getTracks().forEach((track) => track.stop());
+    if (cameraStreamRef.current === cameraState?.stream) {
+      cameraStreamRef.current = null;
+    }
+    setCameraState(null);
+  }
+
+  function captureCameraPhoto() {
+    const video = cameraVideoRef.current;
+
+    if (!video || !cameraState) {
+      return;
+    }
+
+    const width = video.videoWidth || 1280;
+    const height = video.videoHeight || 720;
+    const canvas = document.createElement('canvas');
+    canvas.width = width;
+    canvas.height = height;
+    canvas.getContext('2d')?.drawImage(video, 0, 0, width, height);
+    canvas.toBlob(
+      (blob) => {
+        if (!blob) {
+          setCameraError('Foto gagal diambil. Coba ulangi capture.');
+          return;
+        }
+
+        const file = new File(
+          [blob],
+          `${cameraState.field === 'customerPhoto' ? 'customer-photo' : 'id-document'}-${Date.now()}.jpg`,
+          { type: 'image/jpeg' },
+        );
+        setPhotoDraft(cameraState.field, createRentalPhotoDraft(file, 'webcam', width, height));
+        setCameraError('');
+        closeCamera();
+      },
+      'image/jpeg',
+      0.9,
+    );
+  }
+
+  async function deleteAttachment(attachment: PosTransactionAttachment) {
+    setDeletingAttachmentId(attachment.id);
+    const result = await deletePosTransactionAttachmentAction({
+      transactionId: attachment.transactionId,
+      attachmentId: attachment.id,
+    });
+
+    if (result.ok) {
+      setTransactionAttachments((current) => current.filter((entry) => entry.id !== attachment.id));
+      setAttachmentError('');
+    } else {
+      setAttachmentError(result.error);
+      setStatusMessage(result.error);
+    }
+
+    setDeletingAttachmentId('');
+  }
+
   // Auto-calculated defaults when selecting items or transactions
   const selectedItem = useMemo(
     () => catalogItems.find((item) => item.id === selectedItemId) ?? null,
@@ -434,6 +850,8 @@ export default function PosWorkspaceClient({ initialLedger, initialTransactionId
         setSelectedCustomerId('');
         setCustomerLookupQuery('');
         setIsCustomerDatabaseOpen(false);
+        setPhotoDraft('customerPhoto', null);
+        setPhotoDraft('idDocumentPhoto', null);
         setRentalNotes('');
         setPaymentMethod('cash');
         setStatusMessage('');
@@ -547,6 +965,8 @@ export default function PosWorkspaceClient({ initialLedger, initialTransactionId
     setSelectedItemId('');
     setSelectedTransactionId('');
     setSelectedMaintenanceId('');
+    setPhotoDraft('customerPhoto', null);
+    setPhotoDraft('idDocumentPhoto', null);
     setPendingRentalAction(null);
   };
 
@@ -568,46 +988,78 @@ export default function PosWorkspaceClient({ initialLedger, initialTransactionId
       return;
     }
 
-    const price = baseRentalPrice || selectedItem.rentalPrice;
-    const customerResult = await ensurePosCustomerAction({
-      displayName: customerName.trim(),
-      primaryPhone: customerPhone.trim(),
-    });
-
-    if (!customerResult.ok) {
-      setCustomerError(customerResult.error);
-      setStatusMessage(customerResult.error);
-      setPendingRentalAction(null);
+    if (!customerPhoto) {
+      setStatusMessage('Customer photo wajib ditambahkan sebelum transaksi dibuat.');
       return;
     }
 
-    rememberCustomer(customerResult.data);
-    setSelectedCustomerId(customerResult.data.id);
+    if (!idDocumentPhoto) {
+      setStatusMessage('ID document photo wajib ditambahkan sebelum transaksi dibuat.');
+      return;
+    }
 
-    const nextLedger = createRentalTransaction({
-      item: selectedItem,
-      customerId: customerResult.data.id,
-      customerName: customerName.trim(),
-      customerPhone: customerPhone.trim(),
-      startDate,
-      dueDate,
-      depositReceived: securityDepositAmount,
-      paymentMethod,
-      notes: [
+    const price = baseRentalPrice || selectedItem.rentalPrice;
+    setIsCreatingRental(true);
+    const formData = new FormData();
+    formData.set('ledger', JSON.stringify(ledger));
+    formData.set('itemId', selectedItem.id);
+    formData.set('customerName', customerName.trim());
+    formData.set('customerPhone', customerPhone.trim());
+    formData.set('startDate', startDate);
+    formData.set('dueDate', dueDate);
+    formData.set('depositReceived', String(securityDepositAmount));
+    formData.set('paymentMethod', paymentMethod);
+    formData.set(
+      'notes',
+      [
         rentalNotes,
         extraReturnDays > 0
           ? `Tambahan return ${extraReturnDays} hari: ${formatCurrency(extraReturnPenalty)}.`
           : '',
       ].filter(Boolean).join('\n'),
-      itemPrice: price + extraReturnPenalty,
+    );
+    formData.set('itemPrice', String(price + extraReturnPenalty));
+    formData.set('customerPhoto', customerPhoto.file);
+    formData.set('customerPhotoCaptureSource', customerPhoto.captureSource);
+    formData.set('customerPhotoWidth', String(customerPhoto.width ?? ''));
+    formData.set('customerPhotoHeight', String(customerPhoto.height ?? ''));
+    formData.set('idDocumentPhoto', idDocumentPhoto.file);
+    formData.set('idDocumentPhotoCaptureSource', idDocumentPhoto.captureSource);
+    formData.set('idDocumentPhotoWidth', String(idDocumentPhoto.width ?? ''));
+    formData.set('idDocumentPhotoHeight', String(idDocumentPhoto.height ?? ''));
+
+    const response = await fetch('/api/admin/pos/transactions/rental-with-attachments', {
+      method: 'POST',
+      body: formData,
+    });
+    const result = (await response.json()) as RentalWithAttachmentsResponse;
+    setIsCreatingRental(false);
+
+    if (!result.ok) {
+      setStatusMessage(result.error);
+      setPendingRentalAction(null);
+      return;
+    }
+
+    rememberCustomer(result.data.customer);
+    setSelectedCustomerId(result.data.customer.id);
+    writeSavedPosLedger(result.data.ledger);
+    setLedgerError('');
+    setTransactionAttachments((current) => {
+      const withoutNew = current.filter(
+        (attachment) => attachment.transactionId !== result.data.transactionId,
+      );
+      return [...withoutNew, ...result.data.attachments];
     });
 
-    // Auto-open receipt modal of the newly created transaction
-    if (nextLedger && nextLedger.transactions.length > 0) {
-      const newTrx = nextLedger.transactions[0];
-      setInvoiceTransaction(newTrx);
+    const newTransaction =
+      result.data.ledger.transactions.find((transaction) => transaction.id === result.data.transactionId) ??
+      result.data.ledger.transactions[0] ??
+      null;
+
+    if (newTransaction) {
+      setInvoiceTransaction(newTransaction);
       setIsInvoiceOpen(true);
-      await persistLedger(nextLedger);
     }
 
     // Reset fields
@@ -616,6 +1068,8 @@ export default function PosWorkspaceClient({ initialLedger, initialTransactionId
     setSelectedCustomerId('');
     setCustomerLookupQuery('');
     setIsCustomerDatabaseOpen(false);
+    setPhotoDraft('customerPhoto', null);
+    setPhotoDraft('idDocumentPhoto', null);
     setRentalNotes('');
     setSelectedItemId('');
     setStatusMessage('');
@@ -962,6 +1416,7 @@ export default function PosWorkspaceClient({ initialLedger, initialTransactionId
                 <div className="max-h-[620px] space-y-2 overflow-y-auto pr-1">
                   {activeRentals.map((trx) => {
                     const isOverdue = overdueTransactions.some((o) => o.id === trx.id);
+                    const attachments = attachmentsByTransaction.get(trx.id) ?? [];
 
                     return (
                       <div
@@ -995,6 +1450,25 @@ export default function PosWorkspaceClient({ initialLedger, initialTransactionId
                           </p>
                           <div className="text-[11px] text-neutral-400">
                             Batas Kembali: <span className="font-mono">{formatDate(trx.dueDate)}</span>
+                          </div>
+                          <div className="mt-2 flex flex-wrap gap-1">
+                            {(['customer_photo', 'id_document'] as PosAttachmentKind[]).map((kind) => {
+                              const attachment = attachments.find((entry) => entry.kind === kind);
+
+                              return (
+                                <span
+                                  key={kind}
+                                  className={`inline-flex items-center gap-1 border px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider ${
+                                    attachment
+                                      ? 'border-emerald-200 bg-emerald-50 text-emerald-800'
+                                      : 'border-red-200 bg-red-50 text-red-700'
+                                  }`}
+                                >
+                                  <ImageIcon className="h-3 w-3" />
+                                  {getAttachmentLabel(kind)}
+                                </span>
+                              );
+                            })}
                           </div>
                         </div>
 
@@ -1375,6 +1849,40 @@ export default function PosWorkspaceClient({ initialLedger, initialTransactionId
                       className="min-h-20 w-full resize-none border border-neutral-200 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-neutral-900"
                     />
                   </label>
+
+                  <div className="space-y-2 border-t border-neutral-100 pt-3">
+                    <div className="flex items-center justify-between gap-2">
+                      <h5 className="text-xs font-bold uppercase tracking-wider text-neutral-500">
+                        Customer Evidence
+                      </h5>
+                      <span className="text-[10px] font-semibold uppercase tracking-wider text-red-600">
+                        Required
+                      </span>
+                    </div>
+                    <RentalPhotoControl
+                      title="Customer photo"
+                      description="Foto customer saat transaksi sewa dibuat."
+                      draft={customerPhoto}
+                      field="customerPhoto"
+                      onUpload={(field, file) => void handlePhotoUpload(field, file)}
+                      onOpenCamera={(field) => void openCamera(field)}
+                      onClear={(field) => setPhotoDraft(field, null)}
+                    />
+                    <RentalPhotoControl
+                      title="ID document photo"
+                      description="Foto dokumen identitas customer. Tidak masuk public media library."
+                      draft={idDocumentPhoto}
+                      field="idDocumentPhoto"
+                      onUpload={(field, file) => void handlePhotoUpload(field, file)}
+                      onOpenCamera={(field) => void openCamera(field)}
+                      onClear={(field) => setPhotoDraft(field, null)}
+                    />
+                    {cameraError && (
+                      <p className="border border-amber-200 bg-amber-50 px-2 py-1.5 text-[11px] text-amber-800">
+                        {cameraError}
+                      </p>
+                    )}
+                  </div>
                 </div>
 
                 {/* Total Summary Box */}
@@ -1410,9 +1918,11 @@ export default function PosWorkspaceClient({ initialLedger, initialTransactionId
                   </button>
                   <button
                     onClick={() => setPendingRentalAction('print')}
-                    className="flex-grow bg-neutral-900 hover:bg-neutral-800 text-white px-4 py-3 text-xs font-semibold uppercase tracking-wider flex items-center justify-center gap-2"
+                    disabled={!customerPhoto || !idDocumentPhoto || isCreatingRental}
+                    className="flex-grow bg-neutral-900 hover:bg-neutral-800 text-white px-4 py-3 text-xs font-semibold uppercase tracking-wider flex items-center justify-center gap-2 disabled:cursor-not-allowed disabled:bg-neutral-300"
                   >
-                    <Receipt className="h-4 w-4" /> Cetak Sewa
+                    <Receipt className="h-4 w-4" />
+                    {isCreatingRental ? 'Menyimpan...' : 'Cetak Sewa'}
                   </button>
                 </div>
 
@@ -1452,6 +1962,21 @@ export default function PosWorkspaceClient({ initialLedger, initialTransactionId
 
                     <p className="text-neutral-500">Jatuh Tempo:</p>
                     <p className="font-semibold text-neutral-950 text-right font-mono">{formatDate(selectedTransaction.dueDate)}</p>
+                  </div>
+                  <div className="border-t border-neutral-200 pt-3">
+                    <div className="mb-2 flex items-center justify-between gap-2">
+                      <p className="text-[10px] font-bold uppercase tracking-wider text-neutral-500">
+                        Private customer evidence
+                      </p>
+                      {attachmentError && (
+                        <span className="text-[10px] text-red-600">{attachmentError}</span>
+                      )}
+                    </div>
+                    <TransactionAttachmentStrip
+                      attachments={attachmentsByTransaction.get(selectedTransaction.id) ?? []}
+                      onDelete={(attachment) => void deleteAttachment(attachment)}
+                      deletingAttachmentId={deletingAttachmentId}
+                    />
                   </div>
                 </div>
 
@@ -1847,6 +2372,7 @@ export default function PosWorkspaceClient({ initialLedger, initialTransactionId
             <div className="flex gap-2">
               <button
                 onClick={() => setPendingRentalAction(null)}
+                disabled={isCreatingRental}
                 className="flex-1 border border-neutral-300 bg-white px-4 py-3 text-xs font-semibold uppercase tracking-wider text-neutral-700 hover:bg-neutral-50"
               >
                 Kembali
@@ -1859,13 +2385,74 @@ export default function PosWorkspaceClient({ initialLedger, initialTransactionId
                     clearRentalSelection();
                   }
                 }}
+                disabled={isCreatingRental}
                 className={`flex-1 px-4 py-3 text-xs font-semibold uppercase tracking-wider text-white ${
                   pendingRentalAction === 'print'
-                    ? 'bg-neutral-900 hover:bg-neutral-800'
+                    ? 'bg-neutral-900 hover:bg-neutral-800 disabled:bg-neutral-300'
                     : 'bg-red-600 hover:bg-red-700'
                 }`}
               >
-                {pendingRentalAction === 'print' ? 'Ya, Cetak Sewa' : 'Ya, Batal'}
+                {pendingRentalAction === 'print'
+                  ? isCreatingRental
+                    ? 'Menyimpan...'
+                    : 'Ya, Cetak Sewa'
+                  : 'Ya, Batal'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {cameraState && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
+          <div className="w-full max-w-lg border border-neutral-200 bg-white p-4 shadow-xl">
+            <div className="flex items-center justify-between gap-3 border-b border-neutral-100 pb-3">
+              <div>
+                <p className="font-mono text-[10px] font-bold uppercase tracking-widest text-neutral-400">
+                  Webcam Capture
+                </p>
+                <h3 className="mt-1 font-serif text-xl font-semibold text-neutral-950">
+                  {cameraState.field === 'customerPhoto' ? 'Customer photo' : 'ID document photo'}
+                </h3>
+              </div>
+              <button
+                type="button"
+                onClick={closeCamera}
+                className="p-1 text-neutral-400 hover:text-neutral-900"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            <div className="py-4">
+              <video
+                ref={cameraVideoRef}
+                autoPlay
+                playsInline
+                muted
+                className="aspect-[4/3] w-full bg-neutral-950 object-cover"
+              />
+              {cameraError && (
+                <p className="mt-2 border border-amber-200 bg-amber-50 px-2 py-1.5 text-xs text-amber-800">
+                  {cameraError}
+                </p>
+              )}
+            </div>
+
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={closeCamera}
+                className="flex-1 border border-neutral-300 bg-white px-4 py-3 text-xs font-semibold uppercase tracking-wider text-neutral-700 hover:bg-neutral-50"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={captureCameraPhoto}
+                className="flex-1 bg-neutral-900 px-4 py-3 text-xs font-semibold uppercase tracking-wider text-white hover:bg-neutral-800"
+              >
+                Capture photo
               </button>
             </div>
           </div>

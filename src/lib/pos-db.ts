@@ -12,6 +12,7 @@ import {
   type PosTransactionKind,
   type PosTransactionStatus,
 } from '@/lib/pos-ledger';
+import type { UploadedPosAttachmentObject } from '@/lib/pos-attachments';
 
 type D1Value = string | number | null;
 
@@ -422,6 +423,30 @@ function maintenanceStatement(db: D1Database, hold: PosMaintenanceHold) {
     .bind(...values);
 }
 
+function attachmentStatement(db: D1Database, attachment: UploadedPosAttachmentObject) {
+  return db
+    .prepare(
+      `INSERT INTO pos_transaction_attachments (
+        id, transaction_id, kind, r2_key, content_type, size, width, height,
+        original_filename, capture_source, status, created_by
+      )
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'active', ?)`,
+    )
+    .bind(
+      attachment.id,
+      attachment.transactionId,
+      attachment.kind,
+      attachment.r2Key,
+      attachment.contentType,
+      attachment.size,
+      attachment.width,
+      attachment.height,
+      attachment.originalFilename,
+      attachment.captureSource,
+      attachment.actor,
+    );
+}
+
 export async function savePosLedgerSnapshot(ledger: PosLedgerState): Promise<PosLedgerState> {
   const normalized = normalizePosLedger(ledger);
   const db = await getD1Database();
@@ -430,6 +455,27 @@ export async function savePosLedgerSnapshot(ledger: PosLedgerState): Promise<Pos
     ...normalized.receipts.map((receipt) => receiptStatement(db, receipt)),
     ...normalized.history.map((entry) => historyStatement(db, entry)),
     ...normalized.maintenanceHolds.map((hold) => maintenanceStatement(db, hold)),
+  ];
+
+  if (statements.length > 0) {
+    await db.batch(statements);
+  }
+
+  return listPosLedger();
+}
+
+export async function savePosLedgerSnapshotWithAttachments(
+  ledger: PosLedgerState,
+  attachments: UploadedPosAttachmentObject[],
+): Promise<PosLedgerState> {
+  const normalized = normalizePosLedger(ledger);
+  const db = await getD1Database();
+  const statements = [
+    ...normalized.transactions.map((transaction) => transactionStatement(db, transaction)),
+    ...normalized.receipts.map((receipt) => receiptStatement(db, receipt)),
+    ...normalized.history.map((entry) => historyStatement(db, entry)),
+    ...normalized.maintenanceHolds.map((hold) => maintenanceStatement(db, hold)),
+    ...attachments.map((attachment) => attachmentStatement(db, attachment)),
   ];
 
   if (statements.length > 0) {
