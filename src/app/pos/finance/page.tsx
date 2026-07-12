@@ -1,23 +1,8 @@
 import Link from 'next/link';
-import {
-  ArrowDownLeft,
-  ArrowUpRight,
-  Banknote,
-  CalendarDays,
-  Download,
-  FileText,
-  LineChart,
-  ReceiptText,
-  Wallet,
-} from 'lucide-react';
+import { ArrowDownLeft, CalendarDays, Download, FileText, LineChart, ReceiptText, Wallet } from 'lucide-react';
 
-import { closePosFinanceDayAction, createPosExpenseAction } from '@/lib/pos-finance-actions';
-import {
-  getPosFinanceSummary,
-  makeFinancePeriod,
-  makeTodayFinancePeriod,
-  type PosFinanceActivityEntry,
-} from '@/lib/pos-finance';
+import { createPosExpenseAction } from '@/lib/pos-finance-actions';
+import { getPosFinanceSummary, makeFinancePeriod, type PosFinanceActivityEntry } from '@/lib/pos-finance';
 
 type PosFinancePageProps = {
   searchParams: Promise<{
@@ -136,8 +121,6 @@ export default async function PosFinancePage({ searchParams }: PosFinancePagePro
     from: finance.period.fromDate,
     to: finance.period.toDate,
   }).toString()}`;
-  const closeFormDate = makeTodayFinancePeriod().fromDate;
-  const todayClose = finance.dailyClosings.find((closing) => closing.closeDate === closeFormDate);
 
   return (
     <div className="space-y-4">
@@ -151,7 +134,7 @@ export default async function PosFinancePage({ searchParams }: PosFinancePagePro
               Finance Ledger
             </h1>
             <p className="mt-1 max-w-2xl text-sm text-neutral-500">
-              Cash-basis report for revenue, refundable deposits, expenses, daily closing, and accountant export.
+              Cash-basis report for revenue, refundable deposits, expenses, and accountant export.
             </p>
           </div>
 
@@ -347,76 +330,6 @@ export default async function PosFinancePage({ searchParams }: PosFinancePagePro
             </button>
           </form>
 
-          <form action={closePosFinanceDayAction} className="min-w-0 border border-neutral-200 bg-white p-4 shadow-sm">
-            <input type="hidden" name="returnTo" value={returnTo} />
-            <p className="inline-flex items-center gap-2 font-mono text-[10px] font-bold uppercase tracking-widest text-neutral-400">
-              <Banknote className="h-4 w-4" />
-              Daily Closing
-            </p>
-            <label className="mt-3 grid gap-1 text-xs font-semibold uppercase tracking-wider text-neutral-500">
-              Close Date
-              <input
-                required
-                type="date"
-                name="closeDate"
-                defaultValue={closeFormDate}
-                className="h-10 w-full min-w-0 border border-neutral-300 bg-white px-3 text-sm text-neutral-900"
-              />
-            </label>
-            <div className="mt-3 grid gap-3 sm:grid-cols-3">
-              <label className="grid min-w-0 gap-1 text-xs font-semibold uppercase tracking-wider text-neutral-500">
-                Cash Counted
-                <input
-                  inputMode="numeric"
-                  name="cashCounted"
-                  defaultValue={todayClose?.cashCounted ?? ''}
-                  className="h-10 w-full min-w-0 border border-neutral-300 bg-white px-3 text-sm text-neutral-900"
-                />
-              </label>
-              <label className="grid min-w-0 gap-1 text-xs font-semibold uppercase tracking-wider text-neutral-500">
-                Transfer
-                <input
-                  inputMode="numeric"
-                  name="transferCounted"
-                  defaultValue={todayClose?.transferCounted ?? ''}
-                  className="h-10 w-full min-w-0 border border-neutral-300 bg-white px-3 text-sm text-neutral-900"
-                />
-              </label>
-              <label className="grid min-w-0 gap-1 text-xs font-semibold uppercase tracking-wider text-neutral-500">
-                QRIS
-                <input
-                  inputMode="numeric"
-                  name="qrisCounted"
-                  defaultValue={todayClose?.qrisCounted ?? ''}
-                  className="h-10 w-full min-w-0 border border-neutral-300 bg-white px-3 text-sm text-neutral-900"
-                />
-              </label>
-            </div>
-            <div className="mt-3 grid gap-2 text-xs text-neutral-500 sm:grid-cols-3">
-              <span>Expected cash: <strong>{formatCurrency(finance.paymentByMethod.cash)}</strong></span>
-              <span>Transfer: <strong>{formatCurrency(finance.paymentByMethod.transfer)}</strong></span>
-              <span>QRIS: <strong>{formatCurrency(finance.paymentByMethod.qris)}</strong></span>
-            </div>
-            <label className="mt-3 grid gap-1 text-xs font-semibold uppercase tracking-wider text-neutral-500">
-              Close Note
-              <textarea
-                name="notes"
-                rows={3}
-                defaultValue={todayClose?.notes ?? ''}
-                className="border border-neutral-300 bg-white px-3 py-2 text-sm text-neutral-900"
-              />
-            </label>
-            <button
-              type="submit"
-              className="mt-3 inline-flex h-10 items-center gap-2 bg-neutral-950 px-3 text-xs font-bold uppercase tracking-wider text-white hover:bg-neutral-800"
-            >
-              <ArrowUpRight className="h-4 w-4" />
-              Close Day
-            </button>
-          </form>
-        </div>
-
-        <aside className="space-y-3">
           <div className="border border-neutral-200 bg-white p-4 shadow-sm">
             <p className="font-mono text-[10px] font-bold uppercase tracking-widest text-neutral-400">
               Cash Movement
@@ -438,7 +351,9 @@ export default async function PosFinancePage({ searchParams }: PosFinancePagePro
               </strong>
             </div>
           </div>
+        </div>
 
+        <aside className="space-y-3">
           <div className="border border-neutral-200 bg-white p-4 shadow-sm">
             <p className="font-mono text-[10px] font-bold uppercase tracking-widest text-neutral-400">
               Payment Method Net
@@ -529,51 +444,22 @@ export default async function PosFinancePage({ searchParams }: PosFinancePagePro
         )}
       </section>
 
-      <section className="grid gap-3 xl:grid-cols-2">
-        <div className="border border-neutral-200 bg-white p-4 shadow-sm">
-          <p className="inline-flex items-center gap-2 font-mono text-[10px] font-bold uppercase tracking-widest text-neutral-400">
-            <ReceiptText className="h-4 w-4" />
-            Recent Expenses
-          </p>
-          <div className="mt-3 divide-y divide-neutral-100">
-            {finance.expenses.slice(0, 8).map((expense) => (
-              <div key={expense.id} className="flex items-center justify-between gap-3 py-2 text-sm">
-                <div>
-                  <p className="font-semibold text-neutral-900">{expense.categoryName}</p>
-                  <p className="text-xs text-neutral-500">{expense.expenseDate} / {expense.paymentMethod.toUpperCase()}</p>
-                </div>
-                <strong className="text-red-600">{formatCurrency(expense.amount)}</strong>
+      <section className="border border-neutral-200 bg-white p-4 shadow-sm">
+        <p className="inline-flex items-center gap-2 font-mono text-[10px] font-bold uppercase tracking-widest text-neutral-400">
+          <ReceiptText className="h-4 w-4" />
+          Recent Expenses
+        </p>
+        <div className="mt-3 divide-y divide-neutral-100">
+          {finance.expenses.slice(0, 8).map((expense) => (
+            <div key={expense.id} className="flex items-center justify-between gap-3 py-2 text-sm">
+              <div>
+                <p className="font-semibold text-neutral-900">{expense.categoryName}</p>
+                <p className="text-xs text-neutral-500">{expense.expenseDate} / {expense.paymentMethod.toUpperCase()}</p>
               </div>
-            ))}
-            {finance.expenses.length === 0 && <p className="py-4 text-sm text-neutral-500">No expenses recorded.</p>}
-          </div>
-        </div>
-
-        <div className="border border-neutral-200 bg-white p-4 shadow-sm">
-          <p className="inline-flex items-center gap-2 font-mono text-[10px] font-bold uppercase tracking-widest text-neutral-400">
-            <Banknote className="h-4 w-4" />
-            Daily Closings
-          </p>
-          <div className="mt-3 divide-y divide-neutral-100">
-            {finance.dailyClosings.slice(0, 8).map((closing) => {
-              const totalVariance = closing.cashVariance + closing.transferVariance + closing.qrisVariance;
-
-              return (
-                <div key={closing.id} className="flex items-center justify-between gap-3 py-2 text-sm">
-                  <div>
-                    <p className="font-semibold text-neutral-900">{closing.closeDate}</p>
-                    <p className="text-xs text-neutral-500">
-                      Cash {formatCurrency(closing.cashVariance)} / Transfer {formatCurrency(closing.transferVariance)} / QRIS {formatCurrency(closing.qrisVariance)}
-                    </p>
-                  </div>
-                  <strong className={totalVariance < 0 ? 'text-red-600' : 'text-neutral-900'}>
-                    {formatCurrency(totalVariance)}
-                  </strong>
-                </div>
-              );
-            })}
-            {finance.dailyClosings.length === 0 && <p className="py-4 text-sm text-neutral-500">No days closed in this period.</p>}
-          </div>
+              <strong className="text-red-600">{formatCurrency(expense.amount)}</strong>
+            </div>
+          ))}
+          {finance.expenses.length === 0 && <p className="py-4 text-sm text-neutral-500">No expenses recorded.</p>}
         </div>
       </section>
     </div>

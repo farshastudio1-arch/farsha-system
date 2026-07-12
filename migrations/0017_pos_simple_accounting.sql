@@ -39,24 +39,3 @@ CREATE INDEX IF NOT EXISTS idx_pos_expenses_date
 
 CREATE INDEX IF NOT EXISTS idx_pos_expenses_category
   ON pos_expenses (category_id, expense_date);
-
-CREATE TABLE IF NOT EXISTS pos_daily_closings (
-  id TEXT PRIMARY KEY,
-  close_date TEXT NOT NULL UNIQUE,
-  cash_expected INTEGER NOT NULL DEFAULT 0,
-  cash_counted INTEGER NOT NULL DEFAULT 0,
-  cash_variance INTEGER NOT NULL DEFAULT 0,
-  transfer_expected INTEGER NOT NULL DEFAULT 0,
-  transfer_counted INTEGER NOT NULL DEFAULT 0,
-  transfer_variance INTEGER NOT NULL DEFAULT 0,
-  qris_expected INTEGER NOT NULL DEFAULT 0,
-  qris_counted INTEGER NOT NULL DEFAULT 0,
-  qris_variance INTEGER NOT NULL DEFAULT 0,
-  notes TEXT NOT NULL DEFAULT '',
-  closed_by TEXT,
-  closed_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
-);
-
-CREATE INDEX IF NOT EXISTS idx_pos_daily_closings_date
-  ON pos_daily_closings (close_date);

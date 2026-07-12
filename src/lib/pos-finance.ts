@@ -96,24 +96,6 @@ export type PosExpenseEntry = {
   createdAt: string;
 };
 
-export type PosDailyClosing = {
-  id: string;
-  closeDate: string;
-  cashExpected: number;
-  cashCounted: number;
-  cashVariance: number;
-  transferExpected: number;
-  transferCounted: number;
-  transferVariance: number;
-  qrisExpected: number;
-  qrisCounted: number;
-  qrisVariance: number;
-  notes: string;
-  closedBy: string | null;
-  closedAt: string;
-  updatedAt: string;
-};
-
 export type PosFinanceSummary = {
   period: PosFinancePeriod;
   revenueTotal: number;
@@ -133,7 +115,6 @@ export type PosFinanceSummary = {
   invoices: PosFinanceDocumentEntry[];
   expenses: PosExpenseEntry[];
   expenseCategories: PosExpenseCategory[];
-  dailyClosings: PosDailyClosing[];
 };
 
 type PosReceiptFinanceRow = {
@@ -216,24 +197,6 @@ type ExpenseRow = {
   note: string | null;
   created_by: string | null;
   created_at: string;
-};
-
-type ClosingRow = {
-  id: string;
-  close_date: string;
-  cash_expected: number;
-  cash_counted: number;
-  cash_variance: number;
-  transfer_expected: number;
-  transfer_counted: number;
-  transfer_variance: number;
-  qris_expected: number;
-  qris_counted: number;
-  qris_variance: number;
-  notes: string | null;
-  closed_by: string | null;
-  closed_at: string;
-  updated_at: string;
 };
 
 const emptyPaymentByMethod: Record<PosPaymentMethod, number> = {
@@ -406,8 +369,7 @@ function hasMissingFinanceTables(error: unknown) {
     error.message.includes('no such table: booking_invoices') ||
     error.message.includes('no such table: booking_receipts') ||
     error.message.includes('no such table: pos_expense_categories') ||
-    error.message.includes('no such table: pos_expenses') ||
-    error.message.includes('no such table: pos_daily_closings')
+    error.message.includes('no such table: pos_expenses')
   );
 }
 
@@ -431,7 +393,6 @@ function emptyFinanceSummary(period: PosFinancePeriod): PosFinanceSummary {
     invoices: [],
     expenses: [],
     expenseCategories: defaultExpenseCategories.map((category) => ({ ...category, status: 'active' })),
-    dailyClosings: [],
   };
 }
 
@@ -476,26 +437,6 @@ function expenseRowToModel(row: ExpenseRow): PosExpenseEntry {
     note: row.note ?? '',
     createdBy: row.created_by,
     createdAt: row.created_at,
-  };
-}
-
-function closingRowToModel(row: ClosingRow): PosDailyClosing {
-  return {
-    id: row.id,
-    closeDate: row.close_date,
-    cashExpected: row.cash_expected,
-    cashCounted: row.cash_counted,
-    cashVariance: row.cash_variance,
-    transferExpected: row.transfer_expected,
-    transferCounted: row.transfer_counted,
-    transferVariance: row.transfer_variance,
-    qrisExpected: row.qris_expected,
-    qrisCounted: row.qris_counted,
-    qrisVariance: row.qris_variance,
-    notes: row.notes ?? '',
-    closedBy: row.closed_by,
-    closedAt: row.closed_at,
-    updatedAt: row.updated_at,
   };
 }
 
@@ -593,70 +534,6 @@ export async function createPosExpense(input: {
     .run();
 }
 
-export async function upsertPosDailyClosing(input: {
-  closeDate: string;
-  cashCounted: number;
-  transferCounted: number;
-  qrisCounted: number;
-  notes?: string | null;
-  closedBy?: string | null;
-}) {
-  const closeDate = isDateKey(input.closeDate) ? input.closeDate : getJakartaDateKey();
-  const expected = await getPosFinanceSummary({
-    preset: 'custom',
-    fromDate: closeDate,
-    toDate: closeDate,
-    timeZone: POS_FINANCE_TIME_ZONE,
-  });
-  const cashCounted = normalizeAmount(input.cashCounted);
-  const transferCounted = normalizeAmount(input.transferCounted);
-  const qrisCounted = normalizeAmount(input.qrisCounted);
-  const cashExpected = expected.paymentByMethod.cash;
-  const transferExpected = expected.paymentByMethod.transfer;
-  const qrisExpected = expected.paymentByMethod.qris;
-  const db = await getD1Database();
-
-  await db
-    .prepare(
-      `INSERT INTO pos_daily_closings (
-        id, close_date, cash_expected, cash_counted, cash_variance,
-        transfer_expected, transfer_counted, transfer_variance,
-        qris_expected, qris_counted, qris_variance,
-        notes, closed_by, closed_at, updated_at
-      )
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
-      ON CONFLICT(close_date) DO UPDATE SET
-        cash_expected = excluded.cash_expected,
-        cash_counted = excluded.cash_counted,
-        cash_variance = excluded.cash_variance,
-        transfer_expected = excluded.transfer_expected,
-        transfer_counted = excluded.transfer_counted,
-        transfer_variance = excluded.transfer_variance,
-        qris_expected = excluded.qris_expected,
-        qris_counted = excluded.qris_counted,
-        qris_variance = excluded.qris_variance,
-        notes = excluded.notes,
-        closed_by = excluded.closed_by,
-        updated_at = CURRENT_TIMESTAMP`,
-    )
-    .bind(
-      createId('pos-close'),
-      closeDate,
-      cashExpected,
-      cashCounted,
-      cashCounted - cashExpected,
-      transferExpected,
-      transferCounted,
-      transferCounted - transferExpected,
-      qrisExpected,
-      qrisCounted,
-      qrisCounted - qrisExpected,
-      normalizeText(input.notes),
-      normalizeText(input.closedBy) || null,
-    )
-    .run();
-}
-
 export async function getPosFinanceSummary(period = makeTodayFinancePeriod()): Promise<PosFinanceSummary> {
   const db = await getD1Database();
 
@@ -669,7 +546,6 @@ export async function getPosFinanceSummary(period = makeTodayFinancePeriod()): P
       bookingReceipts,
       expenseCategories,
       expensesResult,
-      closingsResult,
     ] = await Promise.all([
       db
         .prepare(
@@ -778,15 +654,6 @@ export async function getPosFinanceSummary(period = makeTodayFinancePeriod()): P
         )
         .bind(period.fromDate, period.toDate)
         .all<ExpenseRow>(),
-      db
-        .prepare(
-          `SELECT *
-           FROM pos_daily_closings
-           WHERE close_date BETWEEN ? AND ?
-           ORDER BY close_date DESC`,
-        )
-        .bind(period.fromDate, period.toDate)
-        .all<ClosingRow>(),
     ]);
 
     const activity: PosFinanceActivityEntry[] = [];
@@ -1115,7 +982,6 @@ export async function getPosFinanceSummary(period = makeTodayFinancePeriod()): P
       invoices,
       expenses,
       expenseCategories: expenseCategories.results.map(categoryRowToModel),
-      dailyClosings: closingsResult.results.map(closingRowToModel),
     };
   } catch (error) {
     if (hasMissingFinanceTables(error)) {

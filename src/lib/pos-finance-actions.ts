@@ -4,7 +4,7 @@ import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 
 import { auth } from '../../auth';
-import { createPosExpense, upsertPosDailyClosing } from '@/lib/pos-finance';
+import { createPosExpense } from '@/lib/pos-finance';
 
 async function ensureAdminEmail() {
   const session = await auth();
@@ -43,24 +43,6 @@ export async function createPosExpenseAction(formData: FormData) {
     paymentMethod: stringValue(formData.get('paymentMethod')),
     note: stringValue(formData.get('note')),
     createdBy: adminEmail,
-  });
-
-  revalidatePath('/pos');
-  revalidatePath('/pos/dashboard');
-  revalidatePath('/pos/finance');
-  redirect(returnPath(formData));
-}
-
-export async function closePosFinanceDayAction(formData: FormData) {
-  const adminEmail = await ensureAdminEmail();
-
-  await upsertPosDailyClosing({
-    closeDate: stringValue(formData.get('closeDate')),
-    cashCounted: numberValue(formData.get('cashCounted')),
-    transferCounted: numberValue(formData.get('transferCounted')),
-    qrisCounted: numberValue(formData.get('qrisCounted')),
-    notes: stringValue(formData.get('notes')),
-    closedBy: adminEmail,
   });
 
   revalidatePath('/pos');
