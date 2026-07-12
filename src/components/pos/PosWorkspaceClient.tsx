@@ -4,6 +4,8 @@ import Link from 'next/link';
 import { useMemo, useState, useEffect } from 'react';
 import {
   AlertTriangle,
+  ChevronDown,
+  ChevronUp,
   Filter,
   Receipt,
   Search,
@@ -214,6 +216,7 @@ export default function PosWorkspaceClient({ initialLedger, initialTransactionId
   // Flow 1: Rental Form States
   const [selectedCustomerId, setSelectedCustomerId] = useState('');
   const [customerLookupQuery, setCustomerLookupQuery] = useState('');
+  const [isCustomerDatabaseOpen, setIsCustomerDatabaseOpen] = useState(false);
   const [customerName, setCustomerName] = useState('');
   const [customerPhone, setCustomerPhone] = useState('');
   const [startDate, setStartDate] = useState(getTodayInputValue());
@@ -384,6 +387,7 @@ export default function PosWorkspaceClient({ initialLedger, initialTransactionId
     setCustomerPhone(customer.primaryPhone);
     setCustomerLookupQuery('');
     setCustomerError('');
+    setIsCustomerDatabaseOpen(false);
   }
 
   // Auto-calculated defaults when selecting items or transactions
@@ -429,6 +433,7 @@ export default function PosWorkspaceClient({ initialLedger, initialTransactionId
         setCustomerPhone('');
         setSelectedCustomerId('');
         setCustomerLookupQuery('');
+        setIsCustomerDatabaseOpen(false);
         setRentalNotes('');
         setPaymentMethod('cash');
         setStatusMessage('');
@@ -610,6 +615,7 @@ export default function PosWorkspaceClient({ initialLedger, initialTransactionId
     setCustomerPhone('');
     setSelectedCustomerId('');
     setCustomerLookupQuery('');
+    setIsCustomerDatabaseOpen(false);
     setRentalNotes('');
     setSelectedItemId('');
     setStatusMessage('');
@@ -1158,41 +1164,43 @@ export default function PosWorkspaceClient({ initialLedger, initialTransactionId
                     Rental Details
                   </h4>
 
-                  <div className="space-y-2 border border-neutral-200 bg-neutral-50 p-3">
-                    <div className="flex items-center justify-between gap-2">
-                      <span className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-neutral-600">
+                  <div className="border border-neutral-200 bg-neutral-50">
+                    <div className="flex items-center justify-between gap-2 p-3">
+                      <button
+                        type="button"
+                        onClick={() => setIsCustomerDatabaseOpen((current) => !current)}
+                        className="inline-flex min-h-9 items-center gap-2 text-left text-xs font-bold uppercase tracking-wider text-neutral-700 hover:text-neutral-950"
+                        aria-expanded={isCustomerDatabaseOpen}
+                      >
                         <Users className="h-3.5 w-3.5" />
                         Customer database
-                      </span>
-                      <Link
-                        href="/pos/customers"
-                        className="text-[10px] font-bold uppercase tracking-wider text-neutral-500 underline hover:text-neutral-950"
-                      >
-                        Open
-                      </Link>
+                        {isCustomerDatabaseOpen ? (
+                          <ChevronUp className="h-3.5 w-3.5" />
+                        ) : (
+                          <ChevronDown className="h-3.5 w-3.5" />
+                        )}
+                      </button>
+                      <div className="flex items-center gap-3">
+                        {selectedCustomer ? (
+                          <span className="hidden max-w-[160px] truncate text-[11px] text-emerald-700 sm:inline">
+                            Linked: {selectedCustomer.displayName}
+                          </span>
+                        ) : (
+                          <span className="hidden text-[11px] text-neutral-400 sm:inline">
+                            Optional picker
+                          </span>
+                        )}
+                        <Link
+                          href="/pos/customers"
+                          className="text-[10px] font-bold uppercase tracking-wider text-neutral-500 underline hover:text-neutral-950"
+                        >
+                          Open
+                        </Link>
+                      </div>
                     </div>
 
-                    <label className="block space-y-1">
-                      <span className="text-xs font-semibold text-neutral-600">Cari / pilih customer lama</span>
-                      <input
-                        value={customerLookupQuery}
-                        onChange={(event) => {
-                          setCustomerLookupQuery(event.target.value);
-                          setSelectedCustomerId('');
-                        }}
-                        placeholder={isLoadingCustomers ? 'Memuat customer...' : 'Nama, WhatsApp, email, Instagram'}
-                        className="h-10 w-full border border-neutral-200 bg-white px-3 text-sm focus:outline-none focus:ring-1 focus:ring-neutral-900"
-                      />
-                    </label>
-
-                    {customerError && (
-                      <p className="border border-red-200 bg-red-50 px-2 py-1.5 text-[11px] text-red-700">
-                        {customerError}
-                      </p>
-                    )}
-
                     {selectedCustomer ? (
-                      <div className="flex items-center justify-between gap-2 border border-emerald-200 bg-emerald-50 px-2 py-1.5 text-[11px] text-emerald-800">
+                      <div className="mx-3 mb-3 flex items-center justify-between gap-2 border border-emerald-200 bg-emerald-50 px-2 py-1.5 text-[11px] text-emerald-800">
                         <span className="min-w-0 truncate">
                           Linked: <strong>{selectedCustomer.displayName}</strong> ({selectedCustomer.primaryPhone})
                         </span>
@@ -1204,35 +1212,64 @@ export default function PosWorkspaceClient({ initialLedger, initialTransactionId
                           Clear
                         </button>
                       </div>
-                    ) : customerLookupQuery || customerLookupMatches.length > 0 ? (
-                      <div className="max-h-36 overflow-y-auto border border-neutral-200 bg-white">
-                        {customerLookupMatches.map((customer) => (
-                          <button
-                            key={customer.id}
-                            type="button"
-                            onClick={() => selectCustomer(customer)}
-                            className="flex w-full items-center justify-between gap-2 border-b border-neutral-100 px-2 py-2 text-left text-xs last:border-b-0 hover:bg-neutral-50"
-                          >
-                            <span className="min-w-0">
-                              <span className="block truncate font-semibold text-neutral-950">{customer.displayName}</span>
-                              <span className="block truncate text-[11px] text-neutral-500">
-                                {customer.primaryPhone}
-                                {customer.instagram ? ` / @${customer.instagram.replace(/^@/, '')}` : ''}
-                              </span>
-                            </span>
-                            <span className="shrink-0 font-mono text-[10px] text-neutral-400">
-                              {customer.posTransactionCount + customer.bookingCount + customer.fittingCount}x
-                            </span>
-                          </button>
-                        ))}
+                    ) : null}
 
-                        {customerLookupMatches.length === 0 && (
-                          <p className="px-2 py-3 text-xs text-neutral-500">
-                            Tidak ada customer cocok. Data baru akan dibuat saat transaksi disimpan.
+                    {isCustomerDatabaseOpen && (
+                      <div className="space-y-2 border-t border-neutral-200 p-3">
+                        <label className="block space-y-1">
+                          <span className="text-xs font-semibold text-neutral-600">Cari / pilih customer lama</span>
+                          <input
+                            value={customerLookupQuery}
+                            onChange={(event) => {
+                              setCustomerLookupQuery(event.target.value);
+                              setSelectedCustomerId('');
+                            }}
+                            placeholder={isLoadingCustomers ? 'Memuat customer...' : 'Nama, WhatsApp, email, Instagram'}
+                            className="h-10 w-full border border-neutral-200 bg-white px-3 text-sm focus:outline-none focus:ring-1 focus:ring-neutral-900"
+                          />
+                        </label>
+
+                        {customerError && (
+                          <p className="border border-red-200 bg-red-50 px-2 py-1.5 text-[11px] text-red-700">
+                            {customerError}
+                          </p>
+                        )}
+
+                        {customerLookupQuery || customerLookupMatches.length > 0 ? (
+                          <div className="max-h-36 overflow-y-auto border border-neutral-200 bg-white">
+                            {customerLookupMatches.map((customer) => (
+                              <button
+                                key={customer.id}
+                                type="button"
+                                onClick={() => selectCustomer(customer)}
+                                className="flex w-full items-center justify-between gap-2 border-b border-neutral-100 px-2 py-2 text-left text-xs last:border-b-0 hover:bg-neutral-50"
+                              >
+                                <span className="min-w-0">
+                                  <span className="block truncate font-semibold text-neutral-950">{customer.displayName}</span>
+                                  <span className="block truncate text-[11px] text-neutral-500">
+                                    {customer.primaryPhone}
+                                    {customer.instagram ? ` / @${customer.instagram.replace(/^@/, '')}` : ''}
+                                  </span>
+                                </span>
+                                <span className="shrink-0 font-mono text-[10px] text-neutral-400">
+                                  {customer.posTransactionCount + customer.bookingCount + customer.fittingCount}x
+                                </span>
+                              </button>
+                            ))}
+
+                            {customerLookupMatches.length === 0 && (
+                              <p className="px-2 py-3 text-xs text-neutral-500">
+                                Tidak ada customer cocok. Data baru akan dibuat saat transaksi disimpan.
+                              </p>
+                            )}
+                          </div>
+                        ) : (
+                          <p className="text-[11px] leading-relaxed text-neutral-500">
+                            Open this only when you want to reuse an existing customer. Manual name and WhatsApp below still create or update the customer record.
                           </p>
                         )}
                       </div>
-                    ) : null}
+                    )}
                   </div>
 
                   <label className="block space-y-1">
