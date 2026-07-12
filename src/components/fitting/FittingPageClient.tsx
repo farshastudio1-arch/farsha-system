@@ -228,7 +228,7 @@ export default function FittingPageClient({
             Kembali ke katalog
           </Link>
 
-          <div className="mt-5 flex flex-col gap-4 border-b border-neutral-200 pb-5 md:flex-row md:items-start md:justify-between">
+          <div className="mt-5 border-b border-neutral-200 pb-5">
             <div>
               <p className="font-mono text-[10px] font-bold uppercase tracking-widest text-neutral-400">
                 Fitting Appointment
@@ -241,13 +241,6 @@ export default function FittingPageClient({
                   ? 'Data customer dan item sudah diambil dari booking yang valid. Pilih slot fitting yang tersedia.'
                   : 'Pilih tanggal dan jam yang tersedia. Slot pending langsung ditahan agar tidak double booking.'}
               </p>
-            </div>
-
-            <div className="border border-neutral-200 bg-neutral-50 p-3 md:w-56">
-              <p className="text-xs font-semibold uppercase tracking-wider text-neutral-500">Kode fitting</p>
-              <strong className="mt-1 block font-mono text-lg text-neutral-950">
-                {successData?.fittingCode ?? 'Otomatis'}
-              </strong>
             </div>
           </div>
 
