@@ -9,6 +9,7 @@ import {
   CalendarRange,
   Shirt,
   Edit3,
+  MessageCircle,
   Plus,
   ReceiptText,
   RefreshCw,
@@ -87,6 +88,32 @@ function getActivityLabel(type: CustomerActivityEntry['type']) {
   if (type === 'pos_receipt') return 'Receipt';
   if (type === 'booking') return 'Booking';
   return 'Fitting';
+}
+
+function normalizeWhatsAppNumber(value: string) {
+  const digits = value.replace(/\D/g, '');
+
+  if (!digits) {
+    return '';
+  }
+
+  if (digits.startsWith('0')) {
+    return `62${digits.slice(1)}`;
+  }
+
+  return digits.startsWith('62') ? digits : digits;
+}
+
+function getCustomerWhatsAppUrl(customer: CustomerRecord) {
+  const phone = normalizeWhatsAppNumber(customer.normalizedPhone || customer.primaryPhone);
+
+  if (!phone) {
+    return '';
+  }
+
+  const message = `Halo Kak ${customer.displayName}, Farsha Studio ingin follow up sebentar via WhatsApp.`;
+
+  return `https://wa.me/${phone}?text=${encodeURIComponent(message)}`;
 }
 
 function formFromCustomer(customer: CustomerRecord): CustomerFormState {
@@ -530,59 +557,91 @@ export default function PosCustomersClient({ initialCustomers }: PosCustomersCli
             {visibleCustomers.map((customer) => {
               const isSelected = customer.id === selectedCustomerId;
               const totalActivity = customer.posTransactionCount + customer.bookingCount + customer.fittingCount;
+              const whatsappUrl = getCustomerWhatsAppUrl(customer);
 
               return (
-                <button
+                <div
                   key={customer.id}
-                  type="button"
-                  onClick={() => void loadProfile(customer)}
-                  className={`grid w-full gap-3 px-3 py-3 text-left transition-colors md:grid-cols-[minmax(0,1fr)_160px] ${
+                  className={`flex w-full items-start gap-2 px-3 py-3 transition-colors ${
                     isSelected ? 'bg-neutral-950 text-white' : 'bg-white hover:bg-neutral-50'
                   }`}
                 >
-                  <span className="min-w-0">
-                    <span className="flex items-center gap-2">
-                      <UserRound className={`h-4 w-4 shrink-0 ${isSelected ? 'text-white' : 'text-neutral-400'}`} />
-                      <span className="truncate text-sm font-semibold">{customer.displayName}</span>
-                      <span className={`shrink-0 border px-1.5 py-0.5 text-[9px] font-bold uppercase ${
-                        customer.status === 'active'
-                          ? isSelected
-                            ? 'border-white/30 text-neutral-200'
-                            : 'border-emerald-200 bg-emerald-50 text-emerald-800'
-                          : isSelected
-                            ? 'border-white/30 text-neutral-300'
-                            : 'border-neutral-200 bg-neutral-50 text-neutral-500'
-                      }`}>
-                        {customer.status}
+                  <button
+                    type="button"
+                    onClick={() => void loadProfile(customer)}
+                    className="grid min-w-0 flex-1 gap-3 text-left md:grid-cols-[minmax(0,1fr)_160px]"
+                  >
+                    <span className="min-w-0">
+                      <span className="flex items-center gap-2">
+                        <UserRound className={`h-4 w-4 shrink-0 ${isSelected ? 'text-white' : 'text-neutral-400'}`} />
+                        <span className="truncate text-sm font-semibold">{customer.displayName}</span>
+                        <span className={`shrink-0 border px-1.5 py-0.5 text-[9px] font-bold uppercase ${
+                          customer.status === 'active'
+                            ? isSelected
+                              ? 'border-white/30 text-neutral-200'
+                              : 'border-emerald-200 bg-emerald-50 text-emerald-800'
+                            : isSelected
+                              ? 'border-white/30 text-neutral-300'
+                              : 'border-neutral-200 bg-neutral-50 text-neutral-500'
+                        }`}>
+                          {customer.status}
+                        </span>
+                      </span>
+                      <span className={`mt-1 block truncate text-xs ${isSelected ? 'text-neutral-300' : 'text-neutral-500'}`}>
+                        {customer.primaryPhone}
+                        {customer.instagram ? ` / @${customer.instagram.replace(/^@/, '')}` : ''}
+                      </span>
+                      <span className={`mt-2 grid gap-1 text-[10px] uppercase tracking-wider sm:grid-cols-2 ${isSelected ? 'text-neutral-300' : 'text-neutral-400'}`}>
+                        <span>Last activity: {formatDateTime(customer.lastActivityAt)}</span>
+                        <span>Profile created: {formatDateTime(customer.createdAt)}</span>
                       </span>
                     </span>
-                    <span className={`mt-1 block truncate text-xs ${isSelected ? 'text-neutral-300' : 'text-neutral-500'}`}>
-                      {customer.primaryPhone}
-                      {customer.instagram ? ` / @${customer.instagram.replace(/^@/, '')}` : ''}
+                    <span className="grid grid-cols-3 gap-1 text-center text-[10px] uppercase tracking-wider">
+                      <span className={isSelected ? 'text-neutral-300' : 'text-neutral-400'}>
+                        POS
+                        <strong className={`block text-xs ${isSelected ? 'text-white' : 'text-neutral-950'}`}>{customer.posTransactionCount}</strong>
+                      </span>
+                      <span className={isSelected ? 'text-neutral-300' : 'text-neutral-400'}>
+                        Book
+                        <strong className={`block text-xs ${isSelected ? 'text-white' : 'text-neutral-950'}`}>{customer.bookingCount}</strong>
+                      </span>
+                      <span className={isSelected ? 'text-neutral-300' : 'text-neutral-400'}>
+                        Fit
+                        <strong className={`block text-xs ${isSelected ? 'text-white' : 'text-neutral-950'}`}>{customer.fittingCount}</strong>
+                      </span>
+                      <span className={`col-span-3 mt-1 ${isSelected ? 'text-neutral-300' : 'text-neutral-400'}`}>
+                        {totalActivity} total records
+                      </span>
                     </span>
-                    <span className={`mt-2 grid gap-1 text-[10px] uppercase tracking-wider sm:grid-cols-2 ${isSelected ? 'text-neutral-300' : 'text-neutral-400'}`}>
-                      <span>Last activity: {formatDateTime(customer.lastActivityAt)}</span>
-                      <span>Profile created: {formatDateTime(customer.createdAt)}</span>
+                  </button>
+                  {whatsappUrl ? (
+                    <a
+                      href={whatsappUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      title={`WhatsApp ${customer.displayName}`}
+                      aria-label={`Open WhatsApp message for ${customer.displayName}`}
+                      className={`inline-flex h-9 w-9 shrink-0 items-center justify-center border text-xs font-bold transition-colors ${
+                        isSelected
+                          ? 'border-white/30 text-white hover:bg-white/10'
+                          : 'border-emerald-200 bg-emerald-50 text-emerald-800 hover:bg-emerald-100'
+                      }`}
+                    >
+                      <MessageCircle className="h-4 w-4" />
+                    </a>
+                  ) : (
+                    <span
+                      title="No usable WhatsApp number"
+                      className={`inline-flex h-9 w-9 shrink-0 items-center justify-center border ${
+                        isSelected
+                          ? 'border-white/20 text-neutral-500'
+                          : 'border-neutral-200 bg-neutral-50 text-neutral-300'
+                      }`}
+                    >
+                      <MessageCircle className="h-4 w-4" />
                     </span>
-                  </span>
-                  <span className="grid grid-cols-3 gap-1 text-center text-[10px] uppercase tracking-wider">
-                    <span className={isSelected ? 'text-neutral-300' : 'text-neutral-400'}>
-                      POS
-                      <strong className={`block text-xs ${isSelected ? 'text-white' : 'text-neutral-950'}`}>{customer.posTransactionCount}</strong>
-                    </span>
-                    <span className={isSelected ? 'text-neutral-300' : 'text-neutral-400'}>
-                      Book
-                      <strong className={`block text-xs ${isSelected ? 'text-white' : 'text-neutral-950'}`}>{customer.bookingCount}</strong>
-                    </span>
-                    <span className={isSelected ? 'text-neutral-300' : 'text-neutral-400'}>
-                      Fit
-                      <strong className={`block text-xs ${isSelected ? 'text-white' : 'text-neutral-950'}`}>{customer.fittingCount}</strong>
-                    </span>
-                    <span className={`col-span-3 mt-1 ${isSelected ? 'text-neutral-300' : 'text-neutral-400'}`}>
-                      {totalActivity} total records
-                    </span>
-                  </span>
-                </button>
+                  )}
+                </div>
               );
             })}
 
