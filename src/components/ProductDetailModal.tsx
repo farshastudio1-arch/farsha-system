@@ -139,6 +139,51 @@ export default function ProductDetailModal({
   const availabilitySectionRef = useRef<HTMLDivElement>(null);
   const productId = product?.id;
 
+  // Lightbox State & Refs for fullscreen viewer
+  const [isLightboxOpen, setIsLightboxOpen] = useState(false);
+  const [lightboxIndex, setLightboxIndex] = useState(0);
+  const touchStartX = useRef<number | null>(null);
+
+  // Keyboard navigation for lightbox
+  useEffect(() => {
+    if (!isLightboxOpen || !product) return;
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setIsLightboxOpen(false);
+      } else if (e.key === 'ArrowRight') {
+        setLightboxIndex((prev) => (prev + 1) % product.imageUrls.length);
+      } else if (e.key === 'ArrowLeft') {
+        setLightboxIndex((prev) => (prev - 1 + product.imageUrls.length) % product.imageUrls.length);
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [isLightboxOpen, product]);
+
+  const handleTouchStart = (e: React.TouchEvent) => {
+    touchStartX.current = e.touches[0].clientX;
+  };
+
+  const handleTouchEnd = (e: React.TouchEvent) => {
+    if (touchStartX.current === null || !product) return;
+    const touchEndX = e.changedTouches[0].clientX;
+    const diff = touchEndX - touchStartX.current;
+
+    if (diff > 50) {
+      // Swipe Right -> Go to previous photo
+      setLightboxIndex((prev) => (prev - 1 + product.imageUrls.length) % product.imageUrls.length);
+    } else if (diff < -50) {
+      // Swipe Left -> Go to next photo
+      setLightboxIndex((prev) => (prev + 1) % product.imageUrls.length);
+    }
+
+    touchStartX.current = null;
+  };
+
   // Lock body scroll when modal is open
   useEffect(() => {
     if (product) {
@@ -536,12 +581,18 @@ export default function ProductDetailModal({
           {/* LEFT PANEL: Media Gallery */}
           <div className="relative flex w-full shrink-0 flex-col justify-center border-b theme-border bg-white md:w-1/2 md:border-b-0 md:border-r md:p-6 md:theme-soft-surface">
             {/* Desktop Visual */}
-            <div className="hidden md:block theme-soft-surface relative aspect-[4/5] w-full overflow-hidden shadow-xs">
+            <div 
+              onClick={() => {
+                setLightboxIndex(activeImgIndex);
+                setIsLightboxOpen(true);
+              }}
+              className="hidden md:block theme-soft-surface relative aspect-[4/5] w-full overflow-hidden shadow-xs cursor-zoom-in group"
+            >
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src={product.imageUrls[activeImgIndex]}
                 alt={product.name}
-                className="w-full h-full object-cover"
+                className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-102"
               />
             </div>
 
@@ -562,7 +613,11 @@ export default function ProductDetailModal({
                 {product.imageUrls.map((url, index) => (
                   <div
                     key={index}
-                    className="w-full h-full shrink-0 scroll-snap-align-center relative"
+                    onClick={() => {
+                      setLightboxIndex(index);
+                      setIsLightboxOpen(true);
+                    }}
+                    className="w-full h-full shrink-0 scroll-snap-align-center relative cursor-zoom-in"
                   >
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img
@@ -1200,6 +1255,102 @@ export default function ProductDetailModal({
           </div>
         </div>
       </div>
+
+      {/* Full Screen Lightbox Overlay */}
+      {isLightboxOpen && product && (
+        <div
+          className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-neutral-950/95 backdrop-blur-md transition-opacity duration-300 animate-in fade-in"
+          onClick={() => setIsLightboxOpen(false)}
+        >
+          {/* Top Bar with counter and close button */}
+          <div className="absolute top-0 inset-x-0 flex items-center justify-between p-4 z-50 pointer-events-none md:p-6">
+            <div className="text-white/70 font-mono text-xs md:text-sm bg-neutral-900/60 backdrop-blur-xs px-3 py-1.5 rounded-full pointer-events-auto shadow-xs border border-white/10 select-none">
+              {lightboxIndex + 1} / {product.imageUrls.length}
+            </div>
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                setIsLightboxOpen(false);
+              }}
+              className="pointer-events-auto flex items-center justify-center w-9 h-9 md:w-11 md:h-11 rounded-full bg-neutral-900/60 text-white hover:bg-neutral-800/80 transition-all focus:outline-none border border-white/10 shadow-xs cursor-pointer"
+              aria-label="Tutup foto full screen"
+            >
+              <svg className="w-5 h-5 md:w-6 md:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+
+          {/* Lightbox Main Content */}
+          <div
+            className="relative flex items-center justify-center w-full h-full max-w-5xl max-h-[80vh] px-4 md:px-16"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Prev button */}
+            {product.imageUrls.length > 1 && (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setLightboxIndex((prev) => (prev - 1 + product.imageUrls.length) % product.imageUrls.length);
+                }}
+                className="absolute left-2 md:left-4 z-10 flex items-center justify-center w-10 h-10 md:w-12 md:h-12 rounded-full bg-neutral-900/60 text-white hover:bg-neutral-800/80 transition-all focus:outline-none border border-white/10 shadow-xs cursor-pointer"
+                aria-label="Foto sebelumnya"
+              >
+                <svg className="w-5 h-5 md:w-6 md:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M15 19l-7-7 7-7" />
+                </svg>
+              </button>
+            )}
+
+            {/* Main Image */}
+            <div className="w-full h-full flex items-center justify-center select-none">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={product.imageUrls[lightboxIndex]}
+                alt={`${product.name} - Fullscreen View`}
+                className="max-w-full max-h-full object-contain transition-transform duration-300 scale-98 md:scale-95 animate-in zoom-in-95"
+                onTouchStart={handleTouchStart}
+                onTouchEnd={handleTouchEnd}
+              />
+            </div>
+
+            {/* Next button */}
+            {product.imageUrls.length > 1 && (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setLightboxIndex((prev) => (prev + 1) % product.imageUrls.length);
+                }}
+                className="absolute right-2 md:right-4 z-10 flex items-center justify-center w-10 h-10 md:w-12 md:h-12 rounded-full bg-neutral-900/60 text-white hover:bg-neutral-800/80 transition-all focus:outline-none border border-white/10 shadow-xs cursor-pointer"
+                aria-label="Foto berikutnya"
+              >
+                <svg className="w-5 h-5 md:w-6 md:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M9 5l7 7-7 7" />
+                </svg>
+              </button>
+            )}
+          </div>
+
+          {/* Dots indicators at bottom */}
+          {product.imageUrls.length > 1 && (
+            <div className="absolute bottom-6 flex gap-2 z-50">
+              {product.imageUrls.map((_, index) => (
+                <button
+                  key={index}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setLightboxIndex(index);
+                  }}
+                  className={`w-2 h-2 rounded-full transition-all duration-300 ${
+                    lightboxIndex === index ? 'bg-white w-4' : 'bg-white/40 hover:bg-white/60'
+                  }`}
+                  aria-label={`Pilih foto ${index + 1}`}
+                />
+              ))}
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }
