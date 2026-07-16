@@ -284,42 +284,109 @@ select {
     grid-template-columns: minmax(0, 1fr);
   }
 
-  .landing-rental-guide-grid {
+  .landing-rental-heading {
     display: grid;
-    grid-template-columns: minmax(0, 1fr);
     gap: 1.25rem;
+    margin-bottom: 2.5rem;
+  }
+
+  .landing-rental-heading-copy {
+    max-width: 22rem;
+  }
+
+  .landing-rental-board {
+    border-top: 1px solid var(--theme-text);
   }
 
   .landing-rental-path-list {
     display: grid;
     grid-template-columns: minmax(0, 1fr);
-    gap: 0.75rem;
+    gap: 0;
   }
 
-  .landing-rental-point-list {
-    display: grid;
-    gap: 0.5rem;
+  .landing-rental-path {
+    color: var(--theme-text);
+    display: flex;
+    flex-direction: column;
+    min-height: 30rem;
+    overflow: hidden;
+    padding: 2.25rem 1.25rem;
+    position: relative;
   }
 
-  .landing-rental-point-list li {
-    color: var(--theme-muted-strong);
-    display: grid;
-    gap: 0.6rem;
-    grid-template-columns: 0.35rem minmax(0, 1fr);
-    min-width: 0;
+  .landing-rental-path-header {
+    align-items: center;
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 1.65rem;
   }
 
-  .landing-rental-point-list li::before {
-    background: var(--theme-text);
-    content: '';
-    height: 0.35rem;
-    margin-top: 0.55rem;
-    width: 0.35rem;
+  .landing-rental-option-label {
+    border: 1px solid var(--theme-border);
+    color: color-mix(in srgb, var(--theme-text) 58%, var(--theme-surface));
+    padding: 0.45rem 0.85rem;
   }
 
-  .landing-rental-term-grid {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr);
+  .landing-rental-path-icon {
+    align-items: center;
+    display: flex;
+    height: 2.5rem;
+    justify-content: center;
+    width: 2.5rem;
+  }
+
+  .landing-rental-detail {
+    border-top: 1px solid var(--theme-border);
+    color: color-mix(in srgb, var(--theme-text) 82%, var(--theme-surface));
+    font-size: 0.95rem;
+    line-height: 1.62;
+    margin-top: 1.25rem;
+    padding-top: 1.1rem;
+  }
+
+  .landing-rental-detail-label {
+    color: color-mix(in srgb, var(--theme-text) 42%, var(--theme-surface));
+    display: block;
+    font-family: var(--font-sans);
+    font-size: 0.68rem;
+    font-weight: 800;
+    letter-spacing: 0.16em;
+    line-height: 1;
+    margin-bottom: 0.85rem;
+    text-transform: uppercase;
+  }
+
+  .landing-rental-note-label {
+    color: #b91c1c;
+  }
+
+  .landing-rental-note-detail {
+    margin-bottom: 0;
+  }
+
+  .landing-rental-suitable {
+    max-width: 26rem;
+  }
+
+  .landing-rental-action {
+    align-items: center;
+    display: inline-flex;
+    font-size: 0.78rem;
+    font-weight: 700;
+    gap: 1.25rem;
+    justify-content: center;
+    letter-spacing: 0.18em;
+    margin-top: 1.35rem;
+    min-height: 3.75rem;
+    padding: 1rem 2rem;
+    text-transform: uppercase;
+    width: min(100%, 18rem);
+  }
+
+  .landing-rental-card-number {
+    color: color-mix(in srgb, var(--theme-text) 32%, var(--theme-surface));
+    inset: auto 1.25rem 1.25rem auto;
+    position: absolute;
   }
 
   .landing-hero-satin {
@@ -582,12 +649,21 @@ select {
       grid-template-columns: repeat(2, minmax(0, 1fr));
     }
 
-    .landing-rental-term-grid {
-      grid-template-columns: repeat(3, minmax(0, 1fr));
-    }
-
     .landing-trust-grid {
       grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+  }
+
+  @media (min-width: 768px) {
+    .landing-rental-heading {
+      grid-template-columns: minmax(0, 2fr) minmax(18rem, 1fr);
+      margin-bottom: 3.25rem;
+    }
+
+    .landing-rental-heading-copy {
+      align-self: center;
+      border-left: 1px solid var(--theme-border);
+      padding-left: 2rem;
     }
   }
 
@@ -601,10 +677,21 @@ select {
       grid-template-columns: repeat(4, minmax(0, 1fr));
     }
 
-    .landing-rental-guide-grid {
-      grid-template-columns: minmax(0, 4fr) minmax(0, 6fr);
-      align-items: start;
-      gap: 1.5rem;
+    .landing-rental-path-list {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .landing-rental-path {
+      min-height: 33rem;
+      padding: 2.75rem 4rem;
+    }
+
+    .landing-rental-path + .landing-rental-path {
+      border-left: 1px solid var(--theme-border);
+    }
+
+    .landing-rental-card-number {
+      inset: auto 4rem 4rem auto;
     }
   }
 }

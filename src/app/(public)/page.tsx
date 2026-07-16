@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { CalendarCheck, Compass, DoorOpen, MapPin } from 'lucide-react';
+import { ArrowRight, CalendarCheck, Compass, MapPin } from 'lucide-react';
 
 import LandingCategoryCard from '@/components/LandingCategoryCard';
 import PublicFooter from '@/components/PublicFooter';
@@ -10,20 +10,26 @@ import { getCmsContent, getSiteSettings } from '@/lib/farsha-db';
 
 const rentalPaths = [
   {
+    optionLabel: 'Opsi A',
     title: 'Datang Langsung',
-    icon: DoorOpen,
-    suitableFor: 'Cocok untuk: acara mendadak/mepet',
-    benefit: 'Tanpa appointment dan tanpa biaya booking.',
-    note: 'Pilih, fitting, langsung bawa pulang. Stok mengikuti ketersediaan hari itu.',
+    icon: MapPin,
+    suitableFor: 'Acara mendadak atau kebutuhan mepet.',
+    benefit:
+      'Tanpa perlu membuat appointment atau membayar biaya booking di awal. Cukup kunjungi studio kami di jam operasional, pilih koleksi yang tersedia, lakukan fitting, dan bawa pulang hari itu juga.',
+    note: 'Pilihan baju terbatas sepenuhnya pada ketersediaan stok di hari kunjungan tersebut.',
+    ctaLabel: 'Kunjungi Kami',
+    ctaType: 'maps',
   },
   {
+    optionLabel: 'Opsi B',
     title: 'Booking Dulu',
     icon: CalendarCheck,
-    suitableFor: 'Cocok untuk: acara jauh-jauh hari',
-    benefit: 'Pilih kebaya/dress favorit lebih awal tanpa takut slot habis.',
+    suitableFor: 'Persiapan acara jauh-jauh hari.',
+    benefit:
+      'Dapatkan prioritas utama untuk memilih style favorit tanpa takut kehabisan slot. Tanggal acara kamu akan kami kunci secara eksklusif dalam sistem reservasi kami.',
     note:
-      'Isi tanggal lewat "Cek Tanggal" di katalog, lalu bayar booking Rp100.000/kebaya.',
-    ctaLabel: 'Cek Tanggal di Katalog',
+      'Melakukan pengisian tanggal dan membayar biaya booking sebesar Rp100.000/kebaya untuk mengunci slot.',
+    ctaLabel: 'Cek Tanggal',
     ctaHref: '/catalog?view=all',
   },
 ];
@@ -159,60 +165,96 @@ export default async function Home() {
           </div>
         </section>
 
-        <section className="theme-surface theme-border border-t py-7 sm:py-14">
+        <section className="landing-rental-section theme-surface theme-border border-t py-9 sm:py-12">
           <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-            <div className="landing-rental-guide-grid">
-              <div className="max-w-xl">
-                <span className="theme-muted font-mono text-[10px] font-semibold uppercase tracking-widest">
+            <div className="landing-rental-heading">
+              <div>
+                <span className="theme-muted font-mono text-[10px] font-semibold uppercase tracking-[0.45em]">
                   panduan sewa
                 </span>
-                <h2 className="mt-2 max-w-sm font-serif text-[2rem] font-semibold leading-[1.05] text-[var(--theme-text)] sm:max-w-xl sm:text-4xl">
+                <h2 className="mt-5 max-w-4xl font-serif text-[2.45rem] font-semibold leading-[1.02] text-[var(--theme-text)] sm:text-[3.5rem] lg:text-[4.1rem]">
                   Cara Sewa di Farsha Studio
                 </h2>
-                <p className="theme-muted-strong mt-3 text-sm leading-relaxed sm:mt-4 sm:text-base">
-                  Ada dua cara untuk sewa kebaya/dress di Farsha Studio. Pertama, datang langsung,
-                  kedua, booking dulu.
-                </p>
               </div>
+              <p className="landing-rental-heading-copy theme-muted-strong text-base leading-relaxed sm:text-lg">
+                Kami menyediakan dua jalur penyewaan yang dirancang untuk kenyamanan jadwal kamu.
+              </p>
+            </div>
 
+            <div className="landing-rental-board">
               <div className="landing-rental-path-list">
                 {rentalPaths.map((path, index) => {
                   const Icon = path.icon;
+                  const action =
+                    path.ctaType === 'maps'
+                      ? {
+                          href: mapsLink,
+                          external: true,
+                        }
+                      : {
+                          href: path.ctaHref,
+                          external: false,
+                        };
 
                   return (
                     <article
                       key={path.title}
-                      className="theme-border border bg-[var(--theme-surface)] p-4 shadow-xs sm:p-5"
+                      className="landing-rental-path bg-[var(--theme-surface)]"
                     >
-                      <div className="flex items-center gap-3 sm:items-start sm:gap-4">
-                        <span className="theme-soft-surface theme-border flex h-10 w-10 shrink-0 items-center justify-center border text-[var(--theme-text)] sm:h-11 sm:w-11">
-                          <Icon className="h-4 w-4 sm:h-5 sm:w-5" aria-hidden="true" />
+                      <div className="landing-rental-path-header">
+                        <span className="landing-rental-option-label theme-border font-mono text-[10px] font-semibold uppercase tracking-widest text-[var(--theme-text)]">
+                          {path.optionLabel}
                         </span>
-                        <div className="min-w-0">
-                          <span className="theme-muted font-mono text-[10px] font-semibold uppercase tracking-widest">
-                            {String(index + 1).padStart(2, '0')}
-                          </span>
-                          <h3 className="font-serif text-xl font-semibold text-[var(--theme-text)] sm:mt-1 sm:text-2xl">
-                            {path.title}
-                          </h3>
-                        </div>
+                        <span className="landing-rental-path-icon text-[var(--theme-text)]">
+                          <Icon className="h-5 w-5" aria-hidden="true" />
+                        </span>
                       </div>
-                      <div className="theme-soft-surface theme-border mt-3 border px-3 py-2 text-sm font-semibold text-[var(--theme-text)] sm:mt-4">
-                        {path.suitableFor}
+                      <h3 className="font-serif text-[1.6rem] font-semibold leading-tight text-[var(--theme-text)] sm:text-[1.95rem]">
+                        {path.title}
+                      </h3>
+                      <div className="landing-rental-detail">
+                        <span className="landing-rental-detail-label">Cocok untuk</span>
+                        <p className="landing-rental-suitable font-serif text-lg font-semibold italic leading-snug text-[var(--theme-text)] sm:text-xl">
+                          {path.suitableFor}
+                        </p>
                       </div>
-                      <ul className="landing-rental-point-list mt-3 text-sm leading-relaxed">
-                        <li>{path.benefit}</li>
-                        <li>{path.note}</li>
-                      </ul>
-                      {path.ctaHref && path.ctaLabel && (
-                        <Link
-                          href={path.ctaHref}
-                          className="theme-primary-action mt-4 inline-flex w-full items-center justify-center gap-3 px-5 py-3.5 text-center text-[11px] font-semibold uppercase tracking-widest transition-all sm:w-auto sm:px-6 sm:py-4 sm:text-xs"
-                        >
-                          <CalendarCheck className="h-4 w-4 shrink-0" />
-                          {path.ctaLabel}
-                        </Link>
+                      <div className="landing-rental-detail">
+                        <span className="landing-rental-detail-label">Benefit</span>
+                        <p>{path.benefit}</p>
+                      </div>
+                      <div className="landing-rental-detail landing-rental-note-detail">
+                        <span className="landing-rental-detail-label landing-rental-note-label">
+                          Catatan
+                        </span>
+                        <p>{path.note}</p>
+                      </div>
+                      {action.href && (
+                        action.external ? (
+                          <a
+                            href={action.href}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="theme-primary-action landing-rental-action"
+                          >
+                            {path.ctaLabel}
+                            <ArrowRight className="h-4 w-4 shrink-0" aria-hidden="true" />
+                          </a>
+                        ) : (
+                          <Link
+                            href={action.href}
+                            className="theme-primary-action landing-rental-action"
+                          >
+                            {path.ctaLabel}
+                            <ArrowRight className="h-4 w-4 shrink-0" aria-hidden="true" />
+                          </Link>
+                        )
                       )}
+                      <span
+                        className="landing-rental-card-number font-mono text-[10px] font-semibold tracking-widest"
+                        aria-hidden="true"
+                      >
+                        {String(index + 1).padStart(2, '0')}
+                      </span>
                     </article>
                   );
                 })}
