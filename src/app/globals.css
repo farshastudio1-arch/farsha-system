@@ -284,169 +284,303 @@ select {
     grid-template-columns: minmax(0, 1fr);
   }
 
-  .landing-rental-heading {
-    display: grid;
-    gap: 1.25rem;
-    margin-bottom: 2.5rem;
-  }
+  /* =============================================
+   * PANDUAN SEWA — Redesigned Editorial Layout
+   * ============================================= */
 
-  .landing-rental-heading-copy {
-    max-width: 22rem;
-  }
-
-  .landing-rental-board {
-    border-top: 1px solid var(--theme-border);
-    padding-top: 3rem;
-  }
-
-  .landing-rental-path-list {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr);
-    gap: 1.5rem;
-  }
-
-  .landing-rental-path {
-    color: var(--theme-text);
-    background-color: var(--theme-surface);
-    border: 1px solid var(--theme-border);
+  /* Section intro header */
+  .landing-rental-intro {
     display: flex;
     flex-direction: column;
-    min-height: 32rem;
-    overflow: hidden;
-    padding: 2.5rem 1.5rem;
+    align-items: center;
+    text-align: center;
+    gap: 1rem;
+    margin-bottom: 3rem;
+  }
+
+  .landing-rental-eyebrow {
+    color: color-mix(in srgb, var(--theme-text) 44%, var(--theme-surface));
+    white-space: nowrap;
+  }
+
+  .landing-rental-intro-line {
+    width: 3rem;
+    height: 1px;
+    background-color: var(--theme-border);
+  }
+
+  .landing-rental-title {
+    font-size: 2.5rem;
+    line-height: 1.02;
+  }
+
+  .landing-rental-subtitle {
+    font-size: 1rem;
+    max-width: 32rem;
+    line-height: 1.7;
+  }
+
+  /* Two-panel grid */
+  .landing-rental-panels {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 1rem;
+  }
+
+  /* Base panel */
+  .landing-rental-panel {
     position: relative;
-    transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
-  }
-
-  .landing-rental-path:hover {
-    transform: translateY(-6px);
-    border-color: color-mix(in srgb, #4a5d73 40%, var(--theme-border));
-    box-shadow: 
-      0 20px 40px -15px rgba(0, 0, 0, 0.05),
-      0 0 25px -5px rgba(255, 192, 203, 0.18), /* soft pink glow */
-      0 0 25px -5px rgba(173, 216, 230, 0.18);  /* soft blue glow */
-  }
-
-  .landing-rental-path-header {
-    align-items: center;
+    overflow: hidden;
     display: flex;
-    justify-content: space-between;
-    margin-bottom: 2rem;
+    flex-direction: column;
   }
 
-  .landing-rental-option-label {
+  /* Light panel (Opsi A) */
+  .landing-rental-panel-light {
     border: 1px solid var(--theme-border);
-    color: color-mix(in srgb, var(--theme-text) 58%, var(--theme-surface));
-    padding: 0.45rem 0.85rem;
-    font-weight: 700;
+    background-color: var(--theme-surface);
   }
 
-  .landing-rental-path-icon {
-    align-items: center;
+
+  .landing-rental-panel-accent {
+    height: 3px;
+    background: linear-gradient(
+      90deg,
+      var(--theme-border) 0%,
+      color-mix(in srgb, var(--theme-text) 28%, var(--theme-surface)) 50%,
+      var(--theme-border) 100%
+    );
+    transition: background 0.4s ease;
+  }
+
+  .landing-rental-panel-light:hover .landing-rental-panel-accent {
+    background: linear-gradient(
+      90deg,
+      transparent 0%,
+      var(--theme-primary) 50%,
+      transparent 100%
+    );
+  }
+
+  /* Watermark image */
+  .landing-rental-panel-watermark {
+    position: absolute;
+    right: -8%;
+    bottom: -8%;
+    width: 14rem;
+    height: 14rem;
+    object-fit: contain;
+    pointer-events: none;
+    user-select: none;
+    transition: transform 0.7s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.4s ease;
+    z-index: 0;
+  }
+
+  .landing-rental-panel:hover .landing-rental-panel-watermark {
+    transform: scale(1.1) rotate(10deg);
+  }
+
+  /* Panel inner content */
+  .landing-rental-panel-inner {
+    position: relative;
+    z-index: 1;
     display: flex;
-    height: 2.75rem;
-    justify-content: center;
+    flex-direction: column;
+    flex: 1;
+    padding: 2rem 1.75rem 2rem;
+  }
+
+  /* Panel header row */
+  .landing-rental-panel-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 1.75rem;
+  }
+
+  /* Opsi badge (light) */
+  .landing-rental-panel-badge {
+    border: 1px solid var(--theme-border);
+    color: color-mix(in srgb, var(--theme-text) 54%, var(--theme-surface));
+    padding: 0.38rem 0.85rem;
+  }
+
+
+  .landing-rental-panel-icon-wrap {
     width: 2.75rem;
-    background-color: color-mix(in srgb, #4a5d73 8%, var(--theme-surface));
-    border: 1px solid color-mix(in srgb, #4a5d73 15%, transparent);
-    color: #4a5d73;
+    height: 2.75rem;
     border-radius: 9999px !important;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid var(--theme-border);
+    color: color-mix(in srgb, var(--theme-text) 70%, var(--theme-surface));
+    background-color: color-mix(in srgb, var(--theme-border) 20%, var(--theme-surface));
     transition: all 0.3s ease;
   }
 
-  .landing-rental-path:hover .landing-rental-path-icon {
-    background-color: #4a5d73;
-    color: var(--theme-surface);
-    transform: scale(1.05);
+  .landing-rental-panel-light:hover .landing-rental-panel-icon-wrap {
+    background-color: var(--theme-primary);
+    border-color: var(--theme-primary);
+    color: var(--theme-background);
   }
 
-  .landing-rental-detail {
-    border-top: 1px solid var(--theme-border);
-    color: color-mix(in srgb, var(--theme-text) 82%, var(--theme-surface));
-    font-size: 0.95rem;
-    line-height: 1.62;
-    margin-top: 1.5rem;
-    padding-top: 1.25rem;
-  }
 
-  .landing-rental-detail-label {
-    color: color-mix(in srgb, var(--theme-text) 42%, var(--theme-surface));
-    display: block;
-    font-family: var(--font-sans);
-    font-size: 0.68rem;
-    font-weight: 800;
-    letter-spacing: 0.16em;
-    line-height: 1;
-    margin-bottom: 0.85rem;
-    text-transform: uppercase;
-  }
-
-  .landing-rental-note-label {
-    color: #b53b52; /* Ruby red matching jewel context */
-  }
-
-  .landing-rental-note-detail {
+  .landing-rental-panel-title-block {
+    padding-bottom: 1.5rem;
+    border-bottom: 1px solid var(--theme-border);
     margin-bottom: 0;
   }
 
-  .landing-rental-suitable {
-    max-width: 26rem;
+  .landing-rental-panel-dark .landing-rental-panel-title-block {
+    border-bottom-color: color-mix(in srgb, var(--theme-background) 12%, var(--theme-primary));
   }
 
-  .landing-rental-action {
+  .landing-rental-panel-title {
+    font-size: 2rem;
+    line-height: 1.05;
+    margin-bottom: 0.6rem;
+  }
+
+  .landing-rental-panel-tagline {
+    font-size: 1rem;
+    line-height: 1.5;
+    opacity: 0.72;
+  }
+
+  /* Steps list */
+  .landing-rental-steps {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+  }
+
+  .landing-rental-step {
+    display: grid;
+    grid-template-columns: 2.25rem minmax(0, 1fr);
+    gap: 1rem;
+    padding: 1.25rem 0;
+    border-bottom: 1px solid var(--theme-border);
+    align-items: start;
+  }
+
+  .landing-rental-step:last-child {
+    border-bottom: none;
+  }
+
+
+  .landing-rental-step-num {
+    width: 2.25rem;
+    height: 2.25rem;
+    display: flex;
     align-items: center;
-    display: inline-flex;
-    font-size: 0.78rem;
-    font-weight: 700;
-    gap: 1.25rem;
     justify-content: center;
-    letter-spacing: 0.18em;
-    margin-top: 2rem;
-    min-height: 3.75rem;
-    padding: 1rem 2rem;
-    text-transform: uppercase;
-    width: min(100%, 18rem);
+    border: 1px solid var(--theme-border);
+    font-family: var(--font-mono, monospace);
+    font-size: 0.7rem;
+    font-weight: 700;
+    color: color-mix(in srgb, var(--theme-text) 56%, var(--theme-surface));
+    flex-shrink: 0;
     transition: all 0.3s ease;
+    margin-top: 0.1rem;
   }
 
-  .landing-rental-action svg {
-    transition: transform 0.3s ease;
+  .landing-rental-panel-light:hover .landing-rental-step-num {
+    background-color: var(--theme-primary);
+    border-color: var(--theme-primary);
+    color: var(--theme-background);
   }
 
-  .landing-rental-action:hover svg {
-    transform: translateX(4px);
+  /* Step content */
+  .landing-rental-step-content {
+    display: flex;
+    flex-direction: column;
+    gap: 0.3rem;
   }
 
-  .landing-rental-card-number {
-    color: color-mix(in srgb, var(--theme-text) 18%, var(--theme-surface));
-    inset: auto 1.5rem 1.5rem auto;
-    position: absolute;
+  .landing-rental-step-label {
+    font-family: var(--font-sans);
+    font-size: 0.8rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    color: var(--theme-text);
+  }
+
+  .landing-rental-step-desc {
+    font-size: 0.85rem;
+    line-height: 1.6;
+    color: color-mix(in srgb, var(--theme-text) 64%, var(--theme-surface));
+  }
+
+  /* Note box */
+  .landing-rental-panel-note {
+    display: flex;
+    gap: 0.75rem;
+    align-items: flex-start;
+    margin-top: 1.5rem;
+    padding: 1rem 1.25rem;
+    background-color: color-mix(in srgb, var(--theme-border) 28%, var(--theme-surface));
+    border-left: 2px solid color-mix(in srgb, var(--theme-text) 22%, transparent);
+  }
+
+  .landing-rental-note-icon {
+    font-family: var(--font-sans);
+    font-size: 0.65rem;
+    font-weight: 900;
+    width: 1.3rem;
+    height: 1.3rem;
+    flex-shrink: 0;
+    border-radius: 9999px !important;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-color: color-mix(in srgb, var(--theme-text) 16%, var(--theme-surface));
+    color: var(--theme-surface);
+    margin-top: 0.1rem;
+  }
+
+  .landing-rental-note-text {
+    font-size: 0.82rem;
+    line-height: 1.6;
+    color: color-mix(in srgb, var(--theme-text) 68%, var(--theme-surface));
+  }
+
+  /* CTA button */
+  .landing-rental-panel-cta {
+    display: inline-flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    margin-top: 1.75rem;
+    padding: 1rem 1.5rem;
+    font-family: var(--font-sans);
     font-size: 0.75rem;
+    font-weight: 700;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    transition: all 0.3s ease;
+    width: 100%;
   }
+
+  /* Outline CTA (light panel) */
+  .landing-rental-panel-cta-outline {
+    border: 1px solid var(--theme-primary);
+    color: var(--theme-primary);
+    background-color: transparent;
+  }
+
+  .landing-rental-panel-cta-outline:hover {
+    background-color: var(--theme-primary);
+    color: var(--theme-background);
+  }
+
+
 
   .landing-hero-satin {
-    background:
-      radial-gradient(ellipse at 28% 0%, rgb(255 255 255 / 0.98), transparent 44%),
-      radial-gradient(ellipse at 88% 18%, rgb(236 234 226 / 0.54), transparent 36%),
-      linear-gradient(135deg, rgb(255, 255, 255), rgb(246, 245, 241) 46%, rgb(255, 255, 255) 70%, rgb(235, 233, 225));
-  }
-
-  .landing-hero-satin::before {
-    content: '';
-    position: absolute;
-    inset: -40% -24%;
-    pointer-events: none;
-    background:
-      linear-gradient(
-        112deg,
-        transparent 18%,
-        rgb(255 255 255 / 0.76) 38%,
-        rgb(238 236 229 / 0.34) 52%,
-        transparent 72%
-      );
-    opacity: 0.62;
-    transform: translateX(-6%);
-    animation: landing-satin-sheen 16s ease-in-out infinite alternate;
+    background: var(--theme-surface);
   }
 
   .landing-reminder-strip {
@@ -689,18 +823,8 @@ select {
     }
   }
 
-  @media (min-width: 768px) {
-    .landing-rental-heading {
-      grid-template-columns: minmax(0, 2fr) minmax(18rem, 1fr);
-      margin-bottom: 3.25rem;
-    }
 
-    .landing-rental-heading-copy {
-      align-self: center;
-      border-left: 1px solid var(--theme-border);
-      padding-left: 2rem;
-    }
-  }
+
 
   @media (min-width: 1024px) {
     .landing-hero-grid {
@@ -712,18 +836,26 @@ select {
       grid-template-columns: repeat(4, minmax(0, 1fr));
     }
 
-    .landing-rental-path-list {
+    .landing-rental-panels {
       grid-template-columns: repeat(2, minmax(0, 1fr));
-      gap: 2rem;
+      gap: 1.5rem;
     }
 
-    .landing-rental-path {
-      min-height: 34rem;
-      padding: 3rem 3rem;
+    .landing-rental-panel-inner {
+      padding: 2.5rem 2.5rem 2.5rem;
     }
 
-    .landing-rental-card-number {
-      inset: auto 3rem 3rem auto;
+    .landing-rental-title {
+      font-size: 3.25rem;
     }
+
+    .landing-rental-subtitle {
+      font-size: 1.1rem;
+    }
+
+    .landing-rental-intro {
+      margin-bottom: 3.5rem;
+    }
+
   }
 }
