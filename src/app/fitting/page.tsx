@@ -39,7 +39,7 @@ export default async function FittingPage({ searchParams }: FittingPageProps) {
 
   return (
     <div className="theme-surface min-h-screen font-sans antialiased">
-      <PublicHeader variant="catalog" showSearchButton={false} centerLogoOnMobile />
+      <PublicHeader variant="catalog" showSearchButton={false} centerLogoOnMobile logoUrl={siteSettings.logoUrl} />
       <FittingPageClient
         initialDate={today}
         initialSlots={initialSlots}

@@ -159,8 +159,8 @@ export const mockSiteSettings: SiteSettings = {
   surfaceColor: '#FFFFFF',
   borderColor: '#E5E5E5',
   borderRadius: 0,
-  logoUrl: '',
-  faviconUrl: '',
+  logoUrl: '/logo.png',
+  faviconUrl: '/logo-mark.png',
   showPromoBanner: true,
   updatedAt: '2026-06-29T00:00:00.000Z',
 };

@@ -295,44 +295,69 @@ select {
   }
 
   .landing-rental-board {
-    border-top: 1px solid var(--theme-text);
+    border-top: 1px solid var(--theme-border);
+    padding-top: 3rem;
   }
 
   .landing-rental-path-list {
     display: grid;
     grid-template-columns: minmax(0, 1fr);
-    gap: 0;
+    gap: 1.5rem;
   }
 
   .landing-rental-path {
     color: var(--theme-text);
+    background-color: var(--theme-surface);
+    border: 1px solid var(--theme-border);
     display: flex;
     flex-direction: column;
-    min-height: 30rem;
+    min-height: 32rem;
     overflow: hidden;
-    padding: 2.25rem 1.25rem;
+    padding: 2.5rem 1.5rem;
     position: relative;
+    transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  .landing-rental-path:hover {
+    transform: translateY(-6px);
+    border-color: color-mix(in srgb, #4a5d73 40%, var(--theme-border));
+    box-shadow: 
+      0 20px 40px -15px rgba(0, 0, 0, 0.05),
+      0 0 25px -5px rgba(255, 192, 203, 0.18), /* soft pink glow */
+      0 0 25px -5px rgba(173, 216, 230, 0.18);  /* soft blue glow */
   }
 
   .landing-rental-path-header {
     align-items: center;
     display: flex;
     justify-content: space-between;
-    margin-bottom: 1.65rem;
+    margin-bottom: 2rem;
   }
 
   .landing-rental-option-label {
     border: 1px solid var(--theme-border);
     color: color-mix(in srgb, var(--theme-text) 58%, var(--theme-surface));
     padding: 0.45rem 0.85rem;
+    font-weight: 700;
   }
 
   .landing-rental-path-icon {
     align-items: center;
     display: flex;
-    height: 2.5rem;
+    height: 2.75rem;
     justify-content: center;
-    width: 2.5rem;
+    width: 2.75rem;
+    background-color: color-mix(in srgb, #4a5d73 8%, var(--theme-surface));
+    border: 1px solid color-mix(in srgb, #4a5d73 15%, transparent);
+    color: #4a5d73;
+    border-radius: 9999px !important;
+    transition: all 0.3s ease;
+  }
+
+  .landing-rental-path:hover .landing-rental-path-icon {
+    background-color: #4a5d73;
+    color: var(--theme-surface);
+    transform: scale(1.05);
   }
 
   .landing-rental-detail {
@@ -340,8 +365,8 @@ select {
     color: color-mix(in srgb, var(--theme-text) 82%, var(--theme-surface));
     font-size: 0.95rem;
     line-height: 1.62;
-    margin-top: 1.25rem;
-    padding-top: 1.1rem;
+    margin-top: 1.5rem;
+    padding-top: 1.25rem;
   }
 
   .landing-rental-detail-label {
@@ -357,7 +382,7 @@ select {
   }
 
   .landing-rental-note-label {
-    color: #b91c1c;
+    color: #b53b52; /* Ruby red matching jewel context */
   }
 
   .landing-rental-note-detail {
@@ -376,17 +401,27 @@ select {
     gap: 1.25rem;
     justify-content: center;
     letter-spacing: 0.18em;
-    margin-top: 1.35rem;
+    margin-top: 2rem;
     min-height: 3.75rem;
     padding: 1rem 2rem;
     text-transform: uppercase;
     width: min(100%, 18rem);
+    transition: all 0.3s ease;
+  }
+
+  .landing-rental-action svg {
+    transition: transform 0.3s ease;
+  }
+
+  .landing-rental-action:hover svg {
+    transform: translateX(4px);
   }
 
   .landing-rental-card-number {
-    color: color-mix(in srgb, var(--theme-text) 32%, var(--theme-surface));
-    inset: auto 1.25rem 1.25rem auto;
+    color: color-mix(in srgb, var(--theme-text) 18%, var(--theme-surface));
+    inset: auto 1.5rem 1.5rem auto;
     position: absolute;
+    font-size: 0.75rem;
   }
 
   .landing-hero-satin {
@@ -679,19 +714,16 @@ select {
 
     .landing-rental-path-list {
       grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 2rem;
     }
 
     .landing-rental-path {
-      min-height: 33rem;
-      padding: 2.75rem 4rem;
-    }
-
-    .landing-rental-path + .landing-rental-path {
-      border-left: 1px solid var(--theme-border);
+      min-height: 34rem;
+      padding: 3rem 3rem;
     }
 
     .landing-rental-card-number {
-      inset: auto 4rem 4rem auto;
+      inset: auto 3rem 3rem auto;
     }
   }
 }

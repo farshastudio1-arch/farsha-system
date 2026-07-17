@@ -26,7 +26,7 @@ export default async function BookingPage({ searchParams }: BookingPageProps) {
 
   return (
     <div className="theme-surface min-h-screen font-sans antialiased">
-      <PublicHeader variant="catalog" showSearchButton={false} centerLogoOnMobile />
+      <PublicHeader variant="catalog" showSearchButton={false} centerLogoOnMobile logoUrl={siteSettings.logoUrl} />
       <BookingPageClient
         initialItems={projectedCatalogItems}
         initialItemId={itemIdParam ?? ''}

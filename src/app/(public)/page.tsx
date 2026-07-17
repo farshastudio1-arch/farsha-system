@@ -49,7 +49,7 @@ export default async function Home() {
 
   return (
     <div className="theme-surface flex min-h-screen flex-col font-sans antialiased">
-      <PublicHeader />
+      <PublicHeader logoUrl={siteSettings.logoUrl} />
 
       <main className="flex-grow">
         <section className="landing-hero-satin relative overflow-hidden">
@@ -199,62 +199,78 @@ export default async function Home() {
                   return (
                     <article
                       key={path.title}
-                      className="landing-rental-path bg-[var(--theme-surface)]"
+                      className="landing-rental-path group"
                     >
-                      <div className="landing-rental-path-header">
-                        <span className="landing-rental-option-label theme-border font-mono text-[10px] font-semibold uppercase tracking-widest text-[var(--theme-text)]">
-                          {path.optionLabel}
-                        </span>
-                        <span className="landing-rental-path-icon text-[var(--theme-text)]">
-                          <Icon className="h-5 w-5" aria-hidden="true" />
-                        </span>
-                      </div>
-                      <h3 className="font-serif text-[1.6rem] font-semibold leading-tight text-[var(--theme-text)] sm:text-[1.95rem]">
-                        {path.title}
-                      </h3>
-                      <div className="landing-rental-detail">
-                        <span className="landing-rental-detail-label">Cocok untuk</span>
-                        <p className="landing-rental-suitable font-serif text-lg font-semibold italic leading-snug text-[var(--theme-text)] sm:text-xl">
-                          {path.suitableFor}
-                        </p>
-                      </div>
-                      <div className="landing-rental-detail">
-                        <span className="landing-rental-detail-label">Benefit</span>
-                        <p>{path.benefit}</p>
-                      </div>
-                      <div className="landing-rental-detail landing-rental-note-detail">
-                        <span className="landing-rental-detail-label landing-rental-note-label">
-                          Catatan
-                        </span>
-                        <p>{path.note}</p>
-                      </div>
-                      {action.href && (
-                        action.external ? (
-                          <a
-                            href={action.href}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="theme-primary-action landing-rental-action"
+                      {/* Faint logo mark background watermark */}
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src="/logo-mark.png"
+                        alt=""
+                        className="select-none pointer-events-none absolute right-[-5%] bottom-[-5%] w-48 h-48 object-contain transition-all duration-700 ease-out group-hover:scale-110 group-hover:rotate-12 z-0"
+                        style={{ opacity: 0.015 }}
+                      />
+
+                      <div className="relative z-10 flex flex-col h-full justify-between">
+                        <div>
+                          <div className="landing-rental-path-header">
+                            <span className="landing-rental-option-label theme-border font-mono text-[10px] font-semibold uppercase tracking-widest text-[var(--theme-text)]">
+                              {path.optionLabel}
+                            </span>
+                            <span className="landing-rental-path-icon text-[var(--theme-text)]">
+                              <Icon className="h-5 w-5" aria-hidden="true" />
+                            </span>
+                          </div>
+                          <h3 className="font-serif text-[1.6rem] font-semibold leading-tight text-[var(--theme-text)] sm:text-[1.95rem]">
+                            {path.title}
+                          </h3>
+                          <div className="landing-rental-detail">
+                            <span className="landing-rental-detail-label">Cocok untuk</span>
+                            <p className="landing-rental-suitable font-serif text-lg font-semibold italic leading-snug text-[var(--theme-text)] sm:text-xl">
+                              {path.suitableFor}
+                            </p>
+                          </div>
+                          <div className="landing-rental-detail">
+                            <span className="landing-rental-detail-label">Benefit</span>
+                            <p>{path.benefit}</p>
+                          </div>
+                          <div className="landing-rental-detail landing-rental-note-detail">
+                            <span className="landing-rental-detail-label landing-rental-note-label">
+                              Catatan
+                            </span>
+                            <p>{path.note}</p>
+                          </div>
+                        </div>
+
+                        <div className="mt-8 flex items-end justify-between">
+                          {action.href && (
+                            action.external ? (
+                              <a
+                                href={action.href}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="theme-primary-action landing-rental-action"
+                              >
+                                {path.ctaLabel}
+                                <ArrowRight className="h-4 w-4 shrink-0 transition-transform duration-300" aria-hidden="true" />
+                              </a>
+                            ) : (
+                              <Link
+                                href={action.href}
+                                className="theme-primary-action landing-rental-action"
+                              >
+                                {path.ctaLabel}
+                                <ArrowRight className="h-4 w-4 shrink-0 transition-transform duration-300" aria-hidden="true" />
+                              </Link>
+                            )
+                          )}
+                          <span
+                            className="landing-rental-card-number font-mono text-[10px] font-semibold tracking-widest"
+                            aria-hidden="true"
                           >
-                            {path.ctaLabel}
-                            <ArrowRight className="h-4 w-4 shrink-0" aria-hidden="true" />
-                          </a>
-                        ) : (
-                          <Link
-                            href={action.href}
-                            className="theme-primary-action landing-rental-action"
-                          >
-                            {path.ctaLabel}
-                            <ArrowRight className="h-4 w-4 shrink-0" aria-hidden="true" />
-                          </Link>
-                        )
-                      )}
-                      <span
-                        className="landing-rental-card-number font-mono text-[10px] font-semibold tracking-widest"
-                        aria-hidden="true"
-                      >
-                        {String(index + 1).padStart(2, '0')}
-                      </span>
+                            {String(index + 1).padStart(2, '0')}
+                          </span>
+                        </div>
+                      </div>
                     </article>
                   );
                 })}
