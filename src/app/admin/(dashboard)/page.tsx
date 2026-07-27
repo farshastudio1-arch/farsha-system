@@ -132,6 +132,13 @@ function getMediaIssues(assets: MediaAsset[]) {
   return assets.filter((asset) => !asset.title.trim() || !asset.altText.trim());
 }
 
+const toneLabel: Record<Tone, string> = {
+  neutral: 'Info',
+  good: 'All clear',
+  warning: 'Needs attention',
+  danger: 'Action required',
+};
+
 function ReadinessCard({
   title,
   value,
@@ -145,22 +152,38 @@ function ReadinessCard({
   detail: string;
   tone: Tone;
   icon: typeof ShoppingBag;
-  href: string;
+  href?: string;
 }) {
-  return (
-    <Link href={href} className="block h-full transition-opacity hover:opacity-90">
-      <div className={`h-full border p-4 shadow-sm sm:p-5 ${toneClass(tone)}`}>
-        <div className="flex items-start justify-between gap-3">
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-widest opacity-70">{title}</p>
-            <p className="mt-3 text-3xl font-semibold tracking-tight">{value}</p>
-          </div>
-          <div className="border border-current/20 bg-white/55 p-2">
-            <Icon className="h-5 w-5" />
-          </div>
+  const content = (
+    <>
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-widest opacity-80">{title}</p>
+          <p className="mt-3 text-3xl font-semibold tracking-tight">{value}</p>
         </div>
-        <p className="mt-3 text-sm leading-relaxed opacity-80">{detail}</p>
+        <div className="border border-current/20 bg-white/55 p-2">
+          <Icon className="h-5 w-5" />
+        </div>
       </div>
+      <p className="mt-3 text-sm leading-relaxed opacity-90">{detail}</p>
+      <p className="mt-3 text-xs font-semibold uppercase tracking-wider opacity-80">
+        {toneLabel[tone]}
+      </p>
+    </>
+  );
+
+  const cardClass = `h-full border p-4 shadow-sm sm:p-5 ${toneClass(tone)}`;
+
+  if (!href) {
+    return <div className={cardClass}>{content}</div>;
+  }
+
+  return (
+    <Link
+      href={href}
+      className="block h-full rounded-none transition-shadow hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-900 focus-visible:ring-offset-2"
+    >
+      <div className={cardClass}>{content}</div>
     </Link>
   );
 }
@@ -199,7 +222,7 @@ function ToolCard({
   return (
     <Link
       href={href}
-      className="block border border-neutral-200 bg-neutral-50 p-4 transition-colors hover:bg-white"
+      className="block border border-neutral-200 bg-neutral-50 p-4 transition-colors hover:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-900 focus-visible:ring-offset-2"
     >
       <div className="flex items-start gap-3">
         <div className="border border-neutral-200 bg-white p-2 text-neutral-700">
@@ -211,6 +234,45 @@ function ToolCard({
         </div>
       </div>
     </Link>
+  );
+}
+
+function ChecklistItem({
+  label,
+  tone,
+  okTone = 'good',
+  okMessage,
+  issues,
+  summary,
+}: {
+  label: string;
+  tone: Tone;
+  okTone?: Tone;
+  okMessage: string;
+  issues?: string[];
+  summary?: string;
+}) {
+  const hasIssues = issues ? issues.length > 0 : Boolean(summary);
+  const activeTone = hasIssues ? tone : okTone;
+
+  return (
+    <div className={`border p-4 ${toneClass(activeTone)}`}>
+      <p className="text-xs font-semibold uppercase tracking-widest opacity-80">{label}</p>
+      {hasIssues && issues ? (
+        <div className="mt-2 flex flex-wrap gap-1.5">
+          {issues.map((issue) => (
+            <span
+              key={issue}
+              className="border border-current/25 bg-white/50 px-2 py-0.5 text-[11px] font-semibold capitalize"
+            >
+              {issue}
+            </span>
+          ))}
+        </div>
+      ) : (
+        <p className="mt-2 text-sm font-semibold">{hasIssues ? summary : okMessage}</p>
+      )}
+    </div>
   );
 }
 
@@ -236,7 +298,7 @@ export default async function AdminDashboard() {
     <div className="mx-auto flex w-full max-w-7xl flex-col gap-5 px-4 py-5 sm:px-6 sm:py-6 lg:px-8 lg:py-8">
       <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
         <div>
-          <p className="font-mono text-[10px] font-bold uppercase tracking-widest text-neutral-400">
+          <p className="font-mono text-[10px] font-bold uppercase tracking-widest text-neutral-500">
             Admin dashboard
           </p>
           <h1 className="mt-2 text-2xl font-semibold tracking-tight text-neutral-950 sm:text-3xl">
@@ -250,14 +312,14 @@ export default async function AdminDashboard() {
         <div className="flex flex-col gap-2 sm:flex-row">
           <Link
             href="/admin/catalog"
-            className="inline-flex items-center justify-center gap-2 bg-neutral-900 px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-neutral-800"
+            className="inline-flex items-center justify-center gap-2 bg-neutral-900 px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-neutral-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-900 focus-visible:ring-offset-2"
           >
             Manage catalog
             <ShoppingBag className="h-4 w-4" />
           </Link>
           <Link
             href="/catalog"
-            className="inline-flex items-center justify-center gap-2 border border-neutral-200 bg-white px-4 py-2.5 text-sm font-semibold text-neutral-700 transition-colors hover:bg-neutral-50"
+            className="inline-flex items-center justify-center gap-2 border border-neutral-200 bg-white px-4 py-2.5 text-sm font-semibold text-neutral-700 transition-colors hover:bg-neutral-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-900 focus-visible:ring-offset-2"
           >
             View storefront
             <ArrowUpRight className="h-4 w-4" />
@@ -272,7 +334,6 @@ export default async function AdminDashboard() {
           detail="Catalog, content, media, and settings items needing attention"
           tone={setupIssueCount > 0 ? 'warning' : 'good'}
           icon={AlertTriangle}
-          href="/admin"
         />
         <ReadinessCard
           title="Catalog master"
@@ -306,7 +367,7 @@ export default async function AdminDashboard() {
           action={
             <Link
               href="/admin/settings"
-              className="inline-flex items-center gap-2 text-sm font-semibold text-neutral-700 hover:text-neutral-950"
+              className="inline-flex items-center gap-2 text-sm font-semibold text-neutral-700 transition-colors hover:text-neutral-950 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-900 focus-visible:ring-offset-2"
             >
               Settings
               <ArrowUpRight className="h-4 w-4" />
@@ -314,49 +375,46 @@ export default async function AdminDashboard() {
           }
         >
           <div className="grid gap-3 sm:grid-cols-2">
-            <div className={`border p-4 ${catalogIssueItems.length > 0 ? toneClass('warning') : toneClass('good')}`}>
-              <p className="text-xs font-semibold uppercase tracking-widest opacity-70">
-                Catalog data
-              </p>
-              <p className="mt-2 text-sm font-semibold">
-                {catalogIssueItems.length > 0
+            <ChecklistItem
+              label="Catalog data"
+              tone="warning"
+              okMessage="Catalog records look complete"
+              summary={
+                catalogIssueItems.length > 0
                   ? `${catalogIssueItems.length} records need cleanup`
-                  : 'Catalog records look complete'}
-              </p>
-            </div>
-            <div className={`border p-4 ${cmsIssues.length > 0 ? toneClass('warning') : toneClass('good')}`}>
-              <p className="text-xs font-semibold uppercase tracking-widest opacity-70">
-                Homepage CMS
-              </p>
-              <p className="mt-2 text-sm font-semibold">
-                {cmsIssues.length > 0 ? cmsIssues.join(', ') : 'Homepage content configured'}
-              </p>
-            </div>
-            <div className={`border p-4 ${settingsIssues.length > 0 ? toneClass('warning') : toneClass('good')}`}>
-              <p className="text-xs font-semibold uppercase tracking-widest opacity-70">
-                Store settings
-              </p>
-              <p className="mt-2 text-sm font-semibold">
-                {settingsIssues.length > 0 ? settingsIssues.join(', ') : 'Settings configured'}
-              </p>
-            </div>
-            <div className={`border p-4 ${mediaIssueAssets.length > 0 ? toneClass('warning') : toneClass('neutral')}`}>
-              <p className="text-xs font-semibold uppercase tracking-widest opacity-70">
-                Media metadata
-              </p>
-              <p className="mt-2 text-sm font-semibold">
-                {mediaIssueAssets.length > 0
+                  : undefined
+              }
+            />
+            <ChecklistItem
+              label="Homepage CMS"
+              tone="warning"
+              okMessage="Homepage content configured"
+              issues={cmsIssues}
+            />
+            <ChecklistItem
+              label="Store settings"
+              tone="warning"
+              okMessage="Settings configured"
+              issues={settingsIssues}
+            />
+            <ChecklistItem
+              label="Media metadata"
+              tone="warning"
+              okTone="neutral"
+              okMessage="No media metadata issues"
+              summary={
+                mediaIssueAssets.length > 0
                   ? `${mediaIssueAssets.length} assets need title or alt text`
-                  : 'No media metadata issues'}
-              </p>
-            </div>
+                  : undefined
+              }
+            />
           </div>
         </Section>
 
         <Section title="Storefront Status">
           <div className="space-y-3">
             <div className="border border-neutral-200 p-4">
-              <p className="text-xs font-semibold uppercase tracking-widest text-neutral-400">
+              <p className="text-xs font-semibold uppercase tracking-widest text-neutral-500">
                 Store status
               </p>
               <p className="mt-1 text-sm font-semibold capitalize text-neutral-950">
@@ -364,7 +422,7 @@ export default async function AdminDashboard() {
               </p>
             </div>
             <div className="border border-neutral-200 p-4">
-              <p className="text-xs font-semibold uppercase tracking-widest text-neutral-400">
+              <p className="text-xs font-semibold uppercase tracking-widest text-neutral-500">
                 Public contact
               </p>
               <p className="mt-1 text-sm font-semibold text-neutral-950">
@@ -374,7 +432,7 @@ export default async function AdminDashboard() {
               </p>
             </div>
             <div className="border border-neutral-200 p-4">
-              <p className="text-xs font-semibold uppercase tracking-widest text-neutral-400">
+              <p className="text-xs font-semibold uppercase tracking-widest text-neutral-500">
                 Homepage hero
               </p>
               <p className="mt-1 line-clamp-2 text-sm font-semibold text-neutral-950">
@@ -391,7 +449,7 @@ export default async function AdminDashboard() {
           action={
             <Link
               href="/admin/catalog"
-              className="inline-flex items-center gap-2 text-sm font-semibold text-neutral-700 hover:text-neutral-950"
+              className="inline-flex items-center gap-2 text-sm font-semibold text-neutral-700 transition-colors hover:text-neutral-950 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-900 focus-visible:ring-offset-2"
             >
               Catalog
               <ArrowUpRight className="h-4 w-4" />
@@ -404,10 +462,10 @@ export default async function AdminDashboard() {
                 <Link
                   key={item.id}
                   href="/admin/catalog"
-                  className="block border border-neutral-200 p-4 transition-colors hover:bg-neutral-50"
+                  className="block border border-neutral-200 p-4 transition-colors hover:bg-neutral-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-900 focus-visible:ring-offset-2"
                 >
                   <p className="text-sm font-semibold text-neutral-950">{item.name}</p>
-                  <p className="mt-1 font-mono text-[10px] uppercase tracking-widest text-neutral-400">
+                  <p className="mt-1 font-mono text-[10px] uppercase tracking-widest text-neutral-500">
                     {item.code}
                   </p>
                   <div className="mt-3 flex flex-wrap gap-1.5">
@@ -435,7 +493,7 @@ export default async function AdminDashboard() {
           action={
             <Link
               href="/admin/cms"
-              className="inline-flex items-center gap-2 text-sm font-semibold text-neutral-700 hover:text-neutral-950"
+              className="inline-flex items-center gap-2 text-sm font-semibold text-neutral-700 transition-colors hover:text-neutral-950 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-900 focus-visible:ring-offset-2"
             >
               CMS
               <ArrowUpRight className="h-4 w-4" />
@@ -489,7 +547,7 @@ export default async function AdminDashboard() {
           action={
             <Link
               href="/admin/media"
-              className="inline-flex items-center gap-2 text-sm font-semibold text-neutral-700 hover:text-neutral-950"
+              className="inline-flex items-center gap-2 text-sm font-semibold text-neutral-700 transition-colors hover:text-neutral-950 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-900 focus-visible:ring-offset-2"
             >
               Media library
               <ArrowUpRight className="h-4 w-4" />
