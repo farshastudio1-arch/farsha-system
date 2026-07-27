@@ -351,9 +351,9 @@ export default function ProductDetailModal({
 
     return legacyBlockedUntilDate
       ? {
-          blockedUntilDate: legacyBlockedUntilDate,
-          readyDate: getNextAvailableDate(legacyBlockedUntilDate),
-        }
+        blockedUntilDate: legacyBlockedUntilDate,
+        readyDate: getNextAvailableDate(legacyBlockedUntilDate),
+      }
       : null;
   }, [ledger.transactions, product, serverAvailabilityBlocks]);
   const monthOptions = useMemo(
@@ -386,10 +386,10 @@ export default function ProductDetailModal({
       const serverBlock =
         product && dates
           ? serverAvailabilityBlocks.find(
-              (block) =>
-                block.itemId === product.id &&
-                doesCandidateDateOverlapBlock(dates, block),
-            )
+            (block) =>
+              block.itemId === product.id &&
+              doesCandidateDateOverlapBlock(dates, block),
+          )
           : null;
       const isCurrentMonth = date.getMonth() === calendarMonth && date.getFullYear() === calendarYear;
       const isPastDate = date < today;
@@ -581,7 +581,7 @@ export default function ProductDetailModal({
           {/* LEFT PANEL: Media Gallery */}
           <div className="relative flex w-full shrink-0 flex-col justify-center border-b theme-border bg-white md:w-1/2 md:border-b-0 md:border-r md:p-6 md:theme-soft-surface">
             {/* Desktop Visual */}
-            <div 
+            <div
               onClick={() => {
                 setLightboxIndex(activeImgIndex);
                 setIsLightboxOpen(true);
@@ -645,11 +645,10 @@ export default function ProductDetailModal({
                           setActiveImageSelection({ productId: product.id, index });
                         }
                       }}
-                      className={`w-1.5 h-1.5 rounded-full transition-all duration-300 ${
-                        activeImgIndex === index
+                      className={`w-1.5 h-1.5 rounded-full transition-all duration-300 ${activeImgIndex === index
                           ? 'bg-[var(--theme-surface)] w-3'
                           : 'bg-[color-mix(in_srgb,var(--theme-surface)_40%,transparent)] hover:bg-[color-mix(in_srgb,var(--theme-surface)_70%,transparent)]'
-                      }`}
+                        }`}
                       aria-label={`Lihat foto ${index + 1}`}
                     />
                   ))}
@@ -680,11 +679,10 @@ export default function ProductDetailModal({
                   <button
                     key={index}
                     onClick={() => setActiveImageSelection({ productId: product.id, index })}
-                    className={`w-11 h-11 sm:w-12 sm:h-12 md:w-14 md:h-14 overflow-hidden border-2 shrink-0 transition-all ${
-                      activeImgIndex === index
+                    className={`w-11 h-11 sm:w-12 sm:h-12 md:w-14 md:h-14 overflow-hidden border-2 shrink-0 transition-all ${activeImgIndex === index
                         ? 'border-[var(--theme-primary)] scale-105 shadow-sm'
                         : 'border-transparent opacity-60 hover:opacity-100'
-                    }`}
+                      }`}
                   >
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img src={url} alt="thumbnail" className="w-full h-full object-cover" />
@@ -734,11 +732,10 @@ export default function ProductDetailModal({
                   {primaryBadges.map((badge) => (
                     <span
                       key={badge}
-                      className={`border px-2.5 py-1 font-mono text-[10px] font-semibold uppercase tracking-wider ${
-                        badge === 'Bisa Resize'
+                      className={`border px-2.5 py-1 font-mono text-[10px] font-semibold uppercase tracking-wider ${badge === 'Bisa Resize'
                           ? 'border-emerald-200 bg-emerald-50 text-emerald-700'
                           : 'theme-soft-surface theme-border text-[var(--theme-text)]'
-                      }`}
+                        }`}
                     >
                       {badge}
                     </span>
@@ -1001,8 +998,7 @@ export default function ProductDetailModal({
                             type="button"
                             disabled={day.disabled}
                             onClick={() => setBookingEventDate(day.value)}
-                            className={`flex aspect-square min-h-10 flex-col items-center justify-center border px-1 text-sm font-semibold leading-none transition-colors sm:min-h-11 ${
-                              isPickup
+                            className={`flex aspect-square min-h-10 flex-col items-center justify-center border px-1 text-sm font-semibold leading-none transition-colors sm:min-h-11 ${isPickup
                                 ? 'border-black bg-black text-white'
                                 : isEvent
                                   ? 'border-black/80 bg-black/80 text-white'
@@ -1011,11 +1007,11 @@ export default function ProductDetailModal({
                                     : isCleaningBuffer
                                       ? 'border-black/55 bg-black/55 text-white'
                                       : !day.isCurrentMonth || day.isPastDate
-                                          ? 'cursor-not-allowed border-neutral-100 bg-neutral-100 text-neutral-300'
-                                          : day.isBooked
-                                            ? 'cursor-not-allowed border-orange-200 bg-orange-50 text-orange-700'
-                                            : 'border-emerald-200 bg-emerald-50 text-emerald-900 hover:border-emerald-500 hover:bg-emerald-100'
-                            }`}
+                                        ? 'cursor-not-allowed border-neutral-100 bg-neutral-100 text-neutral-300'
+                                        : day.isBooked
+                                          ? 'cursor-not-allowed border-orange-200 bg-orange-50 text-orange-700'
+                                          : 'border-emerald-200 bg-emerald-50 text-emerald-900 hover:border-emerald-500 hover:bg-emerald-100'
+                              }`}
                             aria-label={`${day.disabled ? disabledLabel : 'Pilih pickup'} ${formatDate(day.value)}`}
                           >
                             <span>{day.date.getDate()}</span>
@@ -1142,7 +1138,7 @@ export default function ProductDetailModal({
                 </div>
                 <div className="flex flex-col items-center justify-center p-3 theme-soft-surface border theme-border">
                   <span className="text-base" aria-hidden="true">📏</span>
-                  <span className="text-[9px] font-bold uppercase tracking-wider font-mono mt-1 text-[var(--theme-text)]">Fitting Studio</span>
+                  <span className="text-[9px] font-bold uppercase tracking-wider font-mono mt-1 text-[var(--theme-text)]">Walk-in Langsunb</span>
                 </div>
                 <div className="flex flex-col items-center justify-center p-3 theme-soft-surface border theme-border">
                   <span className="text-base" aria-hidden="true">💰</span>
@@ -1157,11 +1153,10 @@ export default function ProductDetailModal({
 
             {/* Pinned Bottom Rental Price & CTA Bar */}
             <div
-              className={`sticky bottom-0 z-10 theme-border bg-[var(--theme-surface)] px-4 py-3 shadow-[0_-10px_30px_rgba(0,0,0,0.08)] sm:px-6 md:px-8 md:py-4 md:shadow-none border-t shrink-0 ${
-                bookingDates
+              className={`sticky bottom-0 z-10 theme-border bg-[var(--theme-surface)] px-4 py-3 shadow-[0_-10px_30px_rgba(0,0,0,0.08)] sm:px-6 md:px-8 md:py-4 md:shadow-none border-t shrink-0 ${bookingDates
                   ? 'grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2 md:grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)] md:items-stretch md:gap-3'
                   : 'grid grid-cols-[minmax(0,1fr)_auto_auto] items-center gap-2 md:flex md:flex-row md:justify-between md:gap-4'
-              }`}
+                }`}
             >
               <div className="flex min-w-0 flex-col md:self-center">
                 <span className="theme-muted text-[10px] uppercase tracking-wider font-mono">
@@ -1341,9 +1336,8 @@ export default function ProductDetailModal({
                     e.stopPropagation();
                     setLightboxIndex(index);
                   }}
-                  className={`w-2 h-2 rounded-full transition-all duration-300 ${
-                    lightboxIndex === index ? 'bg-white w-4' : 'bg-white/40 hover:bg-white/60'
-                  }`}
+                  className={`w-2 h-2 rounded-full transition-all duration-300 ${lightboxIndex === index ? 'bg-white w-4' : 'bg-white/40 hover:bg-white/60'
+                    }`}
                   aria-label={`Pilih foto ${index + 1}`}
                 />
               ))}
