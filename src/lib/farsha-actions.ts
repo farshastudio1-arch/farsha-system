@@ -94,7 +94,6 @@ function getActionErrorMessage(error: unknown, fallback: string) {
   if (
     message.includes('no such column: categories') ||
     message.includes('no such column: measurements') ||
-    message.includes('no such column: wear_styles') ||
     message.includes('no such column: landing_categories') ||
     message.includes('no such column: hero_eyebrow') ||
     message.includes('no such column: primary_cta_label') ||

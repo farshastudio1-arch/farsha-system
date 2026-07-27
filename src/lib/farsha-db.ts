@@ -29,7 +29,6 @@ type CatalogRow = {
   rental_end_date: string | null;
   image_urls: string;
   description: string;
-  wear_styles?: string | null;
   hijab_friendly?: number | null;
   cost?: number | null;
   published?: number | null;
@@ -57,7 +56,6 @@ const catalogBaseSelectFields = [
 const catalogOptionalSelectFields = [
   'compare_at_rental_price',
   'can_resize',
-  'wear_styles',
   'rental_includes',
   'categories',
   'measurements',
@@ -68,7 +66,7 @@ const catalogOptionalSelectFields = [
 // Known-good fallback when PRAGMA cannot report the schema.
 const catalogSelectFieldsLegacy =
   `id, code, name, color, size, model, rental_price, status, rental_end_date,
-  image_urls, description, wear_styles, categories, measurements`;
+  image_urls, description, categories, measurements`;
 
 const catalogModelCodePrefixes: Record<KebayaItem['model'], string> = {
   'Kebaya Modern': 'KB',
@@ -719,9 +717,9 @@ export async function upsertCatalogItem(item: KebayaItem): Promise<void> {
       .prepare(
         `INSERT INTO kebaya_items (
           id, code, name, color, size, model, rental_price, compare_at_rental_price, can_resize, status, rental_end_date,
-          image_urls, description, wear_styles, rental_includes, categories, measurements, hijab_friendly, cost, published
+          image_urls, description, rental_includes, categories, measurements, hijab_friendly, cost, published
         )
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ON CONFLICT(id) DO UPDATE SET
           code = excluded.code,
           name = excluded.name,
@@ -735,7 +733,6 @@ export async function upsertCatalogItem(item: KebayaItem): Promise<void> {
           rental_end_date = excluded.rental_end_date,
           image_urls = excluded.image_urls,
           description = excluded.description,
-          wear_styles = excluded.wear_styles,
           rental_includes = excluded.rental_includes,
           categories = excluded.categories,
           measurements = excluded.measurements,
@@ -758,8 +755,6 @@ export async function upsertCatalogItem(item: KebayaItem): Promise<void> {
         normalized.rentalEndDate,
         JSON.stringify(normalized.imageUrls),
         normalized.description,
-        // Keep the legacy wear_styles column in sync so older readers still work.
-        JSON.stringify(normalized.hijabFriendly ? ['Hijab', 'Non-Hijab'] : ['Non-Hijab']),
         JSON.stringify(normalized.rentalIncludes ?? []),
         JSON.stringify(normalized.categories ?? []),
         JSON.stringify(normalized.measurements ?? {}),
@@ -799,9 +794,9 @@ export async function upsertCatalogItem(item: KebayaItem): Promise<void> {
       .prepare(
         `INSERT INTO kebaya_items (
           id, code, name, color, size, model, rental_price, status, rental_end_date,
-          image_urls, description, wear_styles, categories, measurements
+          image_urls, description, categories, measurements
         )
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ON CONFLICT(id) DO UPDATE SET
           code = excluded.code,
           name = excluded.name,
@@ -813,7 +808,6 @@ export async function upsertCatalogItem(item: KebayaItem): Promise<void> {
           rental_end_date = excluded.rental_end_date,
           image_urls = excluded.image_urls,
           description = excluded.description,
-          wear_styles = excluded.wear_styles,
           categories = excluded.categories,
           measurements = excluded.measurements,
           updated_at = CURRENT_TIMESTAMP`,
@@ -830,7 +824,6 @@ export async function upsertCatalogItem(item: KebayaItem): Promise<void> {
         normalized.rentalEndDate,
         JSON.stringify(normalized.imageUrls),
         normalized.description,
-        JSON.stringify(normalized.hijabFriendly ? ['Hijab', 'Non-Hijab'] : ['Non-Hijab']),
         JSON.stringify(normalized.categories ?? []),
         JSON.stringify(normalized.measurements ?? {}),
       )

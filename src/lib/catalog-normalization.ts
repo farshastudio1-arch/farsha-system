@@ -123,11 +123,6 @@ export function normalizeCategories(value: unknown): KebayaItem['categories'] | 
 }
 
 export function normalizeHijabFriendly(value: unknown): boolean {
-  // Legacy records stored a wear_styles array; treat one containing "Hijab" as friendly.
-  if (Array.isArray(value)) {
-    return value.includes('Hijab');
-  }
-
   if (typeof value === 'number') {
     return value === 1;
   }
@@ -190,10 +185,7 @@ export function normalizeCatalogItem(value: Partial<KebayaItem>, index: number):
     rentalEndDate: typeof value.rentalEndDate === 'string' ? value.rentalEndDate : null,
     imageUrls: imageUrls.length > 0 ? imageUrls : [defaultImageUrl],
     description: normalizeText(value.description),
-    hijabFriendly: normalizeHijabFriendly(
-      (value as { hijabFriendly?: unknown; wearStyles?: unknown }).hijabFriendly ??
-        (value as { wearStyles?: unknown }).wearStyles,
-    ),
+    hijabFriendly: normalizeHijabFriendly(value.hijabFriendly),
     cost: normalizeCost(value.cost),
     published: normalizePublished(value.published),
     rentalIncludes: normalizeRentalIncludes(value.rentalIncludes),

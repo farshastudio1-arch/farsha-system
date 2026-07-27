@@ -1544,7 +1544,7 @@ export default function CatalogWorkbench({ mode = 'published' }: { mode?: Catalo
                           </div>
                           <div className="md:col-span-2">
                             <span className="mb-1 block text-sm font-medium text-neutral-700">
-                              Wear style
+                              Hijab friendly
                             </span>
                             <label
                               className={`flex min-h-[46px] w-full cursor-pointer select-none items-center justify-between gap-3 border px-3 py-2 text-sm transition-colors ${
