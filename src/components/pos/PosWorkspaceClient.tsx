@@ -27,8 +27,8 @@ import {
 
 import {
   deletePosTransactionAttachmentAction,
-  fetchAdminCatalogItemsAction,
   fetchCustomersAction,
+  fetchPosCatalogItemsAction,
   fetchPosLedgerAction,
   fetchPosTransactionAttachmentsAction,
   savePosLedgerAction,
@@ -422,9 +422,13 @@ export default function PosWorkspaceClient({ initialLedger, initialTransactionId
   const [customerError, setCustomerError] = useState('');
 
   // Projections and Metrics
+  const publishedCatalogItems = useMemo(
+    () => catalogItems.filter((item) => item.published !== false),
+    [catalogItems],
+  );
   const projections = useMemo(
-    () => deriveAvailabilityProjection(catalogItems, ledger),
-    [catalogItems, ledger]
+    () => deriveAvailabilityProjection(publishedCatalogItems, ledger),
+    [publishedCatalogItems, ledger]
   );
 
   // Main UI States
@@ -543,7 +547,7 @@ export default function PosWorkspaceClient({ initialLedger, initialTransactionId
 
     async function loadCatalogItems() {
       setIsLoadingCatalog(true);
-      const result = await fetchAdminCatalogItemsAction();
+      const result = await fetchPosCatalogItemsAction();
 
       if (!active) {
         return;
@@ -821,8 +825,8 @@ export default function PosWorkspaceClient({ initialLedger, initialTransactionId
 
   // Auto-calculated defaults when selecting items or transactions
   const selectedItem = useMemo(
-    () => catalogItems.find((item) => item.id === selectedItemId) ?? null,
-    [catalogItems, selectedItemId]
+    () => publishedCatalogItems.find((item) => item.id === selectedItemId) ?? null,
+    [publishedCatalogItems, selectedItemId]
   );
 
   const selectedProjection = useMemo(
@@ -906,7 +910,7 @@ export default function PosWorkspaceClient({ initialLedger, initialTransactionId
   // Catalog filtered view (Rent tab)
   const filteredCatalog = useMemo(() => {
     const query = searchQuery.trim().toLowerCase();
-    return catalogItems.filter((item) => {
+    return publishedCatalogItems.filter((item) => {
       const projection = projections[item.id];
       const effectiveStatus = projection?.effectiveStatus ?? item.status;
       const matchesStatus = statusFilter === 'all' || effectiveStatus === statusFilter;
@@ -917,7 +921,7 @@ export default function PosWorkspaceClient({ initialLedger, initialTransactionId
         item.color.toLowerCase().includes(query);
       return matchesStatus && matchesQuery;
     });
-  }, [catalogItems, projections, searchQuery, statusFilter]);
+  }, [publishedCatalogItems, projections, searchQuery, statusFilter]);
 
   // Active Rentals Queue
   const activeRentals = useMemo(
@@ -1170,7 +1174,7 @@ export default function PosWorkspaceClient({ initialLedger, initialTransactionId
     setStatusMessage('');
 
     const [catalogResult, ledgerResult] = await Promise.all([
-      fetchAdminCatalogItemsAction(),
+      fetchPosCatalogItemsAction(),
       fetchPosLedgerAction(),
     ]);
     const customersResult = await fetchCustomersAction({ status: 'active', limit: 300 });

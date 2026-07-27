@@ -468,7 +468,8 @@ export default function CatalogWorkbench({ mode = 'published' }: { mode?: Catalo
         item.code.toLowerCase().includes(query) ||
         item.color.toLowerCase().includes(query) ||
         item.model.toLowerCase().includes(query);
-      const matchesStatus = statusFilter === 'all' || item.status === statusFilter;
+      const matchesStatus =
+        isDraftMode || statusFilter === 'all' || item.status === statusFilter;
       const matchesCoverage = coverageFilter === 'all' || itemCategories.includes(coverageFilter);
       const matchesQuality =
         qualityFilter === 'all' || getItemQualityIssues(item).length > 0;
@@ -861,7 +862,13 @@ export default function CatalogWorkbench({ mode = 'published' }: { mode?: Catalo
       )}
 
       <section className="border border-neutral-200 bg-white shadow-sm">
-        <div className="grid gap-3 p-4 sm:p-5 lg:grid-cols-[minmax(260px,1fr)_180px_180px_170px_auto] lg:items-center">
+        <div
+          className={`grid gap-3 p-4 sm:p-5 lg:items-center ${
+            isDraftMode
+              ? 'lg:grid-cols-[minmax(260px,1fr)_180px_170px_auto]'
+              : 'lg:grid-cols-[minmax(260px,1fr)_180px_180px_170px_auto]'
+          }`}
+        >
           <div className="relative">
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-neutral-400" />
             <input
@@ -873,19 +880,21 @@ export default function CatalogWorkbench({ mode = 'published' }: { mode?: Catalo
             />
           </div>
 
-          <select
-            value={statusFilter}
-            onChange={(event) =>
-              setStatusFilter(event.target.value as KebayaItem['status'] | 'all')
-            }
-            className={selectCls}
-          >
-            {statusOptions.map((option) => (
-              <option key={option.value} value={option.value}>
-                {option.label}
-              </option>
-            ))}
-          </select>
+          {!isDraftMode && (
+            <select
+              value={statusFilter}
+              onChange={(event) =>
+                setStatusFilter(event.target.value as KebayaItem['status'] | 'all')
+              }
+              className={selectCls}
+            >
+              {statusOptions.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+          )}
 
           <select
             value={coverageFilter}
@@ -944,9 +953,11 @@ export default function CatalogWorkbench({ mode = 'published' }: { mode?: Catalo
                 <th className="px-5 py-4 font-semibold">Item</th>
                 <th className="px-5 py-4 font-semibold">Public Fit</th>
                 <th className="px-5 py-4 font-semibold">Price</th>
-                <th className="px-5 py-4 font-semibold">Status</th>
+                {!isDraftMode && <th className="px-5 py-4 font-semibold">Status</th>}
                 <th className="px-5 py-4 font-semibold">Data Quality</th>
-                <th className="px-5 py-4 font-semibold">Booking Preview</th>
+                {!isDraftMode && (
+                  <th className="px-5 py-4 font-semibold">Booking Preview</th>
+                )}
                 <th className="px-5 py-4 text-right font-semibold">Actions</th>
               </tr>
             </thead>
@@ -1001,14 +1012,16 @@ export default function CatalogWorkbench({ mode = 'published' }: { mode?: Catalo
                       {formatPrice(item.rentalPrice)}
                       <span className="ml-1 text-[10px] font-normal text-neutral-400">/3 hari</span>
                     </td>
-                    <td className="px-5 py-4">
-                      <StatusBadge status={item.status} />
-                      {item.status === 'rented' && (
-                        <span className="mt-2 block text-xs text-neutral-500">
-                          Return: {formatDate(item.rentalEndDate)}
-                        </span>
-                      )}
-                    </td>
+                    {!isDraftMode && (
+                      <td className="px-5 py-4">
+                        <StatusBadge status={item.status} />
+                        {item.status === 'rented' && (
+                          <span className="mt-2 block text-xs text-neutral-500">
+                            Return: {formatDate(item.rentalEndDate)}
+                          </span>
+                        )}
+                      </td>
+                    )}
                     <td className="px-5 py-4">
                       {issues.length > 0 ? (
                         <div className="flex max-w-[260px] flex-wrap gap-1.5">
@@ -1028,11 +1041,13 @@ export default function CatalogWorkbench({ mode = 'published' }: { mode?: Catalo
                         </span>
                       )}
                     </td>
-                    <td className="px-5 py-4">
-                      <div className="max-w-[260px]">
-                        <BookingVisibility item={item} pressure={bookingPressure} />
-                      </div>
-                    </td>
+                    {!isDraftMode && (
+                      <td className="px-5 py-4">
+                        <div className="max-w-[260px]">
+                          <BookingVisibility item={item} pressure={bookingPressure} />
+                        </div>
+                      </td>
+                    )}
                     <td className="px-5 py-4 text-right">
                       <div className="flex items-center justify-end gap-2">
                         {isDraftMode && (
@@ -1090,7 +1105,7 @@ export default function CatalogWorkbench({ mode = 'published' }: { mode?: Catalo
                           {item.code}
                         </p>
                       </div>
-                      <StatusBadge status={item.status} />
+                      {!isDraftMode && <StatusBadge status={item.status} />}
                     </div>
 
                     <div className="mt-3 grid grid-cols-2 gap-2 text-xs">
@@ -1119,7 +1134,7 @@ export default function CatalogWorkbench({ mode = 'published' }: { mode?: Catalo
                       ))}
                     </div>
 
-                    {item.status === 'rented' && (
+                    {!isDraftMode && item.status === 'rented' && (
                       <p className="mt-2 text-xs text-neutral-500">
                         Return: {formatDate(item.rentalEndDate)}
                       </p>
@@ -1138,9 +1153,11 @@ export default function CatalogWorkbench({ mode = 'published' }: { mode?: Catalo
                       </div>
                     )}
 
-                    <div className="mt-3">
-                      <BookingVisibility item={item} pressure={bookingPressure} compact />
-                    </div>
+                    {!isDraftMode && (
+                      <div className="mt-3">
+                        <BookingVisibility item={item} pressure={bookingPressure} compact />
+                      </div>
+                    )}
                   </div>
                 </div>
 
@@ -1398,7 +1415,7 @@ export default function CatalogWorkbench({ mode = 'published' }: { mode?: Catalo
 
               <form onSubmit={saveItem} className="flex min-h-0 flex-1 flex-col overflow-hidden">
                 <div className="flex-1 overflow-y-auto px-4 py-5 sm:px-6">
-                  {editingProjectedItem && editingBookingSummary?.hasBookingPressure && (
+                  {!isDraftMode && editingProjectedItem && editingBookingSummary?.hasBookingPressure && (
                     <div className="mb-5 border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
                       <div className="flex items-start gap-3">
                         <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-700" />
@@ -1888,7 +1905,9 @@ export default function CatalogWorkbench({ mode = 'published' }: { mode?: Catalo
                           </p>
                         </div>
                         <div className="flex flex-wrap gap-1.5">
-                          <StatusBadge status={editingProjectedItem?.status ?? 'available'} />
+                          {!isDraftMode && (
+                            <StatusBadge status={editingProjectedItem?.status ?? 'available'} />
+                          )}
                           <span className="border border-neutral-200 bg-white px-2 py-1 text-xs font-semibold text-neutral-600">
                             Fit {form.size}
                           </span>

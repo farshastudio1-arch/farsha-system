@@ -125,6 +125,10 @@ export async function POST(request: Request) {
       throw new Error('Selected item was not found.');
     }
 
+    if (item.published === false) {
+      throw new Error('Draft upcoming items must be published before rental.');
+    }
+
     const customer = await upsertCustomerFromContact({
       displayName: customerName,
       primaryPhone: customerPhone,

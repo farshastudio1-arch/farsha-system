@@ -151,6 +151,21 @@ export async function fetchAdminCatalogItemsAction(): Promise<ActionResult<Kebay
   }
 }
 
+export async function fetchPosCatalogItemsAction(): Promise<ActionResult<KebayaItem[]>> {
+  try {
+    await ensureAdmin();
+    return {
+      ok: true,
+      data: await listCatalogItems({ fallbackToMock: false }),
+    };
+  } catch (error) {
+    return {
+      ok: false,
+      error: getActionErrorMessage(error, 'Failed to load POS catalog items.'),
+    };
+  }
+}
+
 export async function fetchPosLedgerAction(): Promise<ActionResult<PosLedgerState>> {
   try {
     await ensureAdmin();
