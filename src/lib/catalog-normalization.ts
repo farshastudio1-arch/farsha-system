@@ -4,7 +4,6 @@ import {
   kebayaRentalCategoryOptions,
   kebayaRentalIncludeOptions,
   kebayaSizeOptions,
-  kebayaWearStyleOptions,
   KebayaItem,
   KebayaMeasurements,
 } from '@/data/mockData';
@@ -16,7 +15,6 @@ const validSizes = new Set<KebayaItem['size']>(kebayaSizeOptions);
 const validModels = new Set<KebayaItem['model']>(kebayaModelOptions);
 const validCategories = new Set<NonNullable<KebayaItem['categories']>[number]>(kebayaOccasions);
 const validRentalCategories = new Set<string>(kebayaRentalCategoryOptions);
-const validWearStyles = new Set<KebayaItem['wearStyles'][number]>(kebayaWearStyleOptions);
 const validRentalIncludes = new Set<NonNullable<KebayaItem['rentalIncludes']>[number]>(
   kebayaRentalIncludeOptions,
 );
@@ -124,16 +122,31 @@ export function normalizeCategories(value: unknown): KebayaItem['categories'] | 
   return categories.length > 0 ? categories : undefined;
 }
 
-export function normalizeWearStyles(value: unknown): KebayaItem['wearStyles'] {
-  if (!Array.isArray(value)) {
-    return ['Hijab', 'Non-Hijab'];
+export function normalizeHijabFriendly(value: unknown): boolean {
+  // Legacy records stored a wear_styles array; treat one containing "Hijab" as friendly.
+  if (Array.isArray(value)) {
+    return value.includes('Hijab');
   }
 
-  const wearStyles = value.filter((style): style is KebayaItem['wearStyles'][number] =>
-    validWearStyles.has(style as KebayaItem['wearStyles'][number]),
-  );
+  if (typeof value === 'number') {
+    return value === 1;
+  }
 
-  return wearStyles.length > 0 ? wearStyles : ['Hijab', 'Non-Hijab'];
+  // Default to versatile (true) when unset.
+  return value !== false;
+}
+
+export function normalizeCost(value: unknown): number | null {
+  return normalizeOptionalNumber(value);
+}
+
+export function normalizePublished(value: unknown): boolean {
+  if (typeof value === 'number') {
+    return value === 1;
+  }
+
+  // Default to published (true) when unset.
+  return value !== false;
 }
 
 export function normalizeRentalIncludes(value: unknown): NonNullable<KebayaItem['rentalIncludes']> {
@@ -177,7 +190,12 @@ export function normalizeCatalogItem(value: Partial<KebayaItem>, index: number):
     rentalEndDate: typeof value.rentalEndDate === 'string' ? value.rentalEndDate : null,
     imageUrls: imageUrls.length > 0 ? imageUrls : [defaultImageUrl],
     description: normalizeText(value.description),
-    wearStyles: normalizeWearStyles(value.wearStyles),
+    hijabFriendly: normalizeHijabFriendly(
+      (value as { hijabFriendly?: unknown; wearStyles?: unknown }).hijabFriendly ??
+        (value as { wearStyles?: unknown }).wearStyles,
+    ),
+    cost: normalizeCost(value.cost),
+    published: normalizePublished(value.published),
     rentalIncludes: normalizeRentalIncludes(value.rentalIncludes),
     categories: normalizeCategories(value.categories),
     measurements: normalizeMeasurements(value.measurements),

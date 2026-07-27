@@ -278,7 +278,7 @@ function ChecklistItem({
 
 export default async function AdminDashboard() {
   const [catalogItems, cmsContent, settings, mediaAssets, mediaAlbums] = await Promise.all([
-    listCatalogItems({ fallbackToMock: false }),
+    listCatalogItems({ fallbackToMock: false, includeUnpublished: true }),
     getCmsContent(),
     getSiteSettings(),
     listMediaAssets(),

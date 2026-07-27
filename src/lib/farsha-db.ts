@@ -30,17 +30,42 @@ type CatalogRow = {
   image_urls: string;
   description: string;
   wear_styles?: string | null;
+  hijab_friendly?: number | null;
+  cost?: number | null;
+  published?: number | null;
   rental_includes?: string | null;
   categories?: string | null;
   measurements?: string | null;
 };
 
-const catalogSelectFieldsCurrent =
-  `id, code, name, color, size, model, rental_price, compare_at_rental_price, can_resize, status, rental_end_date,
-  image_urls, description, wear_styles, rental_includes, categories, measurements`;
-const catalogSelectFieldsWithComparePrice =
-  `id, code, name, color, size, model, rental_price, compare_at_rental_price, status, rental_end_date,
-  image_urls, description, wear_styles, categories, measurements`;
+// Columns present on every catalog table version (since the foundation migration).
+const catalogBaseSelectFields = [
+  'id',
+  'code',
+  'name',
+  'color',
+  'size',
+  'model',
+  'rental_price',
+  'status',
+  'rental_end_date',
+  'image_urls',
+  'description',
+];
+// Columns added by later migrations. Selected only when the DB actually has them,
+// so an un-migrated database degrades gracefully instead of throwing.
+const catalogOptionalSelectFields = [
+  'compare_at_rental_price',
+  'can_resize',
+  'wear_styles',
+  'rental_includes',
+  'categories',
+  'measurements',
+  'hijab_friendly',
+  'cost',
+  'published',
+];
+// Known-good fallback when PRAGMA cannot report the schema.
 const catalogSelectFieldsLegacy =
   `id, code, name, color, size, model, rental_price, status, rental_end_date,
   image_urls, description, wear_styles, categories, measurements`;
@@ -62,7 +87,10 @@ function isMissingCatalogItemDetailColumnError(error: unknown) {
   const message = String(error);
   return (
     message.includes('no such column: can_resize') ||
-    message.includes('no such column: rental_includes')
+    message.includes('no such column: rental_includes') ||
+    message.includes('no such column: hijab_friendly') ||
+    message.includes('no such column: cost') ||
+    message.includes('no such column: published')
   );
 }
 
@@ -101,18 +129,18 @@ async function getCatalogColumnNames(db: D1Database) {
 
 async function getCatalogSelectFields(db: D1Database) {
   const columns = await getCatalogColumnNames(db);
-  const hasCompareAtRentalPrice = columns.has('compare_at_rental_price');
-  const hasCatalogItemDetails = columns.has('can_resize') && columns.has('rental_includes');
 
-  if (hasCompareAtRentalPrice && hasCatalogItemDetails) {
-    return catalogSelectFieldsCurrent;
+  // PRAGMA failed or returned nothing — fall back to the historically safe set.
+  if (columns.size === 0) {
+    return catalogSelectFieldsLegacy;
   }
 
-  if (hasCompareAtRentalPrice) {
-    return catalogSelectFieldsWithComparePrice;
-  }
+  const fields = [
+    ...catalogBaseSelectFields,
+    ...catalogOptionalSelectFields.filter((column) => columns.has(column)),
+  ];
 
-  return catalogSelectFieldsLegacy;
+  return fields.join(', ');
 }
 
 type CmsRow = {
@@ -274,7 +302,13 @@ function catalogRowToItem(row: CatalogRow, index: number): KebayaItem | null {
       rentalEndDate: row.rental_end_date,
       imageUrls: parseJson<string[]>(row.image_urls, []),
       description: row.description,
-      wearStyles: parseJson<KebayaItem['wearStyles']>(row.wear_styles, []),
+      hijabFriendly:
+        row.hijab_friendly === null || row.hijab_friendly === undefined
+          ? true
+          : row.hijab_friendly === 1,
+      cost: row.cost ?? null,
+      published:
+        row.published === null || row.published === undefined ? true : row.published === 1,
       rentalIncludes: parseJson<KebayaItem['rentalIncludes']>(row.rental_includes, undefined),
       categories: parseJson<KebayaItem['categories']>(row.categories, undefined),
       measurements: parseJson<KebayaItem['measurements']>(row.measurements, undefined),
@@ -588,7 +622,7 @@ function createMediaUsageFromSettings(settings: SiteSettings, url: string): Medi
 
 async function getMediaUsageByUrl(url: string): Promise<MediaUsage[]> {
   const [catalogItems, cmsContent, siteSettings] = await Promise.all([
-    listCatalogItems(),
+    listCatalogItems({ includeUnpublished: true }),
     getCmsContent(),
     getSiteSettings(),
   ]);
@@ -600,8 +634,10 @@ async function getMediaUsageByUrl(url: string): Promise<MediaUsage[]> {
   ];
 }
 
-export async function listCatalogItems(options: { fallbackToMock?: boolean } = {}): Promise<KebayaItem[]> {
-  const { fallbackToMock = true } = options;
+export async function listCatalogItems(
+  options: { fallbackToMock?: boolean; includeUnpublished?: boolean } = {},
+): Promise<KebayaItem[]> {
+  const { fallbackToMock = true, includeUnpublished = false } = options;
 
   try {
     const db = await getD1Database();
@@ -611,13 +647,18 @@ export async function listCatalogItems(options: { fallbackToMock?: boolean } = {
       .map((row, index) => catalogRowToItem(row, index))
       .filter((item): item is KebayaItem => Boolean(item));
 
-    return items;
+    // Drafts (published === false) are hidden from the public storefront but kept
+    // for admin/POS. Filtered in JS so un-migrated DBs (no `published` column,
+    // mapped to true) keep working without a SQL error.
+    return includeUnpublished ? items : items.filter((item) => item.published !== false);
   } catch (error) {
     if (!fallbackToMock) {
       throw error;
     }
 
-    return mockKebayas;
+    return includeUnpublished
+      ? mockKebayas
+      : mockKebayas.filter((item) => item.published !== false);
   }
 }
 
@@ -678,9 +719,9 @@ export async function upsertCatalogItem(item: KebayaItem): Promise<void> {
       .prepare(
         `INSERT INTO kebaya_items (
           id, code, name, color, size, model, rental_price, compare_at_rental_price, can_resize, status, rental_end_date,
-          image_urls, description, wear_styles, rental_includes, categories, measurements
+          image_urls, description, wear_styles, rental_includes, categories, measurements, hijab_friendly, cost, published
         )
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ON CONFLICT(id) DO UPDATE SET
           code = excluded.code,
           name = excluded.name,
@@ -698,6 +739,9 @@ export async function upsertCatalogItem(item: KebayaItem): Promise<void> {
           rental_includes = excluded.rental_includes,
           categories = excluded.categories,
           measurements = excluded.measurements,
+          hijab_friendly = excluded.hijab_friendly,
+          cost = excluded.cost,
+          published = excluded.published,
           updated_at = CURRENT_TIMESTAMP`,
       )
       .bind(
@@ -714,10 +758,14 @@ export async function upsertCatalogItem(item: KebayaItem): Promise<void> {
         normalized.rentalEndDate,
         JSON.stringify(normalized.imageUrls),
         normalized.description,
-        JSON.stringify(normalized.wearStyles),
+        // Keep the legacy wear_styles column in sync so older readers still work.
+        JSON.stringify(normalized.hijabFriendly ? ['Hijab', 'Non-Hijab'] : ['Non-Hijab']),
         JSON.stringify(normalized.rentalIncludes ?? []),
         JSON.stringify(normalized.categories ?? []),
         JSON.stringify(normalized.measurements ?? {}),
+        normalized.hijabFriendly ? 1 : 0,
+        normalized.cost ?? null,
+        normalized.published === false ? 0 : 1,
       )
       .run();
   } catch (error) {
@@ -738,6 +786,12 @@ export async function upsertCatalogItem(item: KebayaItem): Promise<void> {
     if (normalized.canResize || hasCustomRentalIncludes) {
       throw new Error(
         'Resize and rental include details cannot be saved until the latest catalog migration is applied.',
+      );
+    }
+
+    if (normalized.published === false || (normalized.cost ?? null) !== null) {
+      throw new Error(
+        'Draft state and item cost cannot be saved until migrations 0023_catalog_cost.sql and 0024_catalog_published.sql are applied.',
       );
     }
 
@@ -776,7 +830,7 @@ export async function upsertCatalogItem(item: KebayaItem): Promise<void> {
         normalized.rentalEndDate,
         JSON.stringify(normalized.imageUrls),
         normalized.description,
-        JSON.stringify(normalized.wearStyles),
+        JSON.stringify(normalized.hijabFriendly ? ['Hijab', 'Non-Hijab'] : ['Non-Hijab']),
         JSON.stringify(normalized.categories ?? []),
         JSON.stringify(normalized.measurements ?? {}),
       )

@@ -53,7 +53,7 @@ export default function ProductCard({
   // Layout-specific styling classes
   const isOneColumn = layoutColumns === 1;
   const isMobileTwoColumn = isMobile && layoutColumns === 2;
-  const hasPhotoWearStyleBadges = product.wearStyles.length > 0;
+  const showHijabFriendlyBadge = product.hijabFriendly;
 
   if (isCompactPortraitTile) {
     return (
@@ -187,18 +187,11 @@ export default function ProductCard({
           )}
         </div>
 
-        {hasPhotoWearStyleBadges && (
+        {showHijabFriendlyBadge && (
           <div className="absolute bottom-3 right-3 z-10 flex max-w-[62%] flex-wrap justify-end gap-1.5 pointer-events-none">
-            {product.wearStyles.map((style) => (
-              <span
-                key={style}
-                className={`px-2 py-0.5 text-[10px] font-semibold font-mono text-neutral-900 shadow-xs ${
-                  style === 'Hijab' ? 'bg-[#f8edeb]' : 'bg-[#f5ebe0]'
-                }`}
-              >
-                {style}
-              </span>
-            ))}
+            <span className="bg-[#f8edeb] px-2 py-0.5 text-[10px] font-semibold font-mono text-neutral-900 shadow-xs">
+              Hijab Friendly
+            </span>
           </div>
         )}
       </div>

@@ -139,7 +139,10 @@ async function ensureMediaAssetsForUrls(
 export async function fetchAdminCatalogItemsAction(): Promise<ActionResult<KebayaItem[]>> {
   try {
     await ensureAdmin();
-    return { ok: true, data: await listCatalogItems({ fallbackToMock: false }) };
+    return {
+      ok: true,
+      data: await listCatalogItems({ fallbackToMock: false, includeUnpublished: true }),
+    };
   } catch (error) {
     return {
       ok: false,
@@ -418,7 +421,7 @@ export async function saveCatalogItemAction(item: KebayaItem): Promise<ActionRes
 
     revalidatePublicAndAdmin();
 
-    return { ok: true, data: await listCatalogItems() };
+    return { ok: true, data: await listCatalogItems({ includeUnpublished: true }) };
   } catch (error) {
     return {
       ok: false,
@@ -433,7 +436,7 @@ export async function deleteCatalogItemAction(itemId: string): Promise<ActionRes
     await deleteCatalogItem(itemId);
     revalidatePublicAndAdmin();
 
-    return { ok: true, data: await listCatalogItems() };
+    return { ok: true, data: await listCatalogItems({ includeUnpublished: true }) };
   } catch (error) {
     return {
       ok: false,

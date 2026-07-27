@@ -4,7 +4,6 @@ import React, { useState, useEffect, useRef } from 'react';
 import {
   kebayaModelOptions,
   kebayaSizeOptions,
-  kebayaWearStyleOptions,
   KebayaCategory,
   KebayaItem,
 } from '@/data/mockData';
@@ -16,7 +15,7 @@ export interface FilterState {
   colors: string[];
   sizes: KebayaItem['size'][];
   models: KebayaItem['model'][];
-  wearStyles: KebayaItem['wearStyles'];
+  hijabFriendlyOnly: boolean;
   statuses: ('available' | 'rented' | 'maintenance')[];
   maxPrice: number;
   categories: KebayaCategory[];
@@ -53,7 +52,6 @@ export default function Filters({
 
   const sizesOptions = kebayaSizeOptions;
   const modelsOptions = kebayaModelOptions;
-  const wearStyleOptions = kebayaWearStyleOptions;
   const categoryOptions = occasionCategories;
   const statusOptions: {
     value: 'available' | 'rented' | 'maintenance';
@@ -109,11 +107,8 @@ export default function Filters({
     onChange({ ...filters, models: nextModels });
   };
 
-  const handleWearStyleToggle = (style: KebayaItem['wearStyles'][number]) => {
-    const nextWearStyles = filters.wearStyles.includes(style)
-      ? filters.wearStyles.filter((item) => item !== style)
-      : [...filters.wearStyles, style];
-    onChange({ ...filters, wearStyles: nextWearStyles });
+  const handleHijabFriendlyToggle = () => {
+    onChange({ ...filters, hijabFriendlyOnly: !filters.hijabFriendlyOnly });
   };
 
   const handleCategoryToggle = (category: KebayaCategory) => {
@@ -140,7 +135,7 @@ export default function Filters({
       colors: [],
       sizes: [],
       models: [],
-      wearStyles: [],
+      hijabFriendlyOnly: false,
       statuses: [], // Empty means show all
       maxPrice: maxPriceLimit,
       categories: [],
@@ -154,7 +149,7 @@ export default function Filters({
     filters.colors.length +
     filters.sizes.length +
     filters.models.length +
-    filters.wearStyles.length +
+    (filters.hijabFriendlyOnly ? 1 : 0) +
     filters.statuses.length +
     (filters.categories?.length ?? 0) +
     (filters.maxPrice < maxPriceLimit ? 1 : 0);
@@ -279,29 +274,22 @@ export default function Filters({
         </div>
       </div>
 
-      {/* Wear Style Filter */}
+      {/* Hijab Friendly Filter */}
       <div>
         <span className="theme-muted block text-xs font-semibold uppercase tracking-wider font-mono mb-2.5">
           Gaya Pakai
         </span>
-        <div className="grid grid-cols-2 gap-1.5">
-          {wearStyleOptions.map((style) => {
-            const isSelected = filters.wearStyles.includes(style);
-            return (
-              <button
-                key={style}
-                onClick={() => handleWearStyleToggle(style)}
-                className={`text-xs text-center py-2.5 border transition-all font-mono font-medium ${
-                  isSelected
-                    ? 'theme-selected'
-                    : 'theme-surface theme-border theme-muted-strong hover:border-[var(--theme-accent)]'
-                }`}
-              >
-                {style}
-              </button>
-            );
-          })}
-        </div>
+        <button
+          onClick={handleHijabFriendlyToggle}
+          aria-pressed={filters.hijabFriendlyOnly}
+          className={`w-full text-xs text-center py-2.5 border transition-all font-mono font-medium ${
+            filters.hijabFriendlyOnly
+              ? 'theme-selected'
+              : 'theme-surface theme-border theme-muted-strong hover:border-[var(--theme-accent)]'
+          }`}
+        >
+          Hijab Friendly
+        </button>
       </div>
 
       {/* Price Range Filter */}

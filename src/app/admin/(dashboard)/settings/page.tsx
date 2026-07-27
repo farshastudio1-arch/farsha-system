@@ -408,7 +408,7 @@ function CatalogCardPreview({
     product.compareAtRentalPrice && product.compareAtRentalPrice > product.rentalPrice
       ? product.compareAtRentalPrice
       : null;
-  const hasPhotoWearStyleBadges = product.wearStyles.length > 0;
+  const showHijabFriendlyBadge = product.hijabFriendly;
 
   return (
     <div className="border border-neutral-200 bg-white p-4">
@@ -441,18 +441,11 @@ function CatalogCardPreview({
               </span>
             )}
           </div>
-          {hasPhotoWearStyleBadges && (
+          {showHijabFriendlyBadge && (
             <div className="absolute bottom-3 right-3 flex max-w-[62%] flex-wrap justify-end gap-1.5">
-              {product.wearStyles.map((style) => (
-                <span
-                  key={style}
-                  className={`px-2 py-0.5 font-mono text-[10px] font-semibold text-neutral-900 shadow-xs ${
-                    style === 'Hijab' ? 'bg-[#f8edeb]' : 'bg-[#f5ebe0]'
-                  }`}
-                >
-                  {style}
-                </span>
-              ))}
+              <span className="bg-[#f8edeb] px-2 py-0.5 font-mono text-[10px] font-semibold text-neutral-900 shadow-xs">
+                Hijab Friendly
+              </span>
             </div>
           )}
         </div>

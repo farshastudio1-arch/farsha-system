@@ -536,7 +536,7 @@ export default function ProductDetailModal({
     product.canResize ? 'Bisa Resize' : '',
   ].filter(Boolean);
   const secondaryBadges = [
-    ...product.wearStyles,
+    ...(product.hijabFriendly ? ['Hijab Friendly'] : []),
     ...matchedCategories.map((category) => `${category.emoji} ${category.label}`),
   ];
 

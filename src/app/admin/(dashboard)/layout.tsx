@@ -15,9 +15,12 @@ export default async function AdminDashboardLayout({
   }
 
   return (
-    <div className="min-h-screen bg-neutral-50 lg:flex">
+    // The sidebar is position:fixed (out of flow), so the main column only needs
+    // a left margin to clear it — no flex row. Combining flex-1 with lg:ml-64 used
+    // to double-offset the content and push it past the viewport (horizontal scroll).
+    <div className="min-h-screen bg-neutral-50">
       <Sidebar />
-      <main className="min-h-screen flex-1 lg:ml-64">{children}</main>
+      <main className="min-h-screen lg:ml-64">{children}</main>
     </div>
   );
 }

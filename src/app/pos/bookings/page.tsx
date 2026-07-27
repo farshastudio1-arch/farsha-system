@@ -16,7 +16,7 @@ export default async function PosBookingsPage({ searchParams }: PosBookingsPageP
   const bookingIdParam = Array.isArray(params.bookingId) ? params.bookingId[0] : params.bookingId;
   const statusParam = Array.isArray(params.status) ? params.status[0] : params.status;
   const [catalogItems, databaseBookings] = await Promise.all([
-    listCatalogItems(),
+    listCatalogItems({ includeUnpublished: true }),
     listBookingQueue(),
   ]);
 

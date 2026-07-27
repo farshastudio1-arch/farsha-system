@@ -529,7 +529,7 @@ export default function PosBookingsClient({
         item.model,
         item.size,
         ...(item.categories ?? []),
-        ...(item.wearStyles ?? []),
+        ...(item.hijabFriendly ? ['Hijab Friendly'] : []),
       ]
         .join(' ')
         .toLowerCase()

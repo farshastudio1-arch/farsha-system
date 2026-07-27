@@ -15,8 +15,6 @@ export const kebayaSizeOptions = ['S-M', 'M-L', 'L-XL'] as const;
 export type KebayaSize = (typeof kebayaSizeOptions)[number];
 
 export const kebayaRentalCategoryOptions = ['Makassar Only', 'Bisa Luar Kota'] as const;
-export const kebayaWearStyleOptions = ['Hijab', 'Non-Hijab'] as const;
-export type KebayaWearStyle = (typeof kebayaWearStyleOptions)[number];
 export const kebayaRentalIncludeOptions = ['Skirt', 'Kebaya', 'Hijab', 'Manset', 'Bustier'] as const;
 export type KebayaRentalInclude = (typeof kebayaRentalIncludeOptions)[number];
 
@@ -44,7 +42,9 @@ export interface KebayaItem {
   rentalEndDate: string | null;
   imageUrls: string[];
   description: string;
-  wearStyles: KebayaWearStyle[];
+  hijabFriendly: boolean;
+  cost?: number | null;
+  published?: boolean;
   rentalIncludes?: KebayaRentalInclude[];
   categories?: KebayaCategory[];
   measurements?: Partial<KebayaMeasurements>;
@@ -183,7 +183,7 @@ export const mockKebayas: KebayaItem[] = [
     ],
     description:
       'Kebaya brokat modern dengan nuansa Sage Green yang sedang tren. Dihiasi payet premium berkilau di bagian dada dan kerah shanghai yang tegak elegan. Sangat cocok untuk acara wisuda, lamaran, atau kondangan formal. Bagian belakang dilengkapi resleting tersembunyi untuk fitting yang pas.',
-    wearStyles: ['Hijab', 'Non-Hijab'],
+    hijabFriendly: true,
   },
   {
     id: '2',
@@ -202,7 +202,7 @@ export const mockKebayas: KebayaItem[] = [
     ],
     description:
       'Kebaya beludru hitam tradisional khas Solo dengan bordir benang emas bermotif floral klasik di sepanjang tepi pakaian. Potongan kutubaru yang mempertegas lekuk tubuh secara anggun. Bahan beludru stretch berkualitas tinggi yang nyaman dipakai sepanjang hari.',
-    wearStyles: ['Hijab'],
+    hijabFriendly: true,
   },
   {
     id: '3',
@@ -221,7 +221,7 @@ export const mockKebayas: KebayaItem[] = [
     ],
     description:
       'Kebaya model Kartini dengan potongan leher V-neck yang bersih dan kain katun lace premium warna putih gading. Desain elegan yang sederhana namun tetap anggun, sangat cocok untuk prosesi akad nikah atau pertunangan bertema tradisional suci.',
-    wearStyles: ['Hijab'],
+    hijabFriendly: true,
   },
   {
     id: '4',
@@ -240,7 +240,7 @@ export const mockKebayas: KebayaItem[] = [
     ],
     description:
       'Kebaya Kutubaru klasik berbahan sutra satin bermotif floral warna merah menyala. Dilengkapi dengan angkin (stagen penutup perut) berwarna kontras yang mempercantik tampilan pinggang. Pilihan berani untuk hari-hari perayaan budaya dan pesta pernikahan.',
-    wearStyles: ['Non-Hijab'],
+    hijabFriendly: false,
   },
   {
     id: '5',
@@ -259,7 +259,7 @@ export const mockKebayas: KebayaItem[] = [
     ],
     description:
       'Kebaya modern bersiluet asimetris dengan payet 3D berwarna Rose Gold mewah. Menggunakan tile polos transparan di bagian pundak untuk memberikan efek melayang (floating effect) yang menakjubkan. Ukuran XL dengan potongan bersahabat yang tetap memberi efek langsing.',
-    wearStyles: ['Non-Hijab'],
+    hijabFriendly: false,
   },
   {
     id: '6',
@@ -278,7 +278,7 @@ export const mockKebayas: KebayaItem[] = [
     ],
     description:
       'Kebaya khas Bali dengan bahan brokat prada halus bernuansa Lilac lembut. Dilengkapi obi (selendang pinggang) berbahan satin ungu tua dengan bros kuningan tradisional Bali di tengahnya. Menghadirkan kecantikan eksotis pulau dewata dalam balutan warna modern.',
-    wearStyles: ['Hijab', 'Non-Hijab'],
+    hijabFriendly: true,
   },
   {
     id: '7',
@@ -297,7 +297,7 @@ export const mockKebayas: KebayaItem[] = [
     ],
     description:
       'Kebaya mewah berbahan beludru tebal warna biru safir tua dengan potongan ekor panjang menyapu lantai. Detail payet perak handmade menyebar di seluruh lengan dan punggung. Sempurna untuk pengantin wanita tradisional Jawa yang menginginkan sentuhan royal aristokrat.',
-    wearStyles: ['Non-Hijab'],
+    hijabFriendly: false,
   },
   {
     id: '8',
@@ -316,7 +316,7 @@ export const mockKebayas: KebayaItem[] = [
     ],
     description:
       'Kebaya modern dengan kombinasi bahan organza terstruktur dan brokat chantilly warna Terracotta hangat yang segar. Desain lengan balon/puffy yang memberikan kesan anggun dan kekinian. Dilengkapi bustier sewarna yang nyaman di kulit.',
-    wearStyles: ['Hijab', 'Non-Hijab'],
+    hijabFriendly: true,
   },
   {
     id: '9',
@@ -335,7 +335,7 @@ export const mockKebayas: KebayaItem[] = [
     ],
     description:
       'Kebaya kutubaru eksklusif dengan sulaman benang emas metalik berkilau tinggi. Model klasik dengan kerah tinggi yang memberikan wibawa ningrat. Disediakan dalam size Custom (bisa di-fit sesuai lingkar dada peminjam 94-102 cm) di studio kami.',
-    wearStyles: ['Hijab'],
+    hijabFriendly: true,
   },
   {
     id: '10',
@@ -354,7 +354,7 @@ export const mockKebayas: KebayaItem[] = [
     ],
     description:
       'Kebaya Kartini berbahan sifon tipis warna merah muda lembut bermotif floral tulip kecil. Sangat anggun dengan bros susun tiga antik berwarna perak bakar di kerah dada. Koleksi edisi terbatas yang elegan untuk foto keluarga atau hari Kartinian.',
-    wearStyles: ['Hijab'],
+    hijabFriendly: true,
   },
 ];
 

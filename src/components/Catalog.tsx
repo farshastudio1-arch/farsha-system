@@ -124,7 +124,7 @@ export default function Catalog({
     colors: [],
     sizes: [],
     models: [],
-    wearStyles: [],
+    hijabFriendlyOnly: false,
     statuses: [],
     maxPrice: maxPriceLimit,
     categories: initialCategory ? [initialCategory] : [],
@@ -182,11 +182,8 @@ export default function Catalog({
         return false;
       }
 
-      // 5. Wear style filter
-      if (
-        filters.wearStyles.length > 0 &&
-        !filters.wearStyles.some((style) => item.wearStyles.includes(style))
-      ) {
+      // 5. Hijab friendly filter
+      if (filters.hijabFriendlyOnly && !item.hijabFriendly) {
         return false;
       }
 
@@ -231,7 +228,7 @@ export default function Catalog({
       colors: [],
       sizes: [],
       models: [],
-      wearStyles: [],
+      hijabFriendlyOnly: false,
       statuses: [],
       maxPrice: maxPriceLimit,
       categories: [],
@@ -259,7 +256,7 @@ export default function Catalog({
     filters.colors.length +
     filters.sizes.length +
     filters.models.length +
-    filters.wearStyles.length +
+    (filters.hijabFriendlyOnly ? 1 : 0) +
     filters.statuses.length +
     (filters.maxPrice < maxPriceLimit ? 1 : 0) +
     filters.categories.length;
