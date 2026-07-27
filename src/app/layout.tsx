@@ -18,9 +18,9 @@ const manrope = Manrope({
 });
 
 export const metadata: Metadata = {
-  title: 'Farsha Studio — Etalase Kebaya Premium',
+  title: 'Farsha Studio — Sewa Kebaya dan Dress Makassar',
   description:
-    'Koleksi kebaya modern dan klasik terlengkap di Farsha Studio. Temukan kebaya impianmu untuk momen spesial.',
+    'Tempat sewa kebaya dan dress di Makassar yang bisa datang langsung tanpa appointment. Koleksi lengkap dan selalu update, cocok untuk semua momen spesialmu.',
 };
 
 export const dynamic = 'force-dynamic';
