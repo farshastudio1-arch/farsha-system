@@ -398,13 +398,16 @@ export default function PosBookingsClient({
   initialBookingId,
   initialQueueFilter,
   initialBookings,
+  mode = 'workspace',
 }: {
   initialItems: KebayaItem[];
   initialItemId: string;
   initialBookingId: string;
   initialQueueFilter: string;
   initialBookings: BookingQueueRow[];
+  mode?: 'workspace' | 'history';
 }) {
+  const isHistoryMode = mode === 'history';
   const normalizedInitialQueueFilter: QueueFilter = [
     'active',
     'all',
@@ -1041,6 +1044,8 @@ export default function PosBookingsClient({
       `}</style>
     <main className="booking-page-screen-shell theme-surface min-h-screen px-4 py-6 sm:px-6 lg:px-8">
       <div className="mx-auto max-w-7xl space-y-6">
+        {!isHistoryMode && (
+        <>
         <section className="border theme-border bg-white p-5 shadow-sm">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
             <div>
@@ -1055,19 +1060,6 @@ export default function PosBookingsClient({
               </p>
             </div>
             <div className="flex flex-col gap-2 sm:flex-row">
-              <button
-                type="button"
-                onClick={() => {
-                  document.getElementById('booking-document-history')?.scrollIntoView({
-                    behavior: 'smooth',
-                    block: 'start',
-                  });
-                }}
-                className="inline-flex min-h-11 items-center justify-center gap-2 border border-neutral-900 bg-white px-4 py-2 text-xs font-bold uppercase tracking-wider text-neutral-950 hover:bg-neutral-50"
-              >
-                <ReceiptText className="h-4 w-4" />
-                History Dokumen
-              </button>
               <button
                 type="button"
                 onClick={() => setIsManualFormOpen((isOpen) => !isOpen)}
@@ -1713,6 +1705,22 @@ export default function PosBookingsClient({
             )}
           </aside>
         </section>
+        </>
+        )}
+
+        {isHistoryMode && (
+        <>
+          {(actionMessage || actionError) && (
+            <p
+              className={`border p-3 text-sm font-semibold ${
+                actionError
+                  ? 'border-red-200 bg-red-50 text-red-700'
+                  : 'border-emerald-200 bg-emerald-50 text-emerald-800'
+              }`}
+            >
+              {actionError || actionMessage}
+            </p>
+          )}
 
         <section id="booking-document-history" className="scroll-mt-6 border theme-border bg-white shadow-sm">
           <div className="flex flex-col gap-3 border-b border-neutral-200 p-4 lg:flex-row lg:items-center lg:justify-between">
@@ -1856,6 +1864,8 @@ export default function PosBookingsClient({
             </div>
           )}
         </section>
+        </>
+        )}
       </div>
     </main>
 

@@ -408,9 +408,15 @@ function matchesReceiptHistory(receipt: PosReceipt, query: string) {
 interface PosWorkspaceClientProps {
   initialLedger: PosLedgerState;
   initialTransactionId?: string;
+  mode?: 'workspace' | 'history';
 }
 
-export default function PosWorkspaceClient({ initialLedger, initialTransactionId = '' }: PosWorkspaceClientProps) {
+export default function PosWorkspaceClient({
+  initialLedger,
+  initialTransactionId = '',
+  mode = 'workspace',
+}: PosWorkspaceClientProps) {
+  const isHistoryMode = mode === 'history';
   const catalogItems = useSavedCatalogItems();
   const ledger = useSavedPosLedger(initialLedger);
   const [isLoadingCatalog, setIsLoadingCatalog] = useState(true);
@@ -1205,63 +1211,53 @@ export default function PosWorkspaceClient({ initialLedger, initialTransactionId
 
   return (
     <div className="space-y-4">
-      {/* 1. Clean Header without Summary Metrics */}
-      <section className="border border-neutral-200 bg-white p-4 shadow-sm">
-        <div className="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
-          <div>
-            <p className="font-mono text-[10px] font-bold uppercase tracking-widest text-neutral-400">
-              Transactions
-            </p>
-            <h1 className="mt-1 font-serif text-2xl font-semibold tracking-tight text-neutral-950 sm:text-3xl">
-              Cashier Workspace
-            </h1>
-            <p className="mt-1 max-w-2xl text-sm text-neutral-500">
-              Sewa baru, pengembalian, deposit/refund, denda, dan status cuci dalam satu alur kasir.
-            </p>
-          </div>
+      {!isHistoryMode && (
+        <>
+          {/* 1. Clean Header without Summary Metrics */}
+          <section className="border border-neutral-200 bg-white p-4 shadow-sm">
+            <div className="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
+              <div>
+                <p className="font-mono text-[10px] font-bold uppercase tracking-widest text-neutral-400">
+                  Transactions
+                </p>
+                <h1 className="mt-1 font-serif text-2xl font-semibold tracking-tight text-neutral-950 sm:text-3xl">
+                  Cashier Workspace
+                </h1>
+                <p className="mt-1 max-w-2xl text-sm text-neutral-500">
+                  Sewa baru, pengembalian, deposit/refund, denda, dan status cuci dalam satu alur kasir.
+                </p>
+              </div>
 
-          <div className="flex flex-wrap gap-2">
-            <button
-              type="button"
-              onClick={() => {
-                document.getElementById('pos-receipt-history')?.scrollIntoView({
-                  behavior: 'smooth',
-                  block: 'start',
-                });
-              }}
-              className="inline-flex min-h-10 items-center gap-2 border border-neutral-300 bg-white px-3 text-xs font-bold uppercase tracking-wider text-neutral-700 transition-colors hover:border-neutral-900"
-            >
-              <Receipt className="h-4 w-4" /> Lihat History Open and Close Receipt
-            </button>
-            <button
-              type="button"
-              onClick={() => void refreshWorkspaceData()}
-              disabled={isLoadingCatalog || isLoadingLedger || isLoadingCustomers}
-              className="inline-flex min-h-10 items-center gap-2 bg-neutral-950 px-3 text-xs font-bold uppercase tracking-wider text-white transition-colors hover:bg-neutral-800"
-            >
-              <RefreshCw className={`h-4 w-4 ${isLoadingCatalog || isLoadingLedger || isLoadingCustomers ? 'animate-spin' : ''}`} />
-              Refresh
-            </button>
-          </div>
-        </div>
+              <div className="flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  onClick={() => void refreshWorkspaceData()}
+                  disabled={isLoadingCatalog || isLoadingLedger || isLoadingCustomers}
+                  className="inline-flex min-h-10 items-center gap-2 bg-neutral-950 px-3 text-xs font-bold uppercase tracking-wider text-white transition-colors hover:bg-neutral-800"
+                >
+                  <RefreshCw className={`h-4 w-4 ${isLoadingCatalog || isLoadingLedger || isLoadingCustomers ? 'animate-spin' : ''}`} />
+                  Refresh
+                </button>
+              </div>
+            </div>
 
-        <div className="mt-4 grid gap-2 border-t border-neutral-100 pt-3 sm:grid-cols-3">
-          <div className="flex items-center justify-between border border-neutral-200 bg-neutral-50 px-3 py-2">
-            <span className="text-xs font-semibold text-neutral-500">Active rentals</span>
-            <strong className="text-sm text-neutral-950">{activeRentals.length}</strong>
-          </div>
-          <div className="flex items-center justify-between border border-neutral-200 bg-neutral-50 px-3 py-2">
-            <span className="text-xs font-semibold text-neutral-500">Overdue</span>
-            <strong className={overdueTransactions.length > 0 ? 'text-sm text-red-700' : 'text-sm text-neutral-950'}>
-              {overdueTransactions.length}
-            </strong>
-          </div>
-          <div className="flex items-center justify-between border border-neutral-200 bg-neutral-50 px-3 py-2">
-            <span className="text-xs font-semibold text-neutral-500">In laundry</span>
-            <strong className="text-sm text-neutral-950">{openMaintenanceHolds.length}</strong>
-          </div>
-        </div>
-      </section>
+            <div className="mt-4 grid gap-2 border-t border-neutral-100 pt-3 sm:grid-cols-3">
+              <div className="flex items-center justify-between border border-neutral-200 bg-neutral-50 px-3 py-2">
+                <span className="text-xs font-semibold text-neutral-500">Active rentals</span>
+                <strong className="text-sm text-neutral-950">{activeRentals.length}</strong>
+              </div>
+              <div className="flex items-center justify-between border border-neutral-200 bg-neutral-50 px-3 py-2">
+                <span className="text-xs font-semibold text-neutral-500">Overdue</span>
+                <strong className={overdueTransactions.length > 0 ? 'text-sm text-red-700' : 'text-sm text-neutral-950'}>
+                  {overdueTransactions.length}
+                </strong>
+              </div>
+              <div className="flex items-center justify-between border border-neutral-200 bg-neutral-50 px-3 py-2">
+                <span className="text-xs font-semibold text-neutral-500">In laundry</span>
+                <strong className="text-sm text-neutral-950">{openMaintenanceHolds.length}</strong>
+              </div>
+            </div>
+          </section>
 
       {(isLoadingLedger || ledgerError) && (
         <div
@@ -2209,6 +2205,25 @@ export default function PosWorkspaceClient({ initialLedger, initialTransactionId
 
       </div>
 
+        </>
+      )}
+
+      {isHistoryMode && (
+        <>
+          {statusMessage && (
+            <div className="flex items-start gap-2 border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900">
+              <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" />
+              <p className="flex-1">{statusMessage}</p>
+              <button
+                type="button"
+                onClick={() => setStatusMessage('')}
+                className="shrink-0 text-amber-500 hover:text-amber-700"
+              >
+                <X className="h-3 w-3" />
+              </button>
+            </div>
+          )}
+
       <section id="pos-receipt-history" className="scroll-mt-6 border border-neutral-200 bg-white shadow-sm">
         <div className="flex flex-col gap-3 border-b border-neutral-200 p-4 lg:flex-row lg:items-center lg:justify-between">
           <div>
@@ -2355,6 +2370,8 @@ export default function PosWorkspaceClient({ initialLedger, initialTransactionId
           </div>
         )}
       </section>
+        </>
+      )}
 
       {pendingRentalAction && selectedItem && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
