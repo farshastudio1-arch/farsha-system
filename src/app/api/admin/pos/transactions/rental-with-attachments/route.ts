@@ -8,6 +8,7 @@ import {
   buildRentalTransactionLedger,
   type PosLedgerState,
   type PosPaymentMethod,
+  type PosTransactionLineItem,
 } from '@/lib/pos-ledger';
 import {
   deletePosAttachmentObjectByKey,
@@ -58,6 +59,78 @@ function getCaptureSource(value: string): PosAttachmentCaptureSource {
   return value === 'webcam' ? 'webcam' : 'upload';
 }
 
+function normalizeLineItemAmount(value: unknown, fallback = 0) {
+  const amount = Number(value);
+  return Number.isFinite(amount) && amount > 0 ? amount : fallback;
+}
+
+function parseLineItemPayload(value: string): Partial<PosTransactionLineItem>[] {
+  if (!value) {
+    return [];
+  }
+
+  const parsed = JSON.parse(value);
+  return Array.isArray(parsed) ? parsed : [];
+}
+
+async function getValidatedLineItems(formData: FormData): Promise<PosTransactionLineItem[]> {
+  const itemPayload = parseLineItemPayload(getRequiredString(formData, 'items'));
+  const legacyItemId = getRequiredString(formData, 'itemId');
+  const lineItemPayloads =
+    itemPayload.length > 0
+      ? itemPayload
+      : legacyItemId
+        ? [
+            {
+              itemId: legacyItemId,
+              itemPrice: getNumber(formData, 'itemPrice'),
+              deposit: getNumber(formData, 'depositReceived'),
+            },
+          ]
+        : [];
+
+  if (lineItemPayloads.length === 0) {
+    throw new Error('Pilih minimal satu kebaya untuk transaksi sewa.');
+  }
+
+  const seenItemIds = new Set<string>();
+  const lineItems: PosTransactionLineItem[] = [];
+
+  for (const lineItem of lineItemPayloads) {
+    const itemId = typeof lineItem.itemId === 'string' ? lineItem.itemId.trim() : '';
+
+    if (!itemId) {
+      throw new Error('Selected item was not found.');
+    }
+
+    if (seenItemIds.has(itemId)) {
+      throw new Error('Satu kebaya tidak bisa dimasukkan dua kali dalam transaksi yang sama.');
+    }
+
+    seenItemIds.add(itemId);
+
+    const item = await findCatalogItemById(itemId);
+
+    if (!item) {
+      throw new Error('Selected item was not found.');
+    }
+
+    if (item.published === false) {
+      throw new Error('Draft upcoming items must be published before rental.');
+    }
+
+    lineItems.push({
+      itemId: item.id,
+      itemCode: item.code,
+      itemName: item.name,
+      itemPrice: normalizeLineItemAmount(lineItem.itemPrice, item.rentalPrice),
+      deposit: normalizeLineItemAmount(lineItem.deposit, 0),
+    });
+  }
+
+  return lineItems;
+}
+
 function getRequiredFile(formData: FormData, key: string, label: string) {
   const file = formData.get(key);
 
@@ -93,7 +166,6 @@ export async function POST(request: Request) {
     }
 
     const formData = await request.formData();
-    const itemId = getRequiredString(formData, 'itemId');
     const customerName = getRequiredString(formData, 'customerName');
     const customerPhone = getRequiredString(formData, 'customerPhone');
     const startDate = getRequiredString(formData, 'startDate');
@@ -102,10 +174,6 @@ export async function POST(request: Request) {
     const idDocumentPhoto = getRequiredFile(formData, 'idDocumentPhoto', 'ID document photo');
     const ledgerValue = getRequiredString(formData, 'ledger');
     const ledger = ledgerValue ? (JSON.parse(ledgerValue) as PosLedgerState) : await listPosLedger();
-
-    if (!itemId) {
-      throw new Error('Selected item was not found.');
-    }
 
     if (!customerName) {
       throw new Error('Nama pelanggan wajib diisi.');
@@ -119,15 +187,7 @@ export async function POST(request: Request) {
       throw new Error('Tanggal sewa dan pengembalian wajib diisi.');
     }
 
-    const item = await findCatalogItemById(itemId);
-
-    if (!item) {
-      throw new Error('Selected item was not found.');
-    }
-
-    if (item.published === false) {
-      throw new Error('Draft upcoming items must be published before rental.');
-    }
+    const lineItems = await getValidatedLineItems(formData);
 
     const customer = await upsertCustomerFromContact({
       displayName: customerName,
@@ -136,16 +196,14 @@ export async function POST(request: Request) {
       actor: adminEmail,
     });
     const { ledger: nextLedger, transaction } = buildRentalTransactionLedger(ledger, {
-      item,
+      items: lineItems,
       customerId: customer.id,
       customerName,
       customerPhone,
       startDate,
       dueDate,
-      depositReceived: getNumber(formData, 'depositReceived'),
       paymentMethod: getPaymentMethod(getRequiredString(formData, 'paymentMethod')),
       notes: getRequiredString(formData, 'notes'),
-      itemPrice: getNumber(formData, 'itemPrice'),
     });
 
     uploadedAttachments.push(

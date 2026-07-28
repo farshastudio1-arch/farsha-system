@@ -315,7 +315,7 @@ export default function ProductDetailModal({
 
     const openTransaction = ledger.transactions.find(
       (transaction) =>
-        transaction.itemId === product.id &&
+        transaction.items.some((lineItem) => lineItem.itemId === product.id) &&
         transaction.kind === 'rental' &&
         transaction.status === 'open',
     );

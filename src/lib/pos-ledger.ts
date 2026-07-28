@@ -17,6 +17,14 @@ export type PosLedgerAction =
   | 'void';
 export type PosPaymentMethod = 'cash' | 'transfer' | 'qris' | 'card' | 'other';
 
+export interface PosTransactionLineItem {
+  itemId: string;
+  itemCode: string;
+  itemName: string;
+  itemPrice: number;
+  deposit: number;
+}
+
 export interface PosTransaction {
   id: string;
   transactionNumber: string;
@@ -26,6 +34,7 @@ export interface PosTransaction {
   itemCode: string;
   itemName: string;
   itemPrice: number;
+  items: PosTransactionLineItem[];
   customerId: string | null;
   customerName: string;
   customerPhone: string;
@@ -133,13 +142,14 @@ export interface AvailabilityProjection {
 }
 
 export interface CreateRentalInput {
-  item: KebayaItem;
+  item?: KebayaItem;
+  items?: PosTransactionLineItem[];
   customerId?: string | null;
   customerName: string;
   customerPhone: string;
   startDate: string;
   dueDate: string;
-  depositReceived: number;
+  depositReceived?: number;
   paymentMethod?: PosPaymentMethod;
   notes?: string;
   itemPrice?: number;
@@ -277,11 +287,10 @@ function normalizePaymentMethod(value: unknown): PosPaymentMethod {
 }
 
 function normalizeTransaction(value: Partial<PosTransaction>, ordinal: number): PosTransaction | null {
-  const itemId = normalizeText(value.itemId);
-  const itemCode = normalizeText(value.itemCode);
-  const itemName = normalizeText(value.itemName);
+  const items = normalizeTransactionLineItems(value);
+  const firstItem = items[0] ?? null;
 
-  if (!itemId || !itemCode || !itemName) {
+  if (!firstItem) {
     return null;
   }
 
@@ -292,17 +301,18 @@ function normalizeTransaction(value: Partial<PosTransaction>, ordinal: number): 
     transactionNumber: normalizeText(value.transactionNumber, formatReference('TRX', ordinal)),
     kind: normalizeTransactionKind(value.kind),
     status: normalizeTransactionStatus(value.status),
-    itemId,
-    itemCode,
-    itemName,
-    itemPrice: normalizeNumber(value.itemPrice),
+    itemId: firstItem.itemId,
+    itemCode: firstItem.itemCode,
+    itemName: firstItem.itemName,
+    itemPrice: sumTransactionLinePrices(items),
+    items,
     customerId: typeof value.customerId === 'string' && value.customerId.trim() ? value.customerId.trim() : null,
     customerName: normalizeText(value.customerName, 'Pelanggan Umum'),
     customerPhone: normalizeText(value.customerPhone),
     startDate: normalizeText(value.startDate, createdAt.slice(0, 10)),
     dueDate: typeof value.dueDate === 'string' ? value.dueDate : null,
     closedAt: typeof value.closedAt === 'string' ? value.closedAt : null,
-    depositReceived: normalizeNumber(value.depositReceived),
+    depositReceived: sumTransactionLineDeposits(items),
     refundedAmount: normalizeNumber(value.refundedAmount),
     penaltyAmount: normalizeNumber(value.penaltyAmount),
     adjustmentAmount: normalizeSignedNumber(value.adjustmentAmount, 0),
@@ -312,6 +322,107 @@ function normalizeTransaction(value: Partial<PosTransaction>, ordinal: number): 
     createdAt,
     updatedAt: normalizeText(value.updatedAt, createdAt),
   };
+}
+
+function normalizeTransactionLineItems(value: Partial<PosTransaction>): PosTransactionLineItem[] {
+  const rawItems = (value as { items?: unknown }).items;
+  const parsedItems = Array.isArray(rawItems)
+    ? rawItems
+        .map((entry) => normalizeTransactionLineItem(entry))
+        .filter((entry): entry is PosTransactionLineItem => Boolean(entry))
+    : [];
+
+  if (parsedItems.length > 0) {
+    return parsedItems;
+  }
+
+  const itemId = normalizeText(value.itemId);
+  const itemCode = normalizeText(value.itemCode);
+  const itemName = normalizeText(value.itemName);
+
+  if (!itemId || !itemCode || !itemName) {
+    return [];
+  }
+
+  return [
+    {
+      itemId,
+      itemCode,
+      itemName,
+      itemPrice: normalizeNumber(value.itemPrice),
+      deposit: normalizeNumber(value.depositReceived),
+    },
+  ];
+}
+
+function normalizeTransactionLineItem(value: unknown): PosTransactionLineItem | null {
+  if (!value || typeof value !== 'object') {
+    return null;
+  }
+
+  const line = value as Partial<PosTransactionLineItem>;
+  const itemId = normalizeText(line.itemId);
+  const itemCode = normalizeText(line.itemCode);
+  const itemName = normalizeText(line.itemName);
+
+  if (!itemId || !itemCode || !itemName) {
+    return null;
+  }
+
+  return {
+    itemId,
+    itemCode,
+    itemName,
+    itemPrice: normalizeNumber(line.itemPrice),
+    deposit: normalizeNumber(line.deposit),
+  };
+}
+
+function sumTransactionLinePrices(items: PosTransactionLineItem[]) {
+  return items.reduce((sum, item) => sum + Math.max(item.itemPrice, 0), 0);
+}
+
+function sumTransactionLineDeposits(items: PosTransactionLineItem[]) {
+  return items.reduce((sum, item) => sum + Math.max(item.deposit, 0), 0);
+}
+
+function applyTransactionAggregateMirrors(transaction: PosTransaction): PosTransaction {
+  const items = transaction.items.length > 0 ? transaction.items : normalizeTransactionLineItems(transaction);
+  const firstItem = items[0];
+
+  if (!firstItem) {
+    return transaction;
+  }
+
+  return {
+    ...transaction,
+    itemId: firstItem.itemId,
+    itemCode: firstItem.itemCode,
+    itemName: firstItem.itemName,
+    itemPrice: sumTransactionLinePrices(items),
+    depositReceived: sumTransactionLineDeposits(items),
+    items,
+  };
+}
+
+function applyDepositDeltaToFirstItem(transaction: PosTransaction, delta: number): PosTransaction {
+  const items = transaction.items.length > 0 ? transaction.items : normalizeTransactionLineItems(transaction);
+  const firstItem = items[0];
+
+  if (!firstItem) {
+    return transaction;
+  }
+
+  return applyTransactionAggregateMirrors({
+    ...transaction,
+    items: [
+      {
+        ...firstItem,
+        deposit: Math.max(firstItem.deposit + delta, 0),
+      },
+      ...items.slice(1),
+    ],
+  });
 }
 
 function normalizeReceipt(value: Partial<PosReceipt>, ordinal: number): PosReceipt | null {
@@ -676,24 +787,72 @@ export function buildRentalTransactionLedger(
   input: CreateRentalInput,
 ) {
   const ledger = normalizePosLedger(ledgerInput);
+  const lineItems =
+    input.items && input.items.length > 0
+      ? input.items
+          .map((item) => normalizeTransactionLineItem(item))
+          .filter((item): item is PosTransactionLineItem => Boolean(item))
+      : input.item
+        ? [
+            {
+              itemId: input.item.id,
+              itemCode: input.item.code,
+              itemName: input.item.name,
+              itemPrice: input.itemPrice !== undefined ? input.itemPrice : input.item.rentalPrice,
+              deposit: Math.max(input.depositReceived ?? 0, 0),
+            },
+          ]
+        : [];
+  const firstLineItem = lineItems[0] ?? null;
+
+  if (!firstLineItem) {
+    throw new Error('Pilih minimal satu kebaya untuk transaksi sewa.');
+  }
+
+  const activeItemIds = new Set(lineItems.map((item) => item.itemId));
+  const conflictingTransaction = ledger.transactions.find(
+    (transaction) =>
+      transaction.kind === 'rental' &&
+      transaction.status === 'open' &&
+      transaction.items.some((item) => activeItemIds.has(item.itemId)),
+  );
+
+  if (conflictingTransaction) {
+    const conflictingItem = conflictingTransaction.items.find((item) => activeItemIds.has(item.itemId));
+    throw new Error(
+      `${conflictingItem?.itemName ?? conflictingTransaction.itemName} sudah berada dalam transaksi aktif ${conflictingTransaction.transactionNumber}.`,
+    );
+  }
+
+  const conflictingMaintenance = ledger.maintenanceHolds.find(
+    (hold) => hold.status === 'open' && activeItemIds.has(hold.itemId),
+  );
+
+  if (conflictingMaintenance) {
+    throw new Error(
+      `${conflictingMaintenance.itemName} masih dalam proses cuci/laundry ${conflictingMaintenance.maintenanceNumber}.`,
+    );
+  }
+
   const createdAt = nowIso();
   const nextOrdinal = ledger.counters.transaction + 1;
-  const transaction: PosTransaction = {
+  const transaction = applyTransactionAggregateMirrors({
     id: createId('trx', nextOrdinal),
     transactionNumber: formatReference('TRX', nextOrdinal),
     kind: 'rental',
     status: 'open',
-    itemId: input.item.id,
-    itemCode: input.item.code,
-    itemName: input.item.name,
-    itemPrice: input.itemPrice !== undefined ? input.itemPrice : input.item.rentalPrice,
+    itemId: firstLineItem.itemId,
+    itemCode: firstLineItem.itemCode,
+    itemName: firstLineItem.itemName,
+    itemPrice: sumTransactionLinePrices(lineItems),
+    items: lineItems,
     customerId: input.customerId ?? null,
     customerName: input.customerName.trim() || 'Pelanggan Umum',
     customerPhone: input.customerPhone.trim(),
     startDate: input.startDate,
     dueDate: input.dueDate,
     closedAt: null,
-    depositReceived: Math.max(input.depositReceived, 0),
+    depositReceived: sumTransactionLineDeposits(lineItems),
     refundedAmount: 0,
     penaltyAmount: 0,
     adjustmentAmount: 0,
@@ -702,7 +861,7 @@ export function buildRentalTransactionLedger(
     revision: 1,
     createdAt,
     updatedAt: createdAt,
-  };
+  });
 
   const receipt = makeReceipt(
     transaction,
@@ -711,7 +870,7 @@ export function buildRentalTransactionLedger(
     input.notes?.trim() ?? '',
     ledger.counters.receipt + 1,
     {
-      eventAmount: transaction.itemPrice + Math.max(input.depositReceived, 0),
+      eventAmount: transaction.itemPrice + transaction.depositReceived,
       paymentMethod: input.paymentMethod ?? 'cash',
     },
   );
@@ -853,11 +1012,14 @@ export function addTransactionDeposit(transactionId: string, input: FinancialEve
     replaceTransaction(
       ledger,
       transactionId,
-      (transaction) => ({
-        ...transaction,
-        depositReceived: transaction.depositReceived + Math.max(input.amount, 0),
-        paymentMethod: input.paymentMethod ?? transaction.paymentMethod,
-      }),
+      (transaction) =>
+        applyDepositDeltaToFirstItem(
+          {
+            ...transaction,
+            paymentMethod: input.paymentMethod ?? transaction.paymentMethod,
+          },
+          Math.max(input.amount, 0),
+        ),
       {
         action: 'deposit',
         summary: 'Deposit recorded',
@@ -979,53 +1141,64 @@ export function closeRentalTransaction(transactionId: string, input: CloseTransa
       ledger.counters.history + 1,
       note,
     );
-    const hasOpenMaintenanceHold = ledger.maintenanceHolds.some(
-      (hold) => hold.itemId === updatedTransaction.itemId && hold.status === 'open',
+    const existingOpenMaintenanceItemIds = new Set(
+      ledger.maintenanceHolds
+        .filter((hold) => hold.status === 'open')
+        .map((hold) => hold.itemId),
     );
-    const maintenanceOrdinal = ledger.counters.maintenance + 1;
-    const maintenanceHold: PosMaintenanceHold | null = hasOpenMaintenanceHold
-      ? null
-      : {
-          id: createId('mnt', maintenanceOrdinal),
-          maintenanceNumber: formatReference('MNT', maintenanceOrdinal),
-          itemId: updatedTransaction.itemId,
-          itemCode: updatedTransaction.itemCode,
-          itemName: updatedTransaction.itemName,
-          sourceTransactionId: updatedTransaction.id,
-          transactionNumber: updatedTransaction.transactionNumber,
-          status: 'open',
-          openedAt: nowIso(),
-          closedAt: null,
-          openedNote: note || 'Returned item waiting for cleaning.',
-          closedNote: '',
-          revision: 1,
-        };
-    const maintenanceHistory = maintenanceHold
-      ? makeHistoryEntry(
+    let nextMaintenanceOrdinal = ledger.counters.maintenance;
+    let nextHistoryOrdinal = ledger.counters.history + 1;
+    const maintenanceHolds: PosMaintenanceHold[] = [];
+    const maintenanceHistory: PosAuditEntry[] = [];
+
+    updatedTransaction.items.forEach((item) => {
+      if (existingOpenMaintenanceItemIds.has(item.itemId)) {
+        return;
+      }
+
+      nextMaintenanceOrdinal += 1;
+      nextHistoryOrdinal += 1;
+
+      const maintenanceHold: PosMaintenanceHold = {
+        id: createId('mnt', nextMaintenanceOrdinal),
+        maintenanceNumber: formatReference('MNT', nextMaintenanceOrdinal),
+        itemId: item.itemId,
+        itemCode: item.itemCode,
+        itemName: item.itemName,
+        sourceTransactionId: updatedTransaction.id,
+        transactionNumber: updatedTransaction.transactionNumber,
+        status: 'open',
+        openedAt: nowIso(),
+        closedAt: null,
+        openedNote: note || 'Returned item waiting for cleaning.',
+        closedNote: '',
+        revision: 1,
+      };
+
+      maintenanceHolds.push(maintenanceHold);
+      maintenanceHistory.push(
+        makeHistoryEntry(
           updatedTransaction,
           'maintenance_open',
           'Maintenance opened after return',
           updatedTransaction,
-          ledger.counters.history + 2,
-          maintenanceHold.openedNote,
-        )
-      : null;
+          nextHistoryOrdinal,
+          `${maintenanceHold.openedNote} (${item.itemCode})`,
+        ),
+      );
+    });
 
     return {
       ...ledger,
       transactions: nextTransactions,
       receipts: [...ledger.receipts, closeReceipt],
-      history: maintenanceHistory
-        ? [...ledger.history, closeHistory, maintenanceHistory]
-        : [...ledger.history, closeHistory],
-      maintenanceHolds: maintenanceHold
-        ? [maintenanceHold, ...ledger.maintenanceHolds]
-        : ledger.maintenanceHolds,
+      history: [...ledger.history, closeHistory, ...maintenanceHistory],
+      maintenanceHolds: [...maintenanceHolds, ...ledger.maintenanceHolds],
       counters: {
         transaction: ledger.counters.transaction,
         receipt: ledger.counters.receipt + 1,
-        history: ledger.counters.history + (maintenanceHistory ? 2 : 1),
-        maintenance: maintenanceHold ? maintenanceOrdinal : ledger.counters.maintenance,
+        history: ledger.counters.history + 1 + maintenanceHistory.length,
+        maintenance: nextMaintenanceOrdinal,
       },
     };
   });
@@ -1238,12 +1411,14 @@ export function deriveAvailabilityProjection(
   items.forEach((item) => {
     const openTransactions = ledger.transactions.filter(
       (transaction) =>
-        transaction.itemId === item.id &&
+        transaction.items.some((lineItem) => lineItem.itemId === item.id) &&
         transaction.kind === 'rental' &&
         transaction.status === 'open',
     );
 
     const openTransaction = openTransactions[0] ?? null;
+    const openTransactionLineItem =
+      openTransaction?.items.find((lineItem) => lineItem.itemId === item.id) ?? null;
     const openMaintenance = ledger.maintenanceHolds.find(
       (hold) => hold.itemId === item.id && hold.status === 'open',
     ) ?? null;
@@ -1279,7 +1454,7 @@ export function deriveAvailabilityProjection(
       source: openTransaction || openMaintenance ? 'ledger' : 'master',
       isOverdue,
       activeDeposit: openTransaction
-        ? Math.max(openTransaction.depositReceived - openTransaction.refundedAmount, 0)
+        ? Math.max((openTransactionLineItem?.deposit ?? 0) - openTransaction.refundedAmount, 0)
         : 0,
       openTransactionCount: openTransactions.length,
       hasConflict: openTransactions.length > 1,

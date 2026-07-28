@@ -491,7 +491,7 @@ export function getPosAvailabilityBlockForBooking(
 
   const openTransaction = ledger?.transactions.find(
     (transaction) =>
-      transaction.itemId === item.id &&
+      transaction.items.some((lineItem) => lineItem.itemId === item.id) &&
       transaction.kind === 'rental' &&
       transaction.status === 'open',
   );

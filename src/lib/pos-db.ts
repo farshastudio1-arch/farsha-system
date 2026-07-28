@@ -10,6 +10,7 @@ import {
   type PosReceipt,
   type PosTransaction,
   type PosTransactionKind,
+  type PosTransactionLineItem,
   type PosTransactionStatus,
 } from '@/lib/pos-ledger';
 import type { UploadedPosAttachmentObject } from '@/lib/pos-attachments';
@@ -25,6 +26,7 @@ type PosTransactionRow = {
   item_code: string;
   item_name: string;
   item_price: number;
+  items_json?: string | null;
   customer_id?: string | null;
   customer_name: string;
   customer_phone: string | null;
@@ -110,8 +112,22 @@ function safeParseTransaction(value: string | null): PosTransaction | null {
   }
 }
 
+function safeParseTransactionItems(value: string | null | undefined): PosTransactionLineItem[] {
+  if (!value) {
+    return [];
+  }
+
+  try {
+    const parsed = JSON.parse(value);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
 function transactionRowToModel(row: PosTransactionRow): PosTransaction {
-  return {
+  return normalizePosLedger({
+    transactions: [{
     id: row.id,
     transactionNumber: row.transaction_number,
     kind: row.kind,
@@ -120,6 +136,7 @@ function transactionRowToModel(row: PosTransactionRow): PosTransaction {
     itemCode: row.item_code,
     itemName: row.item_name,
     itemPrice: row.item_price,
+    items: safeParseTransactionItems(row.items_json),
     customerId: row.customer_id ?? null,
     customerName: row.customer_name,
     customerPhone: row.customer_phone ?? '',
@@ -135,7 +152,8 @@ function transactionRowToModel(row: PosTransactionRow): PosTransaction {
     revision: row.revision,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
-  };
+    }],
+  }).transactions[0]!;
 }
 
 function receiptRowToModel(row: PosReceiptRow): PosReceipt {
@@ -271,12 +289,12 @@ function transactionStatement(db: D1Database, transaction: PosTransaction) {
   return db
     .prepare(
       `INSERT INTO pos_transactions (
-        id, transaction_number, kind, status, item_id, item_code, item_name, item_price,
+        id, transaction_number, kind, status, item_id, item_code, item_name, item_price, items_json,
         customer_id, customer_name, customer_phone, start_date, due_date, closed_at, deposit_received,
         refunded_amount, penalty_amount, adjustment_amount, payment_method, notes, revision,
         created_at, updated_at
       )
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       ON CONFLICT(id) DO UPDATE SET
         transaction_number = excluded.transaction_number,
         kind = excluded.kind,
@@ -285,6 +303,7 @@ function transactionStatement(db: D1Database, transaction: PosTransaction) {
         item_code = excluded.item_code,
         item_name = excluded.item_name,
         item_price = excluded.item_price,
+        items_json = excluded.items_json,
         customer_id = excluded.customer_id,
         customer_name = excluded.customer_name,
         customer_phone = excluded.customer_phone,
@@ -309,6 +328,7 @@ function transactionStatement(db: D1Database, transaction: PosTransaction) {
       transaction.itemCode,
       transaction.itemName,
       transaction.itemPrice,
+      JSON.stringify(transaction.items),
       transaction.customerId,
       transaction.customerName,
       transaction.customerPhone,

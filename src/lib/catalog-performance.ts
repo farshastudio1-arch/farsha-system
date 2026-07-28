@@ -69,13 +69,6 @@ function classify(cost: number | null, income: number): CatalogPerformanceStatus
   return 'push-marketing';
 }
 
-function getTransactionIncome(transaction: PosLedgerState['transactions'][number]) {
-  return Math.max(
-    transaction.itemPrice + transaction.penaltyAmount + transaction.adjustmentAmount,
-    0,
-  );
-}
-
 // Sum realized rental revenue per item across the POS ledger (voids excluded).
 function incomeByItemId(ledger: PosLedgerState) {
   const map = new Map<string, { income: number; count: number }>();
@@ -85,10 +78,15 @@ function incomeByItemId(ledger: PosLedgerState) {
       continue;
     }
 
-    const current = map.get(transaction.itemId) ?? { income: 0, count: 0 };
-    current.income += getTransactionIncome(transaction);
-    current.count += 1;
-    map.set(transaction.itemId, current);
+    transaction.items.forEach((item, index) => {
+      const current = map.get(item.itemId) ?? { income: 0, count: 0 };
+      current.income += Math.max(
+        item.itemPrice + (index === 0 ? transaction.penaltyAmount + transaction.adjustmentAmount : 0),
+        0,
+      );
+      current.count += 1;
+      map.set(item.itemId, current);
+    });
   }
 
   return map;

@@ -36,8 +36,6 @@ yarn-error.log*
 .env*
 !.env.example
 
-# vercel
-.vercel
 
 # wrangler
 .wrangler
@@ -48,3 +46,4 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 .claude/launch.json
+docs/*

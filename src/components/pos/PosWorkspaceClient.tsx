@@ -51,6 +51,7 @@ import {
   type PosPaymentMethod,
   type PosReceipt,
   type PosTransaction,
+  type PosTransactionLineItem,
 } from '@/lib/pos-ledger';
 import { useSavedPosLedger } from '@/lib/pos-ledger-client';
 import { addPreviewDays, previewMaintenanceBlockDays } from '@/lib/booking-preview';
@@ -69,6 +70,16 @@ type RentalPhotoDraft = {
   captureSource: PosAttachmentCaptureSource;
   width: number | null;
   height: number | null;
+};
+
+type RentalBasketItemDraft = {
+  itemId: string;
+  itemCode: string;
+  itemName: string;
+  imageUrl: string;
+  basePrice: number;
+  priceInput: string;
+  depositInput: string;
 };
 
 type CameraState = {
@@ -405,6 +416,28 @@ function matchesReceiptHistory(receipt: PosReceipt, query: string) {
   ].some((value) => value.toLowerCase().includes(query));
 }
 
+function getTransactionItemSummary(transaction: PosTransaction) {
+  if (transaction.items.length <= 1) {
+    return transaction.itemName;
+  }
+
+  return `${transaction.items[0].itemName} +${transaction.items.length - 1} lainnya`;
+}
+
+function getTransactionItemCodeSummary(transaction: PosTransaction) {
+  if (transaction.items.length <= 1) {
+    return transaction.itemCode;
+  }
+
+  return `${transaction.items[0].itemCode} +${transaction.items.length - 1}`;
+}
+
+function getTransactionWhatsAppItems(transaction: PosTransaction) {
+  return transaction.items
+    .map((item) => `${item.itemName} (${item.itemCode})`)
+    .join(', ');
+}
+
 interface PosWorkspaceClientProps {
   initialLedger: PosLedgerState;
   initialTransactionId?: string;
@@ -458,10 +491,10 @@ export default function PosWorkspaceClient({
   const [customerPhone, setCustomerPhone] = useState('');
   const [startDate, setStartDate] = useState(getTodayInputValue());
   const [dueDate, setDueDate] = useState('');
-  const [priceOverride, setPriceOverride] = useState('');
-  const [depositReceived, setDepositReceived] = useState(formatCurrencyInput(defaultSecurityDeposit));
+  const [rentalBasket, setRentalBasket] = useState<RentalBasketItemDraft[]>([]);
   const [rentalNotes, setRentalNotes] = useState('');
   const [paymentMethod, setPaymentMethod] = useState<PosPaymentMethod>('cash');
+  const [paymentConfirmed, setPaymentConfirmed] = useState(false);
   const [customerPhoto, setCustomerPhoto] = useState<RentalPhotoDraft | null>(null);
   const [idDocumentPhoto, setIdDocumentPhoto] = useState<RentalPhotoDraft | null>(null);
   const [cameraState, setCameraState] = useState<CameraState | null>(null);
@@ -496,13 +529,34 @@ export default function PosWorkspaceClient({
   const [invoiceTransaction, setInvoiceTransaction] = useState<PosTransaction | null>(null);
   const [statementTransaction, setStatementTransaction] = useState<PosTransaction | null>(null);
   const [printDocumentTarget, setPrintDocumentTarget] = useState<PrintDocumentTarget>('receipt');
-  const baseRentalPrice = parseCurrencyInput(priceOverride);
-  const securityDepositAmount = parseCurrencyInput(depositReceived);
+  const baseRentalPrice = rentalBasket.reduce(
+    (sum, item) => sum + (parseCurrencyInput(item.priceInput) || item.basePrice),
+    0,
+  );
+  const securityDepositAmount = rentalBasket.reduce(
+    (sum, item) => sum + parseCurrencyInput(item.depositInput),
+    0,
+  );
   const defaultDueDate = startDate ? addDaysToInputDate(startDate, 3) : '';
   const extraReturnDays =
     startDate && dueDate ? Math.max(getDayDiff(defaultDueDate || startDate, dueDate), 0) : 0;
   const extraReturnPenalty = extraReturnDays * extraReturnDayPenalty;
   const rentTotalDue = baseRentalPrice + securityDepositAmount + extraReturnPenalty;
+  const rentalLineItems = useMemo<PosTransactionLineItem[]>(
+    () =>
+      rentalBasket.map((item, index) => ({
+        itemId: item.itemId,
+        itemCode: item.itemCode,
+        itemName: item.itemName,
+        itemPrice: (parseCurrencyInput(item.priceInput) || item.basePrice) + (index === 0 ? extraReturnPenalty : 0),
+        deposit: parseCurrencyInput(item.depositInput),
+      })),
+    [extraReturnPenalty, rentalBasket],
+  );
+  const basketItemIds = useMemo(
+    () => new Set(rentalBasket.map((item) => item.itemId)),
+    [rentalBasket],
+  );
   const attachmentsByTransaction = useMemo(() => {
     const grouped = new Map<string, PosTransactionAttachment[]>();
 
@@ -715,6 +769,72 @@ export default function PosWorkspaceClient({
     setIsCustomerDatabaseOpen(false);
   }
 
+  function toggleRentalBasketItem(item: (typeof publishedCatalogItems)[number]) {
+    const projection = projections[item.id];
+
+    if ((projection?.effectiveStatus ?? item.status) !== 'available') {
+      setStatusMessage('Kebaya ini belum tersedia untuk transaksi sewa baru.');
+      return;
+    }
+
+    setRentalBasket((current) => {
+      if (current.some((entry) => entry.itemId === item.id)) {
+        return current.filter((entry) => entry.itemId !== item.id);
+      }
+
+      return [
+        ...current,
+        {
+          itemId: item.id,
+          itemCode: item.code,
+          itemName: item.name,
+          imageUrl: item.imageUrls[0],
+          basePrice: item.rentalPrice,
+          priceInput: formatCurrencyInput(item.rentalPrice),
+          depositInput: formatCurrencyInput(defaultSecurityDeposit),
+        },
+      ];
+    });
+    setSelectedTransactionId('');
+    setSelectedMaintenanceId('');
+    setStatusMessage('');
+  }
+
+  function updateRentalBasketItem(
+    itemId: string,
+    field: 'priceInput' | 'depositInput',
+    value: string,
+  ) {
+    setRentalBasket((current) =>
+      current.map((item) =>
+        item.itemId === itemId
+          ? {
+              ...item,
+              [field]: formatCurrencyInput(value),
+            }
+          : item,
+      ),
+    );
+  }
+
+  function removeRentalBasketItem(itemId: string) {
+    setRentalBasket((current) => current.filter((item) => item.itemId !== itemId));
+  }
+
+  function resetRentalForm() {
+    setCustomerName('');
+    setCustomerPhone('');
+    setSelectedCustomerId('');
+    setCustomerLookupQuery('');
+    setIsCustomerDatabaseOpen(false);
+    setPhotoDraft('customerPhoto', null);
+    setPhotoDraft('idDocumentPhoto', null);
+    setRentalNotes('');
+    setPaymentMethod('cash');
+    setPaymentConfirmed(false);
+    setRentalBasket([]);
+  }
+
   function setPhotoDraft(field: RentalPhotoField, draft: RentalPhotoDraft | null) {
     if (field === 'customerPhoto') {
       setCustomerPhoto((current) => {
@@ -835,11 +955,6 @@ export default function PosWorkspaceClient({
     [publishedCatalogItems, selectedItemId]
   );
 
-  const selectedProjection = useMemo(
-    () => (selectedItem ? projections[selectedItem.id] : null),
-    [selectedItem, projections]
-  );
-
   const selectedTransaction = useMemo(
     () =>
       ledger.transactions.find((t) => t.id === selectedTransactionId) ??
@@ -856,29 +971,23 @@ export default function PosWorkspaceClient({
     [ledger.maintenanceHolds, selectedMaintenanceId, selectedItemId]
   );
 
-  // Set default values when item changes
+  useEffect(() => {
+    if (rentalBasket.length === 0) {
+      return;
+    }
+
+    if (!dueDate) {
+      const today = getTodayInputValue();
+      setStartDate(today);
+      setDueDate(addDaysToInputDate(today, 3));
+    }
+  }, [dueDate, rentalBasket.length]);
+
+  // Set default values when focusing existing transactions or maintenance holds
   useEffect(() => {
     if (selectedItem) {
       const projection = projections[selectedItem.id];
-      if (projection?.effectiveStatus === 'available') {
-        // Prefill Rental details
-        // eslint-disable-next-line react-hooks/set-state-in-effect
-        setPriceOverride(formatCurrencyInput(selectedItem.rentalPrice));
-        setDepositReceived(formatCurrencyInput(defaultSecurityDeposit));
-        // Prefill default 3 days return due date
-        setStartDate(getTodayInputValue());
-        setDueDate(addDaysToInputDate(getTodayInputValue(), 3));
-        setCustomerName('');
-        setCustomerPhone('');
-        setSelectedCustomerId('');
-        setCustomerLookupQuery('');
-        setIsCustomerDatabaseOpen(false);
-        setPhotoDraft('customerPhoto', null);
-        setPhotoDraft('idDocumentPhoto', null);
-        setRentalNotes('');
-        setPaymentMethod('cash');
-        setStatusMessage('');
-      } else if (projection?.effectiveStatus === 'rented' && selectedTransaction) {
+      if (projection?.effectiveStatus === 'rented' && selectedTransaction) {
         // Prefill Return details
         setReturnDate(new Date().toISOString().slice(0, 10));
         setRefundAmount(selectedTransaction.depositReceived.toString());
@@ -908,7 +1017,6 @@ export default function PosWorkspaceClient({
       }
     } else {
       // Clear states
-      setPriceOverride('');
       setDueDate('');
     }
   }, [selectedItemId, selectedItem, projections, selectedTransaction]);
@@ -939,7 +1047,12 @@ export default function PosWorkspaceClient({
             t.customerName.toLowerCase().includes(historySearchQuery.toLowerCase()) ||
             t.transactionNumber.toLowerCase().includes(historySearchQuery.toLowerCase()) ||
             t.itemCode.toLowerCase().includes(historySearchQuery.toLowerCase()) ||
-            t.itemName.toLowerCase().includes(historySearchQuery.toLowerCase()))
+            t.itemName.toLowerCase().includes(historySearchQuery.toLowerCase()) ||
+            t.items.some((item) =>
+              [item.itemCode, item.itemName].some((value) =>
+                value.toLowerCase().includes(historySearchQuery.toLowerCase()),
+              ),
+            ))
       ),
     [ledger.transactions, historySearchQuery]
   );
@@ -988,13 +1101,15 @@ export default function PosWorkspaceClient({
     setSelectedItemId('');
     setSelectedTransactionId('');
     setSelectedMaintenanceId('');
-    setPhotoDraft('customerPhoto', null);
-    setPhotoDraft('idDocumentPhoto', null);
+    resetRentalForm();
     setPendingRentalAction(null);
   };
 
   const handleRentSubmit = async () => {
-    if (!selectedItem) return;
+    if (rentalLineItems.length === 0) {
+      setStatusMessage('Pilih minimal satu kebaya untuk transaksi sewa.');
+      return;
+    }
 
     if (!customerName.trim()) {
       setStatusMessage('Nama pelanggan wajib diisi.');
@@ -1021,16 +1136,14 @@ export default function PosWorkspaceClient({
       return;
     }
 
-    const price = baseRentalPrice || selectedItem.rentalPrice;
     setIsCreatingRental(true);
     const formData = new FormData();
     formData.set('ledger', JSON.stringify(ledger));
-    formData.set('itemId', selectedItem.id);
+    formData.set('items', JSON.stringify(rentalLineItems));
     formData.set('customerName', customerName.trim());
     formData.set('customerPhone', customerPhone.trim());
     formData.set('startDate', startDate);
     formData.set('dueDate', dueDate);
-    formData.set('depositReceived', String(securityDepositAmount));
     formData.set('paymentMethod', paymentMethod);
     formData.set(
       'notes',
@@ -1041,7 +1154,6 @@ export default function PosWorkspaceClient({
           : '',
       ].filter(Boolean).join('\n'),
     );
-    formData.set('itemPrice', String(price + extraReturnPenalty));
     formData.set('customerPhoto', customerPhoto.file);
     formData.set('customerPhotoCaptureSource', customerPhoto.captureSource);
     formData.set('customerPhotoWidth', String(customerPhoto.width ?? ''));
@@ -1082,18 +1194,11 @@ export default function PosWorkspaceClient({
 
     if (newTransaction) {
       setInvoiceTransaction(newTransaction);
+      setStatementTransaction(newTransaction);
       setIsInvoiceOpen(true);
     }
 
-    // Reset fields
-    setCustomerName('');
-    setCustomerPhone('');
-    setSelectedCustomerId('');
-    setCustomerLookupQuery('');
-    setIsCustomerDatabaseOpen(false);
-    setPhotoDraft('customerPhoto', null);
-    setPhotoDraft('idDocumentPhoto', null);
-    setRentalNotes('');
+    resetRentalForm();
     setSelectedItemId('');
     setStatusMessage('');
     setPendingRentalAction(null);
@@ -1117,6 +1222,7 @@ export default function PosWorkspaceClient({
     const refreshed = nextLedger.transactions.find((t) => t.id === selectedTransaction.id);
     if (refreshed) {
       setInvoiceTransaction(refreshed);
+      setStatementTransaction(refreshed);
       setIsInvoiceOpen(true);
     }
 
@@ -1144,25 +1250,13 @@ export default function PosWorkspaceClient({
 
   const triggerInvoiceModal = (trx: PosTransaction) => {
     setInvoiceTransaction(trx);
+    setStatementTransaction(trx);
     setIsInvoiceOpen(true);
   };
 
   const printReceipt = () => {
     setPrintDocumentTarget('receipt');
     window.setTimeout(() => window.print(), 0);
-  };
-
-  const openStatementLetter = (transaction: PosTransaction) => {
-    const attachments = attachmentsByTransaction.get(transaction.id) ?? [];
-    const hasCustomerPhoto = attachments.some((attachment) => attachment.kind === 'customer_photo');
-    const hasIdDocument = attachments.some((attachment) => attachment.kind === 'id_document');
-
-    if (!hasCustomerPhoto || !hasIdDocument) {
-      setStatusMessage('Surat pernyataan membutuhkan customer photo dan ID document photo.');
-      return;
-    }
-
-    setStatementTransaction(transaction);
   };
 
   const printStatementLetter = () => {
@@ -1369,7 +1463,7 @@ export default function PosWorkspaceClient({
                   {filteredCatalog.map((item) => {
                     const projection = projections[item.id];
                     const effStatus = projection?.effectiveStatus ?? item.status;
-                    const isSelected = selectedItemId === item.id;
+                    const isSelected = basketItemIds.has(item.id);
                     
                     let statusColor = 'border-emerald-200 bg-emerald-50 text-emerald-800';
                     if (effStatus === 'rented') {
@@ -1381,11 +1475,7 @@ export default function PosWorkspaceClient({
                     return (
                       <button
                         key={item.id}
-                        onClick={() => {
-                          setSelectedItemId(item.id);
-                          setSelectedTransactionId('');
-                          setSelectedMaintenanceId('');
-                        }}
+                        onClick={() => toggleRentalBasketItem(item)}
                         className={`flex min-h-[92px] gap-3 border p-2.5 text-left transition-colors ${
                           isSelected
                             ? 'border-neutral-900 bg-neutral-50 ring-1 ring-neutral-900'
@@ -1414,6 +1504,12 @@ export default function PosWorkspaceClient({
                           </div>
                           <div className="flex items-center justify-between text-xs text-neutral-500 mt-2">
                             <span>{formatCurrency(item.rentalPrice)}</span>
+                            {isSelected && (
+                              <span className="inline-flex items-center gap-1 text-[10px] font-bold uppercase text-neutral-900">
+                                <CheckCircle2 className="h-3.5 w-3.5" />
+                                Dipilih
+                              </span>
+                            )}
                             {effStatus === 'rented' && projection.dueDate && (
                               <span className={`text-[10px] font-medium ${projection.isOverdue ? 'text-red-600' : 'text-neutral-500'}`}>
                                 Kembali: {formatDate(projection.dueDate)}
@@ -1480,7 +1576,7 @@ export default function PosWorkspaceClient({
                               </span>
                             )}
                           </div>
-                          <p className="text-sm font-semibold text-neutral-950">{trx.itemName}</p>
+                          <p className="text-sm font-semibold text-neutral-950">{getTransactionItemSummary(trx)}</p>
                           <p className="text-xs text-neutral-500">
                             Penyewa: <strong className="text-neutral-800">{trx.customerName}</strong> ({trx.customerPhone || 'no WhatsApp'})
                           </p>
@@ -1512,7 +1608,7 @@ export default function PosWorkspaceClient({
                           {trx.customerPhone && (
                             <a
                               href={`https://wa.me/${trx.customerPhone.replace(/^0/, '62')}?text=${encodeURIComponent(
-                                `Halo Kak ${trx.customerName}, pengingat dari Farsha Studio Paccerakkang. Sewa kebaya "${trx.itemName}" (${trx.itemCode}) dengan batas kembali tanggal ${formatDate(trx.dueDate)} sudah jatuh tempo. Mohon segera dikembalikan ya Kak. Terima kasih!`
+                                `Halo Kak ${trx.customerName}, pengingat dari Farsha Studio Paccerakkang. Sewa kebaya "${getTransactionWhatsAppItems(trx)}" dengan batas kembali tanggal ${formatDate(trx.dueDate)} sudah jatuh tempo. Mohon segera dikembalikan ya Kak. Terima kasih!`
                               )}`}
                               target="_blank"
                               rel="noopener noreferrer"
@@ -1632,7 +1728,7 @@ export default function PosWorkspaceClient({
           <div>
             
             {/* IDLE VIEW */}
-            {!selectedItem && !selectedTransaction && !selectedMaintenance && (
+            {rentalBasket.length === 0 && !selectedItem && !selectedTransaction && !selectedMaintenance && (
               <div className="space-y-4 px-4 py-20 text-center">
                 <div className="mx-auto flex h-12 w-12 items-center justify-center border border-dashed border-neutral-400 bg-neutral-50 text-neutral-400">
                   <Sparkles className="h-6 w-6" />
@@ -1649,23 +1745,40 @@ export default function PosWorkspaceClient({
             )}
 
             {/* FLOW 1 WORKSPACE: Create Rent (Selected available item) */}
-            {selectedItem && selectedProjection?.effectiveStatus === 'available' && (
+            {activeTab === 'rent' && rentalBasket.length > 0 && (
               <div className="space-y-5 animate-in fade-in duration-200">
                 
-                {/* Item card overview */}
-                <div className="flex gap-3 border border-neutral-200 bg-neutral-50 p-3">
-                  <div className="h-16 w-14 shrink-0 overflow-hidden bg-neutral-100">
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={selectedItem.imageUrls[0]} alt={selectedItem.name} className="h-full w-full object-cover" />
-                  </div>
-                  <div className="min-w-0">
-                    <h3 className="truncate text-sm font-semibold leading-tight text-neutral-950">
-                      {selectedItem.name}
+                {/* Basket overview */}
+                <div className="space-y-2 border border-neutral-200 bg-neutral-50 p-3">
+                  <div className="flex items-center justify-between gap-2">
+                    <h3 className="text-xs font-bold uppercase tracking-wider text-neutral-700">
+                      Basket Sewa
                     </h3>
-                    <p className="text-[10px] font-mono text-neutral-400 uppercase mt-0.5">{selectedItem.code}</p>
-                    <span className="mt-2 inline-flex bg-emerald-50 text-emerald-800 text-[9px] font-bold border border-emerald-200 px-1.5 py-0.5 uppercase">
-                      AVAILABLE
+                    <span className="border border-neutral-300 bg-white px-1.5 py-0.5 text-[9px] font-bold uppercase text-neutral-500">
+                      {rentalBasket.length} baju
                     </span>
+                  </div>
+                  <div className="space-y-2">
+                    {rentalBasket.map((item) => (
+                      <div key={item.itemId} className="flex items-center gap-2 border border-neutral-200 bg-white p-2">
+                        <div className="h-12 w-10 shrink-0 overflow-hidden bg-neutral-100">
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img src={item.imageUrl} alt={item.itemName} className="h-full w-full object-cover" />
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <p className="truncate text-xs font-semibold text-neutral-950">{item.itemName}</p>
+                          <p className="mt-0.5 font-mono text-[10px] text-neutral-400">{item.itemCode}</p>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => removeRentalBasketItem(item.itemId)}
+                          className="shrink-0 border border-red-200 bg-red-50 p-1 text-red-700 hover:border-red-400"
+                          aria-label={`Remove ${item.itemName}`}
+                        >
+                          <X className="h-3.5 w-3.5" />
+                        </button>
+                      </div>
+                    ))}
                   </div>
                 </div>
 
@@ -1838,26 +1951,45 @@ export default function PosWorkspaceClient({
                     </label>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-3">
-                    <label className="block space-y-1">
-                      <span className="text-xs font-semibold text-neutral-600">Harga Sewa (Override)</span>
-                      <input
-                        inputMode="numeric"
-                        value={priceOverride}
-                        onChange={(e) => setPriceOverride(formatCurrencyInput(e.target.value))}
-                        className="h-10 w-full border border-neutral-200 bg-white px-3 text-sm focus:outline-none focus:ring-1 focus:ring-neutral-900 font-mono"
-                      />
-                    </label>
-
-                    <label className="block space-y-1">
-                      <span className="text-xs font-semibold text-neutral-600">Uang Jaminan (Deposit)</span>
-                      <input
-                        inputMode="numeric"
-                        value={depositReceived}
-                        onChange={(e) => setDepositReceived(formatCurrencyInput(e.target.value))}
-                        className="h-10 w-full border border-neutral-200 bg-white px-3 text-sm focus:outline-none focus:ring-1 focus:ring-neutral-900 font-mono"
-                      />
-                    </label>
+                  <div className="space-y-2">
+                    <p className="text-xs font-semibold text-neutral-600">Harga dan Deposit per Baju</p>
+                    {rentalBasket.map((item) => (
+                      <div key={item.itemId} className="space-y-2 border border-neutral-200 bg-neutral-50 p-3">
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="min-w-0">
+                            <p className="truncate text-xs font-bold text-neutral-950">{item.itemName}</p>
+                            <p className="mt-0.5 font-mono text-[10px] text-neutral-400">{item.itemCode}</p>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => removeRentalBasketItem(item.itemId)}
+                            className="shrink-0 text-[10px] font-bold uppercase tracking-wider text-red-600 underline"
+                          >
+                            Hapus
+                          </button>
+                        </div>
+                        <div className="grid grid-cols-2 gap-2">
+                          <label className="block space-y-1">
+                            <span className="text-[10px] font-semibold uppercase tracking-wider text-neutral-500">Harga Sewa</span>
+                            <input
+                              inputMode="numeric"
+                              value={item.priceInput}
+                              onChange={(e) => updateRentalBasketItem(item.itemId, 'priceInput', e.target.value)}
+                              className="h-9 w-full border border-neutral-200 bg-white px-2 text-sm font-mono focus:outline-none focus:ring-1 focus:ring-neutral-900"
+                            />
+                          </label>
+                          <label className="block space-y-1">
+                            <span className="text-[10px] font-semibold uppercase tracking-wider text-neutral-500">Deposit</span>
+                            <input
+                              inputMode="numeric"
+                              value={item.depositInput}
+                              onChange={(e) => updateRentalBasketItem(item.itemId, 'depositInput', e.target.value)}
+                              className="h-9 w-full border border-neutral-200 bg-white px-2 text-sm font-mono focus:outline-none focus:ring-1 focus:ring-neutral-900"
+                            />
+                          </label>
+                        </div>
+                      </div>
+                    ))}
                   </div>
 
                   <label className="block space-y-1">
@@ -1954,7 +2086,7 @@ export default function PosWorkspaceClient({
                   </button>
                   <button
                     onClick={() => setPendingRentalAction('print')}
-                    disabled={!customerPhoto || !idDocumentPhoto || isCreatingRental}
+                    disabled={rentalBasket.length === 0 || !customerPhoto || !idDocumentPhoto || isCreatingRental}
                     className="flex-grow bg-neutral-900 hover:bg-neutral-800 text-white px-4 py-3 text-xs font-semibold uppercase tracking-wider flex items-center justify-center gap-2 disabled:cursor-not-allowed disabled:bg-neutral-300"
                   >
                     <Receipt className="h-4 w-4" />
@@ -1988,7 +2120,7 @@ export default function PosWorkspaceClient({
                     <p className="font-semibold text-neutral-950 text-right">{selectedTransaction.customerName}</p>
 
                     <p className="text-neutral-500">Nama Baju:</p>
-                    <p className="font-semibold text-neutral-950 text-right">{selectedTransaction.itemName}</p>
+                    <p className="font-semibold text-neutral-950 text-right">{getTransactionItemSummary(selectedTransaction)}</p>
 
                     <p className="text-neutral-500">Sewa Pokok:</p>
                     <p className="font-semibold text-neutral-950 text-right">{formatCurrency(selectedTransaction.itemPrice)}</p>
@@ -2324,8 +2456,8 @@ export default function PosWorkspaceClient({
                       )}
                     </td>
                     <td className="px-3 py-2 text-neutral-500">
-                      <p className="font-medium text-neutral-700">{receipt.itemName}</p>
-                      <p className="mt-0.5 font-mono text-[10px] text-neutral-400">{receipt.itemCode}</p>
+                      <p className="font-medium text-neutral-700">{transaction ? getTransactionItemSummary(transaction) : receipt.itemName}</p>
+                      <p className="mt-0.5 font-mono text-[10px] text-neutral-400">{transaction ? getTransactionItemCodeSummary(transaction) : receipt.itemCode}</p>
                     </td>
                     <td className="px-3 py-2">
                       <p className="text-xs font-semibold text-neutral-800">{getReceiptActionLabel(receipt.action)}</p>
@@ -2346,6 +2478,7 @@ export default function PosWorkspaceClient({
                             setSelectedItemId(transaction.itemId);
                             setSelectedMaintenanceId('');
                             setInvoiceTransaction(transaction);
+                            setStatementTransaction(transaction);
                             setIsInvoiceOpen(true);
                           }}
                           className="inline-flex min-h-8 items-center gap-1 border border-neutral-300 bg-white px-2 text-xs font-semibold uppercase tracking-wider text-neutral-700 hover:border-neutral-900 hover:text-neutral-950"
@@ -2373,7 +2506,7 @@ export default function PosWorkspaceClient({
         </>
       )}
 
-      {pendingRentalAction && selectedItem && (
+      {pendingRentalAction && rentalBasket.length > 0 && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
           <div className="w-full max-w-md border border-neutral-200 bg-white p-5 shadow-xl">
             <div className="flex items-start justify-between gap-4 border-b border-neutral-100 pb-4">
@@ -2382,11 +2515,14 @@ export default function PosWorkspaceClient({
                   Konfirmasi
                 </p>
                 <h3 className="mt-1 font-serif text-xl font-semibold text-neutral-950">
-                  {pendingRentalAction === 'print' ? 'Cetak Sewa?' : 'Batalkan input sewa?'}
+                  {pendingRentalAction === 'print' ? 'Konfirmasi Pembayaran' : 'Batalkan input sewa?'}
                 </h3>
               </div>
               <button
-                onClick={() => setPendingRentalAction(null)}
+                onClick={() => {
+                  setPaymentConfirmed(false);
+                  setPendingRentalAction(null);
+                }}
                 className="p-1 text-neutral-400 hover:text-neutral-900"
               >
                 <X className="h-5 w-5" />
@@ -2396,10 +2532,14 @@ export default function PosWorkspaceClient({
             {pendingRentalAction === 'print' ? (
               <div className="space-y-3 py-4 text-sm text-neutral-600">
                 <p>
-                  Transaksi untuk <strong className="text-neutral-950">{selectedItem.name}</strong> akan dibuat dan
-                  langsung masuk ledger POS.
+                  Terima pembayaran penuh sebelum membuat transaksi. Tidak ada data POS yang disimpan sampai tombol
+                  buat transaksi ditekan.
                 </p>
                 <div className="border border-neutral-200 bg-neutral-50 p-3 text-xs">
+                  <div className="mb-2 border-b border-neutral-200 pb-2">
+                    <span className="font-semibold text-neutral-950">{rentalBasket.length} baju:</span>{' '}
+                    {rentalBasket.map((item) => item.itemCode).join(', ')}
+                  </div>
                   <div className="flex justify-between">
                     <span>Tanggal sewa</span>
                     <span className="font-mono text-neutral-950">{formatDate(startDate)}</span>
@@ -2419,6 +2559,48 @@ export default function PosWorkspaceClient({
                     <span>{formatCurrency(rentTotalDue)}</span>
                   </div>
                 </div>
+                <label className="block space-y-1">
+                  <span className="text-xs font-semibold text-neutral-600">Metode Pembayaran</span>
+                  <select
+                    value={paymentMethod}
+                    onChange={(event) => {
+                      setPaymentMethod(event.target.value as PosPaymentMethod);
+                      setPaymentConfirmed(false);
+                    }}
+                    className="h-10 w-full border border-neutral-200 bg-white px-3 text-sm focus:outline-none focus:ring-1 focus:ring-neutral-900"
+                  >
+                    {paymentMethods.map((method) => (
+                      <option key={method.value} value={method.value}>
+                        {method.label}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                {paymentMethod === 'qris' && (
+                  <div className="flex items-center gap-3 border border-neutral-200 bg-white p-3">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src="/qris-placeholder.png"
+                      alt="QRIS Farsha Studio"
+                      className="h-28 w-28 shrink-0 border border-neutral-200 object-contain"
+                    />
+                    <div className="min-w-0 text-xs">
+                      <p className="font-bold uppercase tracking-wider text-neutral-500">QRIS Store</p>
+                      <p className="mt-1 text-lg font-semibold text-neutral-950">{formatCurrency(rentTotalDue)}</p>
+                    </div>
+                  </div>
+                )}
+                <label className="flex items-start gap-2 border border-neutral-200 bg-neutral-50 p-3 text-xs text-neutral-700">
+                  <input
+                    type="checkbox"
+                    checked={paymentConfirmed}
+                    onChange={(event) => setPaymentConfirmed(event.target.checked)}
+                    className="mt-0.5 h-4 w-4 accent-neutral-950"
+                  />
+                  <span>
+                    <strong className="text-neutral-950">Pembayaran sudah diterima.</strong> Saya sudah menerima rental dan deposit penuh.
+                  </span>
+                </label>
               </div>
             ) : (
               <p className="py-4 text-sm leading-relaxed text-neutral-600">
@@ -2428,7 +2610,10 @@ export default function PosWorkspaceClient({
 
             <div className="flex gap-2">
               <button
-                onClick={() => setPendingRentalAction(null)}
+                onClick={() => {
+                  setPaymentConfirmed(false);
+                  setPendingRentalAction(null);
+                }}
                 disabled={isCreatingRental}
                 className="flex-1 border border-neutral-300 bg-white px-4 py-3 text-xs font-semibold uppercase tracking-wider text-neutral-700 hover:bg-neutral-50"
               >
@@ -2442,17 +2627,17 @@ export default function PosWorkspaceClient({
                     clearRentalSelection();
                   }
                 }}
-                disabled={isCreatingRental}
+                disabled={isCreatingRental || (pendingRentalAction === 'print' && !paymentConfirmed)}
                 className={`flex-1 px-4 py-3 text-xs font-semibold uppercase tracking-wider text-white ${
                   pendingRentalAction === 'print'
-                    ? 'bg-neutral-900 hover:bg-neutral-800 disabled:bg-neutral-300'
+                    ? 'bg-neutral-900 hover:bg-neutral-800 disabled:cursor-not-allowed disabled:bg-neutral-300'
                     : 'bg-red-600 hover:bg-red-700'
                 }`}
               >
                 {pendingRentalAction === 'print'
                   ? isCreatingRental
                     ? 'Menyimpan...'
-                    : 'Ya, Cetak Sewa'
+                    : 'Buat Transaksi & Cetak Sewa'
                   : 'Ya, Batal'}
               </button>
             </div>
@@ -2547,7 +2732,7 @@ export default function PosWorkspaceClient({
                 <div className="border border-neutral-200 bg-neutral-50 p-3 text-xs">
                   <div className="flex justify-between">
                     <span>Kebaya</span>
-                    <span className="font-semibold text-neutral-950">{selectedTransaction.itemName}</span>
+                    <span className="font-semibold text-neutral-950">{getTransactionItemSummary(selectedTransaction)}</span>
                   </div>
                   <div className="mt-1 flex justify-between">
                     <span>Tanggal kembali</span>
@@ -2612,28 +2797,28 @@ export default function PosWorkspaceClient({
         </div>
       )}
 
-      {/* 2. PRINTABLE RECEIPT MODAL SYSTEM */}
+      {/* 2. PRINTABLE DOCUMENT PREVIEW SYSTEM */}
       {isInvoiceOpen && invoiceTransaction && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm print:bg-white print:p-0">
-          <div className="bg-white shadow-2xl w-full max-w-md overflow-hidden flex flex-col print:shadow-none print:w-full print:max-w-none">
+        <div className="fixed inset-0 z-50 overflow-y-auto bg-black/60 p-4 backdrop-blur-sm print:bg-white print:p-0">
+          <div className="mx-auto flex w-full max-w-7xl flex-col overflow-hidden bg-white shadow-2xl print:w-full print:max-w-none print:shadow-none">
             
             {/* Modal Controls (Hidden in Print) */}
             <div className="flex items-center justify-between p-4 border-b border-neutral-100 bg-neutral-50 print:hidden">
               <h3 className="text-xs font-semibold uppercase tracking-wider text-neutral-700">
-                Pratinjau Bukti Transaksi
+                Pratinjau Bukti Transaksi & Surat Pernyataan
               </h3>
               <div className="flex gap-2">
                 <button
                   onClick={printReceipt}
                   className="inline-flex items-center justify-center px-3 py-1.5 border border-neutral-900 bg-neutral-900 text-white text-xs font-semibold hover:bg-neutral-800"
                 >
-                  <Printer className="h-3.5 w-3.5 mr-1" /> Cetak (Print)
+                  <Printer className="h-3.5 w-3.5 mr-1" /> Cetak / Simpan Receipt
                 </button>
                 <button
-                  onClick={() => openStatementLetter(invoiceTransaction)}
+                  onClick={printStatementLetter}
                   className="inline-flex items-center justify-center px-3 py-1.5 border border-neutral-300 bg-white text-xs font-semibold text-neutral-700 hover:border-neutral-900 hover:text-neutral-950"
                 >
-                  <Printer className="h-3.5 w-3.5 mr-1" /> Cetak Surat Pernyataan
+                  <Printer className="h-3.5 w-3.5 mr-1" /> Cetak / Simpan Surat
                 </button>
                 <button
                   onClick={() => {
@@ -2648,8 +2833,9 @@ export default function PosWorkspaceClient({
               </div>
             </div>
 
-            {/* Printable Content Block */}
-            <div className="p-8 space-y-6 print:p-0 print:m-0" id="farsha-invoice-print-area">
+            <div className="grid gap-4 overflow-y-auto bg-neutral-100 p-4 lg:grid-cols-[360px_minmax(0,1fr)] print:block print:bg-white print:p-0">
+            {/* Receipt Content Block */}
+            <div className="space-y-6 bg-white p-8 print:m-0 print:p-0" id="farsha-receipt-print-area">
               
               {/* Receipt Header branding */}
               <div className="text-center space-y-1.5 border-b border-dashed border-neutral-300 pb-5">
@@ -2707,18 +2893,20 @@ export default function PosWorkspaceClient({
                     </tr>
                   </thead>
                   <tbody>
-                    <tr className="border-b border-neutral-100">
-                      <td className="py-2.5">
-                        <p className="font-semibold text-neutral-900">{invoiceTransaction.itemName}</p>
-                        <p className="text-[10px] text-neutral-400 font-mono mt-0.5">{invoiceTransaction.itemCode}</p>
-                      </td>
-                      <td className="py-2.5 text-center text-neutral-800 font-mono">
-                        {formatDate(invoiceTransaction.dueDate)}
-                      </td>
-                      <td className="py-2.5 text-right font-medium text-neutral-900">
-                        {formatCurrency(invoiceTransaction.itemPrice)}
-                      </td>
-                    </tr>
+                    {invoiceTransaction.items.map((item) => (
+                      <tr key={`${invoiceTransaction.id}-${item.itemId}`} className="border-b border-neutral-100">
+                        <td className="py-2.5">
+                          <p className="font-semibold text-neutral-900">{item.itemName}</p>
+                          <p className="text-[10px] text-neutral-400 font-mono mt-0.5">{item.itemCode}</p>
+                        </td>
+                        <td className="py-2.5 text-center text-neutral-800 font-mono">
+                          {formatDate(invoiceTransaction.dueDate)}
+                        </td>
+                        <td className="py-2.5 text-right font-medium text-neutral-900">
+                          {formatCurrency(item.itemPrice)}
+                        </td>
+                      </tr>
+                    ))}
                   </tbody>
                 </table>
               </div>
@@ -2789,11 +2977,128 @@ export default function PosWorkspaceClient({
 
             </div>
 
+            <article
+              id="farsha-statement-print-area"
+              className="farsha-statement-letter bg-white p-6 text-neutral-950 sm:p-10"
+            >
+              <header className="farsha-statement-header mb-6 text-center">
+                <p className="text-xs font-semibold uppercase tracking-[0.24em] text-neutral-500">
+                  Farsha Studio
+                </p>
+                <h2 className="farsha-statement-title mt-2 text-xl font-bold uppercase tracking-wide text-neutral-950">
+                  Surat Pernyataan dan Komitmen Penyewaan
+                </h2>
+              </header>
+
+              <section className="farsha-statement-section farsha-statement-intro space-y-3 text-sm leading-7 text-neutral-900">
+                <p>Saya,</p>
+                <div className="ml-4 space-y-1">
+                  <p>• Nama Penyewa : <strong>{invoiceTransaction.customerName}</strong></p>
+                  <p>• No. WhatsApp : <strong>{invoiceTransaction.customerPhone || '-'}</strong></p>
+                  <p>• No. Transaksi : <strong>{invoiceTransaction.transactionNumber}</strong></p>
+                </div>
+
+                <p>
+                  Dengan ini menyatakan bahwa saya telah menyewa busana (baju/kebaya/dress) dari
+                  Farsha Studio pada tanggal <strong>{formatDate(invoiceTransaction.startDate)}</strong>, dan
+                  berkomitmen untuk mengembalikannya pada tanggal{' '}
+                  <strong>{formatDate(invoiceTransaction.dueDate)}</strong> dalam kondisi yang sama baiknya
+                  seperti saat pertama kali diterima.
+                </p>
+                <p>
+                  Sebagai bentuk tanggung jawab, saya menyatakan setuju dan bersedia mematuhi seluruh
+                  ketentuan yang tercantum dalam poin-poin di bawah ini:
+                </p>
+              </section>
+
+              <section className="farsha-statement-section farsha-statement-rules mt-5 space-y-4 text-sm leading-7 text-neutral-900">
+                <div className="farsha-statement-rule">
+                  <h3 className="font-bold">1. Petunjuk Pemakaian</h3>
+                  <p>• a. Melepaskan ornamen atau aksesoris pribadi (seperti gelang, cincin, jam tangan, dll.) yang berpotensi merusak atau tersangkut pada serat kain busana.</p>
+                  <p>• b. Membuka ritsleting (zipper) dan/atau kancing secara menyeluruh sebelum mengenakan busana guna menghindari kerusakan.</p>
+                  <p>• c. Mengenakan dan melepaskan busana dengan penuh kehati-hatian.</p>
+                </div>
+
+                <div className="farsha-statement-rule">
+                  <h3 className="font-bold">2. Petunjuk Perawatan</h3>
+                  <p>• a. Tidak mencuci/melaundry busana, baik sebelum maupun sesudah pemakaian (perawatan kain sepenuhnya ditangani oleh pihak Farsha Studio).</p>
+                  <p>• b. Tidak mengubah, memotong, atau menjahit ukuran maupun model busana dalam bentuk apa pun.</p>
+                  <p>• c. Menghindari penggunaan aksesoris tambahan pada busana yang berisiko merusak material kain.</p>
+                </div>
+
+                <div className="farsha-statement-rule">
+                  <h3 className="font-bold">3. Petunjuk Pengembalian</h3>
+                  <p>• a. Mengembalikan busana dalam kondisi utuh (sama seperti saat pertama kali diambil/diterima).</p>
+                  <p>• b. Mengembalikan busana secara lengkap beserta aksesoris bawaan (jika ada) serta seluruh kemasan (packing) penunjangnya.</p>
+                  <p>• c. Mengembalikan busana tepat waktu sesuai dengan tanggal yang telah disepakati bersama.</p>
+                </div>
+              </section>
+
+              <section className="farsha-statement-section farsha-statement-indemnity mt-5 space-y-3 text-sm leading-7 text-neutral-900">
+                <h3 className="font-bold">Pernyataan Kesanggupan &amp; Ganti Rugi</h3>
+                <p>
+                  Apabila terjadi kerusakan, hilangnya komponen busana/aksesoris, atau kehilangan unit
+                  busana yang disewa, saya bersedia bertanggung jawab penuh untuk melakukan ganti rugi
+                  sesuai dengan ketentuan yang berlaku di Farsha Studio.
+                </p>
+                <p>
+                  Selain itu, jika terjadi keterlambatan pengembalian dari waktu yang telah ditentukan,
+                  saya bersedia dikenakan denda keterlambatan sebesar Rp100.000,- (seratus ribu rupiah)
+                  per hari untuk setiap unit busana.
+                </p>
+                <p>
+                  Demikian surat pernyataan ini saya buat dengan kesadaran penuh, tanpa paksaan dari
+                  pihak mana pun, dan untuk dipergunakan sebagaimana mestinya.
+                </p>
+                <p className="font-semibold">
+                  Foto Identitas dan foto saya berlaku sebagai pengganti tandatangan.
+                </p>
+              </section>
+
+              <section className="farsha-statement-photos mt-6 grid grid-cols-2 gap-4">
+                <div className="farsha-statement-photo-box border border-neutral-300 p-2">
+                  <p className="mb-2 text-center text-xs font-bold uppercase tracking-wider text-neutral-600">
+                    Foto Identitas
+                  </p>
+                  {statementAttachments.idDocument ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={getAttachmentUrl(statementAttachments.idDocument)}
+                      alt="Foto identitas customer"
+                      className="farsha-statement-photo-media h-48 w-full object-cover"
+                    />
+                  ) : (
+                    <div className="farsha-statement-photo-media flex h-48 items-center justify-center bg-neutral-100 text-xs text-neutral-400">
+                      Belum tersedia
+                    </div>
+                  )}
+                </div>
+                <div className="farsha-statement-photo-box border border-neutral-300 p-2">
+                  <p className="mb-2 text-center text-xs font-bold uppercase tracking-wider text-neutral-600">
+                    Foto Penyewa
+                  </p>
+                  {statementAttachments.customerPhoto ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={getAttachmentUrl(statementAttachments.customerPhoto)}
+                      alt="Foto customer"
+                      className="farsha-statement-photo-media h-48 w-full object-cover"
+                    />
+                  ) : (
+                    <div className="farsha-statement-photo-media flex h-48 items-center justify-center bg-neutral-100 text-xs text-neutral-400">
+                      Belum tersedia
+                    </div>
+                  )}
+                </div>
+              </section>
+            </article>
+            </div>
+
           </div>
         </div>
       )}
 
-      {statementTransaction && (
+      {statementTransaction && !isInvoiceOpen && (
         <div className="fixed inset-0 z-[60] overflow-y-auto bg-black/60 px-4 py-6 print:bg-white print:p-0">
           <div className="mx-auto max-w-4xl bg-white shadow-2xl print:shadow-none print:max-w-none">
             <div className="flex flex-col gap-3 border-b border-neutral-200 bg-neutral-50 p-4 print:hidden sm:flex-row sm:items-center sm:justify-between">
@@ -2954,7 +3259,7 @@ export default function PosWorkspaceClient({
       <style jsx global>{`
         @media print {
           @page {
-            size: A4 portrait;
+            size: ${printDocumentTarget === 'receipt' ? '58mm auto' : 'A4 portrait'};
             margin: 0;
           }
 
@@ -3075,20 +3380,23 @@ export default function PosWorkspaceClient({
           }
           `
               : `
-          #farsha-invoice-print-area,
-          #farsha-invoice-print-area * {
+          #farsha-receipt-print-area,
+          #farsha-receipt-print-area * {
             visibility: visible;
           }
           
-          #farsha-invoice-print-area {
+          #farsha-receipt-print-area {
             position: absolute;
             left: 0;
             top: 0;
-            width: 100% !important;
-            padding: 0 !important;
+            width: 58mm !important;
+            min-height: auto !important;
+            padding: 3mm 2mm !important;
             margin: 0 !important;
             box-shadow: none !important;
             border: none !important;
+            color: #111 !important;
+            font-size: 8pt !important;
           }
           `
           }

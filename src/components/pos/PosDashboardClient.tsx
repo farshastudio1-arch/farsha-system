@@ -94,7 +94,16 @@ function matchesTransaction(transaction: PosTransaction, query: string) {
     transaction.itemCode,
     transaction.status,
     transaction.paymentMethod,
+    ...transaction.items.flatMap((item) => [item.itemName, item.itemCode]),
   ].some((value) => value.toLowerCase().includes(query));
+}
+
+function getTransactionItemSummary(transaction: PosTransaction) {
+  if (transaction.items.length <= 1) {
+    return `${transaction.itemCode} / ${transaction.itemName}`;
+  }
+
+  return `${transaction.items[0].itemCode} / ${transaction.items[0].itemName} +${transaction.items.length - 1} lainnya`;
 }
 
 function matchesInvoice(invoice: PosFinanceDocumentEntry, query: string) {
@@ -355,7 +364,7 @@ export default function PosDashboardClient({ initialLedger, financeSummary }: Po
                       </td>
                       <td className="px-3 py-2 text-neutral-700">{transaction.customerName}</td>
                       <td className="px-3 py-2 text-neutral-500">
-                        {transaction.itemCode} / {transaction.itemName}
+                        {getTransactionItemSummary(transaction)}
                       </td>
                       <td className="px-3 py-2">
                         <span className={`inline-flex border px-2 py-1 text-[10px] font-bold uppercase tracking-wider ${statusClass(transaction.status)}`}>
