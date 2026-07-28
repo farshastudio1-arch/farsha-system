@@ -3,6 +3,7 @@
 import { ChangeEvent, FormEvent, useMemo, useState } from 'react';
 import {
   AlertTriangle,
+  Banknote,
   CheckCircle,
   ChevronLeft,
   ChevronRight,
@@ -14,6 +15,7 @@ import {
   PackageSearch,
   Plus,
   Search,
+  Tag,
   Trash2,
   Wrench,
   X,
@@ -422,10 +424,10 @@ const selectCls =
 
 type CatalogTab = 'details' | 'pricing' | 'photos';
 
-const catalogTabs: { id: CatalogTab; step: string; label: string; hint: string }[] = [
-  { id: 'details', step: '01', label: 'Details', hint: 'Identity, categories & story' },
-  { id: 'pricing', step: '02', label: 'Pricing & Fit', hint: 'Rates & measurements' },
-  { id: 'photos', step: '03', label: 'Photos', hint: 'Cover & gallery' },
+const catalogTabs: { id: CatalogTab; icon: typeof Images; label: string; hint: string }[] = [
+  { id: 'photos', icon: Images, label: 'Photos', hint: 'Cover & gallery' },
+  { id: 'details', icon: Tag, label: 'Details', hint: 'Identity, categories & story' },
+  { id: 'pricing', icon: Banknote, label: 'Pricing & Fit', hint: 'Rates & measurements' },
 ];
 
 type CatalogWorkbenchMode = 'published' | 'draft';
@@ -503,7 +505,7 @@ export default function CatalogWorkbench({ mode = 'published' }: { mode?: Catalo
     setEditingItem(null);
     // New items in the Upcoming section start as drafts.
     setForm({ ...createEmptyForm(codeDate, nextCatalogSequence), published: !isDraftMode });
-    setActiveTab('details');
+    setActiveTab('photos');
     setFormError('');
     setImgErrors({});
     setUploadError('');
@@ -520,7 +522,7 @@ export default function CatalogWorkbench({ mode = 'published' }: { mode?: Catalo
 
     setEditingItem(item);
     setForm(itemToForm(item));
-    setActiveTab('details');
+    setActiveTab('photos');
     setFormError('');
     setImgErrors({});
     setUploadError('');
@@ -822,6 +824,10 @@ export default function CatalogWorkbench({ mode = 'published' }: { mode?: Catalo
   const filledImageCount = form.imageUrls.filter((url) => url.trim()).length;
   const canAddImageSlot = form.imageUrls.length < maxImageSlots;
   const activeTabIndex = catalogTabs.findIndex((tab) => tab.id === activeTab);
+  // Below md the modal shows every section at once; md+ switches to tabs.
+  const tabPanelClass = (tab: CatalogTab) => (activeTab === tab ? '' : 'md:hidden');
+  const previewRentalPrice = parsePrice(form.rentalPrice);
+  const previewCompareAtPrice = parseOptionalPrice(form.compareAtRentalPrice);
   const editingProjectedItem = editingItem
     ? projectedItems.find((item) => item.id === editingItem.id) ?? null
     : null;
@@ -1319,10 +1325,11 @@ export default function CatalogWorkbench({ mode = 'published' }: { mode?: Catalo
                 </button>
               </div>
 
-              <div className="flex shrink-0 items-stretch gap-1 overflow-x-auto border-b border-neutral-200 bg-neutral-50 px-2 sm:px-4">
+              <div className="hidden shrink-0 items-stretch gap-1 overflow-x-auto border-b border-neutral-200 bg-neutral-50 px-2 sm:px-4 md:flex">
                 {catalogTabs.map((tab) => {
                   const isActive = activeTab === tab.id;
                   const filledCount = tab.id === 'photos' ? filledImageCount : 0;
+                  const TabIcon = tab.icon;
 
                   return (
                     <button
@@ -1336,13 +1343,13 @@ export default function CatalogWorkbench({ mode = 'published' }: { mode?: Catalo
                       }`}
                     >
                       <span
-                        className={`flex h-6 w-6 shrink-0 items-center justify-center font-mono text-[10px] font-bold transition-colors ${
+                        className={`flex h-6 w-6 shrink-0 items-center justify-center transition-colors ${
                           isActive
                             ? 'bg-neutral-900 text-white'
                             : 'bg-neutral-200 text-neutral-500'
                         }`}
                       >
-                        {tab.step}
+                        <TabIcon className="h-3.5 w-3.5" />
                       </span>
                       <span className="flex flex-col leading-tight">
                         <span
@@ -1387,9 +1394,8 @@ export default function CatalogWorkbench({ mode = 'published' }: { mode?: Catalo
                     </div>
                   )}
                   <div className={`flex flex-col gap-6 ${activeTab === 'photos' ? '' : 'xl:flex-row'}`}>
-                    <div className="min-w-0 flex-1 space-y-5">
-                      {activeTab === 'details' && (
-                      <section className="border border-neutral-200 bg-white p-4">
+                    <div className="flex min-w-0 flex-1 flex-col gap-5">
+                      <section className={`border border-neutral-200 bg-white p-4 ${tabPanelClass('details')}`}>
                         <SectionLabel>Product identity</SectionLabel>
                         <div className="grid gap-4 md:grid-cols-2">
                           <FieldLabel label="Name">
@@ -1671,10 +1677,8 @@ export default function CatalogWorkbench({ mode = 'published' }: { mode?: Catalo
                           </div>
                         </div>
                       </section>
-                      )}
 
-                      {activeTab === 'pricing' && (
-                      <section className="border border-neutral-200 bg-white p-4">
+                      <section className={`border border-neutral-200 bg-white p-4 ${tabPanelClass('pricing')}`}>
                         <SectionLabel>Pricing</SectionLabel>
                         <p className="mb-4 text-sm text-neutral-500">
                           Admin controls the rental price here.
@@ -1756,10 +1760,8 @@ export default function CatalogWorkbench({ mode = 'published' }: { mode?: Catalo
                           </FieldLabel>
                         </div>
                       </section>
-                      )}
 
-                      {activeTab === 'pricing' && (
-                      <section className="border border-neutral-200 bg-white p-4">
+                      <section className={`border border-neutral-200 bg-white p-4 ${tabPanelClass('pricing')}`}>
                         <div className="flex flex-col gap-1 border-b border-neutral-200 pb-3 sm:flex-row sm:items-end sm:justify-between">
                           <div>
                             <SectionLabel>Detail ukuran</SectionLabel>
@@ -1842,10 +1844,8 @@ export default function CatalogWorkbench({ mode = 'published' }: { mode?: Catalo
                           </div>
                         </div>
                       </section>
-                      )}
 
-                      {activeTab === 'details' && (
-                      <section className="border border-neutral-200 bg-white p-4">
+                      <section className={`border border-neutral-200 bg-white p-4 ${tabPanelClass('details')}`}>
                         <SectionLabel>Product story</SectionLabel>
                         <textarea
                           rows={4}
@@ -1855,10 +1855,8 @@ export default function CatalogWorkbench({ mode = 'published' }: { mode?: Catalo
                           className={`${inputCls} resize-none`}
                         />
                       </section>
-                      )}
 
-                      {activeTab === 'photos' && (
-                        <section className="border border-neutral-200 bg-white p-4">
+                      <section className={`border border-neutral-200 bg-white p-4 ${tabPanelClass('photos')}`}>
                           <div className="flex flex-col gap-3 border-b border-neutral-200 pb-4 sm:flex-row sm:items-end sm:justify-between">
                             <div>
                               <SectionLabel>
@@ -1993,13 +1991,27 @@ export default function CatalogWorkbench({ mode = 'published' }: { mode?: Catalo
                             )}
                           </div>
                         </section>
-                      )}
                     </div>
 
                     {activeTab !== 'photos' && (
                     <aside className="hidden self-start border border-neutral-200 bg-neutral-50 p-4 xl:block xl:w-[280px] xl:shrink-0">
                       <SectionLabel>Public detail preview</SectionLabel>
                       <div className="space-y-3">
+                        <div className="aspect-[3/4] w-full overflow-hidden border border-neutral-200 bg-neutral-100">
+                          {coverUrl ? (
+                            /* eslint-disable-next-line @next/next/no-img-element */
+                            <img
+                              src={coverUrl}
+                              alt="Cover preview"
+                              className="h-full w-full object-cover"
+                            />
+                          ) : (
+                            <div className="flex h-full w-full flex-col items-center justify-center gap-2 text-neutral-300">
+                              <ImagePlus className="h-8 w-8" />
+                              <span className="text-xs">Cover photo</span>
+                            </div>
+                          )}
+                        </div>
                         <div>
                           <p className="text-sm font-semibold text-neutral-950">
                             {form.name || 'Product name'}
@@ -2025,6 +2037,18 @@ export default function CatalogWorkbench({ mode = 'published' }: { mode?: Catalo
                               Hijab Friendly
                             </span>
                           )}
+                        </div>
+                        <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1 border-t border-neutral-200 pt-3">
+                          <span className="text-lg font-semibold text-neutral-950">
+                            {previewRentalPrice > 0 ? formatPrice(previewRentalPrice) : 'Rp0'}
+                          </span>
+                          <span className="text-[10px] font-normal text-neutral-400">/3 hari</span>
+                          {previewCompareAtPrice !== null &&
+                            previewCompareAtPrice > previewRentalPrice && (
+                              <span className="text-xs font-medium text-neutral-400 line-through">
+                                {formatPrice(previewCompareAtPrice)}
+                              </span>
+                            )}
                         </div>
                         <div className="space-y-2 border-y border-neutral-200 py-3 text-xs">
                           {[
@@ -2070,7 +2094,7 @@ export default function CatalogWorkbench({ mode = 'published' }: { mode?: Catalo
                     </p>
                   )}
                   <div className="flex flex-col-reverse gap-3 sm:flex-row sm:items-center sm:justify-between">
-                    <div className="flex items-center gap-2">
+                    <div className="hidden items-center gap-2 md:flex">
                       <button
                         type="button"
                         onClick={() => setActiveTab(catalogTabs[activeTabIndex - 1].id)}
