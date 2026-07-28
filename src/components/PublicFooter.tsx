@@ -30,7 +30,7 @@ export default function PublicFooter({ cmsContent, siteSettings }: PublicFooterP
             <Link href="/" className="flex items-center gap-3 w-fit">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
-                src={siteSettings.logoUrl || '/logo-mark.png'}
+                src="/logo-mark.png"
                 alt="Farsha Studio Logo"
                 className="h-10 w-10 object-contain transition-transform duration-300 hover:scale-105"
               />

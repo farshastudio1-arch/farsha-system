@@ -5,7 +5,6 @@ import {
   AlertTriangle,
   Check,
   Eye,
-  Images,
   MessageCircle,
   Palette,
   Save,
@@ -13,14 +12,9 @@ import {
   Store,
 } from 'lucide-react';
 
-import MediaLibraryPicker from '@/components/admin/MediaLibraryPicker';
 import { KebayaItem, mockKebayas, SiteSettings } from '@/data/mockData';
 import { fetchSiteSettingsAction, saveSiteSettingsAction } from '@/lib/farsha-actions';
-import {
-  applyCatalogCardMode,
-  useSavedSiteSettings,
-  writeSavedSiteSettings,
-} from '@/lib/site-settings';
+import { useSavedSiteSettings, writeSavedSiteSettings } from '@/lib/site-settings';
 
 type TextField = Extract<
   keyof SiteSettings,
@@ -33,8 +27,6 @@ type TextField = Extract<
   | 'instagramUrl'
   | 'tiktokUrl'
   | 'mapsUrl'
-  | 'logoUrl'
-  | 'faviconUrl'
 >;
 
 type BooleanField = Extract<
@@ -53,50 +45,6 @@ type ThemeColorField = Extract<
   keyof SiteSettings,
   'backgroundColor' | 'textColor' | 'primaryColor' | 'accentColor' | 'surfaceColor' | 'borderColor'
 >;
-
-const statusOptions: Array<{
-  value: SiteSettings['status'];
-  label: string;
-  description: string;
-}> = [
-  {
-    value: 'active',
-    label: 'Active',
-    description: 'Public catalog is ready for normal customer browsing.',
-  },
-  {
-    value: 'maintenance',
-    label: 'Maintenance',
-    description: 'Use when catalog data is being cleaned up.',
-  },
-  {
-    value: 'coming-soon',
-    label: 'Coming Soon',
-    description: 'Use before a launch or major catalog refresh.',
-  },
-];
-
-const catalogCardModeOptions: Array<{
-  value: SiteSettings['catalogCardMode'];
-  label: string;
-  description: string;
-}> = [
-  {
-    value: 'minimal',
-    label: 'Minimal',
-    description: 'Image-first browsing with only core availability.',
-  },
-  {
-    value: 'standard',
-    label: 'Standard',
-    description: 'Best default balance for shoppers scanning the catalog.',
-  },
-  {
-    value: 'detailed',
-    label: 'Detailed',
-    description: 'Shows more context before opening product detail.',
-  },
-];
 
 const catalogCardToggleOptions: Array<{
   key: BooleanField;
@@ -231,8 +179,6 @@ function getValidationErrors(settings: SiteSettings) {
     { key: 'instagramUrl', label: 'Instagram URL' },
     { key: 'tiktokUrl', label: 'TikTok URL' },
     { key: 'mapsUrl', label: 'Google Maps URL' },
-    { key: 'logoUrl', label: 'Logo URL' },
-    { key: 'faviconUrl', label: 'Favicon URL' },
   ];
 
   if (!settings.studioName.trim()) {
@@ -518,7 +464,6 @@ export default function SettingsPage() {
   const [isLoadingSettings, setIsLoadingSettings] = useState(true);
   const [isSavingSettings, setIsSavingSettings] = useState(false);
   const [settingsError, setSettingsError] = useState('');
-  const [pickerTarget, setPickerTarget] = useState<'logoUrl' | 'faviconUrl' | null>(null);
   const settings = settingsDraft ?? savedSettings;
   const previewProduct = mockKebayas[0];
 
@@ -557,10 +502,6 @@ export default function SettingsPage() {
     [settings, savedSettings],
   );
   const whatsappReady = cleanPhone(settings.whatsappNumber).length >= 9;
-  const publicStatusTone =
-    settings.status === 'active'
-      ? 'border-emerald-200 bg-emerald-50 text-emerald-700'
-      : 'border-amber-200 bg-amber-50 text-amber-700';
 
   const updateField = <Key extends keyof SiteSettings>(key: Key, value: SiteSettings[Key]) => {
     setSaveState('idle');
@@ -579,11 +520,6 @@ export default function SettingsPage() {
     updateField(key, value);
   };
 
-  const updateCatalogCardMode = (mode: SiteSettings['catalogCardMode']) => {
-    setSaveState('idle');
-    setSettingsDraft((current) => applyCatalogCardMode(current ?? savedSettings, mode));
-  };
-
   const updateColorField =
     (key: ThemeColorField) => (event: ChangeEvent<HTMLInputElement>) => {
       updateField(key, event.target.value);
@@ -591,14 +527,6 @@ export default function SettingsPage() {
 
   const updateBorderRadius = (event: ChangeEvent<HTMLInputElement>) => {
     updateField('borderRadius', Number(event.target.value));
-  };
-
-  const selectLibraryImage = (url: string) => {
-    if (!pickerTarget) {
-      return;
-    }
-
-    updateField(pickerTarget, url);
   };
 
   const saveSettings = async () => {
@@ -613,8 +541,6 @@ export default function SettingsPage() {
 
     const nextSettings: SiteSettings = {
       ...settings,
-      brandColor: settings.textColor,
-      currency: 'IDR',
       updatedAt: new Date().toISOString(),
     };
 
@@ -651,7 +577,7 @@ export default function SettingsPage() {
           </h1>
           <p className="mt-2 max-w-2xl text-sm leading-relaxed text-neutral-500 sm:text-base">
             Settings here affect the catalog experience, saved contact references, and shared theme
-            tokens. Logo and favicon can be selected from the media library.
+            tokens.
           </p>
         </div>
 
@@ -702,14 +628,7 @@ export default function SettingsPage() {
         </div>
       )}
 
-      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-        <div className={`border p-4 shadow-sm ${publicStatusTone}`}>
-          <p className="text-xs font-semibold uppercase tracking-widest">Store status</p>
-          <p className="mt-3 text-2xl font-semibold capitalize tracking-tight">
-            {settings.status.replace('-', ' ')}
-          </p>
-          <p className="mt-2 text-sm opacity-80">Reference for admin readiness checks.</p>
-        </div>
+      <div className="grid gap-3 sm:grid-cols-2">
         <div className="border border-neutral-200 bg-white p-4 shadow-sm">
           <p className="text-xs font-semibold uppercase tracking-widest text-neutral-500">
             WhatsApp
@@ -718,15 +637,6 @@ export default function SettingsPage() {
             {whatsappReady ? settings.whatsappNumber : 'Needs number'}
           </p>
           <p className="mt-2 text-sm text-neutral-500">Used by admin dashboard readiness.</p>
-        </div>
-        <div className="border border-neutral-200 bg-white p-4 shadow-sm">
-          <p className="text-xs font-semibold uppercase tracking-widest text-neutral-500">
-            Catalog mode
-          </p>
-          <p className="mt-3 text-2xl font-semibold capitalize tracking-tight text-neutral-950">
-            {settings.catalogCardMode}
-          </p>
-          <p className="mt-2 text-sm text-neutral-500">Controls public catalog card density.</p>
         </div>
         <div className="border border-neutral-200 bg-white p-4 shadow-sm">
           <p className="text-xs font-semibold uppercase tracking-widest text-neutral-500">
@@ -770,7 +680,7 @@ export default function SettingsPage() {
                   className="w-full border border-neutral-200 bg-neutral-50 px-4 py-2.5 text-sm transition-all focus:bg-white focus:outline-none focus:ring-2 focus:ring-neutral-900"
                 />
               </div>
-	              <div className="md:col-span-2">
+              <div className="md:col-span-2">
                 <label className="mb-1 block text-sm font-semibold text-neutral-700">
                   Tagline
                 </label>
@@ -780,100 +690,7 @@ export default function SettingsPage() {
                   onChange={updateTextField('tagline')}
                   className="w-full resize-none border border-neutral-200 bg-neutral-50 px-4 py-2.5 text-sm transition-all focus:bg-white focus:outline-none focus:ring-2 focus:ring-neutral-900"
                 />
-	              </div>
-	            </div>
-
-            <div className="mt-5 border-t border-neutral-200 pt-5">
-              <h3 className="text-sm font-semibold text-neutral-950">Brand media</h3>
-              <p className="mt-1 text-sm text-neutral-500">
-                Optional image references saved with site settings.
-              </p>
-              <div className="mt-4 grid gap-4 md:grid-cols-2">
-                <div>
-                  <label className="mb-1 block text-sm font-semibold text-neutral-700">
-                    Logo URL
-                  </label>
-                  <div className="flex gap-2">
-                    <input
-                      type="url"
-                      value={settings.logoUrl}
-                      onChange={updateTextField('logoUrl')}
-                      className="min-w-0 flex-1 border border-neutral-200 bg-neutral-50 px-4 py-2.5 text-sm transition-all focus:bg-white focus:outline-none focus:ring-2 focus:ring-neutral-900"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setPickerTarget('logoUrl')}
-                      aria-label="Choose logo from media library"
-                      className="inline-flex shrink-0 items-center justify-center border border-neutral-200 bg-white px-3 text-neutral-500 transition-colors hover:bg-neutral-50 hover:text-neutral-900"
-                    >
-                      <Images className="h-4 w-4" />
-                    </button>
-                  </div>
-                  <FieldError>{validationErrors.logoUrl}</FieldError>
-                  <div className="mt-3 flex h-20 items-center justify-center border border-neutral-200 bg-neutral-50">
-                    {settings.logoUrl && isValidOptionalUrl(settings.logoUrl) ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img src={settings.logoUrl} alt="Logo preview" className="max-h-full max-w-full object-contain" />
-                    ) : (
-                      <span className="text-xs font-semibold text-neutral-400">No logo</span>
-                    )}
-                  </div>
-                </div>
-                <div>
-                  <label className="mb-1 block text-sm font-semibold text-neutral-700">
-                    Favicon URL
-                  </label>
-                  <div className="flex gap-2">
-                    <input
-                      type="url"
-                      value={settings.faviconUrl}
-                      onChange={updateTextField('faviconUrl')}
-                      className="min-w-0 flex-1 border border-neutral-200 bg-neutral-50 px-4 py-2.5 text-sm transition-all focus:bg-white focus:outline-none focus:ring-2 focus:ring-neutral-900"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setPickerTarget('faviconUrl')}
-                      aria-label="Choose favicon from media library"
-                      className="inline-flex shrink-0 items-center justify-center border border-neutral-200 bg-white px-3 text-neutral-500 transition-colors hover:bg-neutral-50 hover:text-neutral-900"
-                    >
-                      <Images className="h-4 w-4" />
-                    </button>
-                  </div>
-                  <FieldError>{validationErrors.faviconUrl}</FieldError>
-                  <div className="mt-3 flex h-20 items-center justify-center border border-neutral-200 bg-neutral-50">
-                    {settings.faviconUrl && isValidOptionalUrl(settings.faviconUrl) ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img src={settings.faviconUrl} alt="Favicon preview" className="h-12 w-12 object-cover" />
-                    ) : (
-                      <span className="text-xs font-semibold text-neutral-400">No favicon</span>
-                    )}
-                  </div>
-                </div>
               </div>
-            </div>
-
-            <div className="mt-5 grid gap-3 md:grid-cols-3">
-              {statusOptions.map((option) => (
-                <button
-                  key={option.value}
-                  type="button"
-                  onClick={() => updateField('status', option.value)}
-                  className={`border p-4 text-left transition-colors ${
-                    settings.status === option.value
-                      ? 'border-neutral-900 bg-neutral-900 text-white'
-                      : 'border-neutral-200 bg-white text-neutral-700 hover:bg-neutral-50'
-                  }`}
-                >
-                  <span className="block text-sm font-semibold">{option.label}</span>
-                  <span
-                    className={`mt-1 block text-xs ${
-                      settings.status === option.value ? 'text-neutral-300' : 'text-neutral-500'
-                    }`}
-                  >
-                    {option.description}
-                  </span>
-                </button>
-              ))}
             </div>
           </SectionPanel>
 
@@ -958,33 +775,7 @@ export default function SettingsPage() {
             description="These controls are wired to the public catalog grid and product cards."
             icon={SlidersHorizontal}
           >
-            <div className="grid gap-4 lg:grid-cols-3">
-              {catalogCardModeOptions.map((option) => (
-                <button
-                  key={option.value}
-                  type="button"
-                  onClick={() => updateCatalogCardMode(option.value)}
-                  className={`border p-4 text-left transition-colors ${
-                    settings.catalogCardMode === option.value
-                      ? 'border-neutral-900 bg-neutral-900 text-white'
-                      : 'border-neutral-200 bg-white text-neutral-700 hover:bg-neutral-50'
-                  }`}
-                >
-                  <span className="block text-sm font-semibold">{option.label}</span>
-                  <span
-                    className={`mt-1 block text-xs ${
-                      settings.catalogCardMode === option.value
-                        ? 'text-neutral-300'
-                        : 'text-neutral-500'
-                    }`}
-                  >
-                    {option.description}
-                  </span>
-                </button>
-              ))}
-            </div>
-
-            <div className="mt-5 grid gap-3 md:grid-cols-2">
+            <div className="grid gap-3 md:grid-cols-2">
               {catalogCardToggleOptions.map((option) => (
                 <ToggleRow
                   key={option.key}
@@ -1108,26 +899,8 @@ export default function SettingsPage() {
 
         <aside className="space-y-5 xl:sticky xl:top-6 xl:self-start">
           <CatalogCardPreview settings={settings} product={previewProduct} />
-
-          <section className="border border-neutral-200 bg-white p-4 shadow-sm">
-            <p className="font-mono text-[10px] font-bold uppercase tracking-widest text-neutral-400">
-              What is wired now
-            </p>
-            <ul className="mt-3 space-y-2 text-sm leading-relaxed text-neutral-600">
-	              <li>Catalog card density, visible fields, and grid defaults are live.</li>
-	              <li>Theme colors and radius are live through the theme provider.</li>
-	              <li>Contact/status values are saved and used by admin readiness surfaces.</li>
-	              <li>Logo and favicon URLs are saved and selectable from the media library.</li>
-	            </ul>
-	          </section>
-	        </aside>
-	      </div>
-      <MediaLibraryPicker
-        open={pickerTarget !== null}
-        title="Choose settings image"
-        onClose={() => setPickerTarget(null)}
-        onSelect={selectLibraryImage}
-      />
-	    </div>
-	  );
-	}
+        </aside>
+      </div>
+    </div>
+  );
+}

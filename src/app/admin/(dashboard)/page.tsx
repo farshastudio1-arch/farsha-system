@@ -2,7 +2,6 @@ import Link from 'next/link';
 import {
   AlertTriangle,
   ArrowUpRight,
-  CheckCircle2,
   FileImage,
   ImageIcon,
   LayoutPanelTop,
@@ -104,10 +103,6 @@ function getCmsIssues(content: CMSContent) {
 
 function getSettingsIssues(settings: SiteSettings) {
   const issues: string[] = [];
-
-  if (settings.status !== 'active') {
-    issues.push(`store ${settings.status}`);
-  }
 
   if (cleanPhone(settings.whatsappNumber).length < 10) {
     issues.push('WhatsApp');
@@ -415,14 +410,6 @@ export default async function AdminDashboard() {
           <div className="space-y-3">
             <div className="border border-neutral-200 p-4">
               <p className="text-xs font-semibold uppercase tracking-widest text-neutral-500">
-                Store status
-              </p>
-              <p className="mt-1 text-sm font-semibold capitalize text-neutral-950">
-                {settings.status.replace('-', ' ')}
-              </p>
-            </div>
-            <div className="border border-neutral-200 p-4">
-              <p className="text-xs font-semibold uppercase tracking-widest text-neutral-500">
                 Public contact
               </p>
               <p className="mt-1 text-sm font-semibold text-neutral-950">
@@ -601,15 +588,6 @@ export default async function AdminDashboard() {
               </div>
               <p className="mt-2 text-xs leading-relaxed text-neutral-500">
                 {cmsContent.heroImageUrl ? 'Configured' : 'Missing'}
-              </p>
-            </div>
-            <div className="border border-neutral-200 p-4">
-              <div className="flex items-center gap-2">
-                <CheckCircle2 className="h-4 w-4 text-neutral-500" />
-                <p className="text-sm font-semibold text-neutral-950">Promo banner</p>
-              </div>
-              <p className="mt-2 text-xs leading-relaxed text-neutral-500">
-                {settings.showPromoBanner ? 'Visible on storefront' : 'Hidden'}
               </p>
             </div>
           </div>

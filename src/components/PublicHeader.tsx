@@ -5,14 +5,12 @@ interface PublicHeaderProps {
   variant?: 'default' | 'catalog';
   showSearchButton?: boolean;
   centerLogoOnMobile?: boolean;
-  logoUrl?: string;
 }
 
 export default function PublicHeader({
   variant = 'default',
   showSearchButton = true,
   centerLogoOnMobile = false,
-  logoUrl,
 }: PublicHeaderProps) {
   const isCatalog = variant === 'catalog';
   const shouldShowSearchButton = isCatalog && showSearchButton;
@@ -27,7 +25,7 @@ export default function PublicHeader({
       ? 'items-center text-center md:items-center md:text-left'
       : 'items-center text-center';
 
-  const logoSrc = logoUrl || '/logo-mark.png';
+  const logoSrc = '/logo-mark.png';
 
   return (
     <header className="theme-surface theme-border sticky top-0 z-40 border-b bg-[color-mix(in_srgb,var(--theme-surface)_88%,transparent)] backdrop-blur-md transition-all duration-300">

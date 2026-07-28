@@ -49,7 +49,7 @@ export default async function Home() {
 
   return (
     <div className="theme-surface flex min-h-screen flex-col font-sans antialiased">
-      <PublicHeader logoUrl={siteSettings.logoUrl} />
+      <PublicHeader />
 
       <main className="flex-grow">
         <section className="landing-hero-satin relative overflow-hidden">

@@ -3,11 +3,7 @@
 import { useEffect, useSyncExternalStore } from 'react';
 
 import { mockSiteSettings, SiteSettings } from '@/data/mockData';
-import {
-  applyCatalogCardMode,
-  catalogCardModePresets,
-  normalizeSiteSettings,
-} from '@/lib/site-settings-normalization';
+import { normalizeSiteSettings } from '@/lib/site-settings-normalization';
 
 const settingsChangeEvent = 'farsha-site-settings-cache-change';
 
@@ -60,4 +56,4 @@ export function useSavedSiteSettings(initialSettings?: SiteSettings) {
   );
 }
 
-export { applyCatalogCardMode, catalogCardModePresets, normalizeSiteSettings };
+export { normalizeSiteSettings };

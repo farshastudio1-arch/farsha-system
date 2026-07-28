@@ -477,11 +477,6 @@ export async function saveSiteSettingsAction(
   try {
     await ensureAdmin();
     await updateSiteSettings(settings);
-    await ensureMediaAssetsForUrls(
-      [settings.logoUrl, settings.faviconUrl].filter(Boolean),
-      'settings',
-      'Site identity image',
-    );
     revalidatePublicAndAdmin();
 
     return { ok: true, data: await getSiteSettings() };

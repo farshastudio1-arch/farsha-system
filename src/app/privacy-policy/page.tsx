@@ -20,7 +20,7 @@ export default async function PrivacyPolicyPage() {
           <Link href="/" className="flex items-center gap-3">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
-              src={siteSettings.logoUrl || '/logo-mark.png'}
+              src="/logo-mark.png"
               alt="Farsha Studio Logo"
               className="h-10 w-10 object-contain"
             />

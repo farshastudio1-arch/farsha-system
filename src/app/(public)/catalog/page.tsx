@@ -30,7 +30,7 @@ export default async function CatalogPage({ searchParams }: CatalogPageProps) {
 
   return (
     <div className="theme-surface min-h-screen flex flex-col font-sans antialiased">
-      <PublicHeader variant="catalog" logoUrl={siteSettings.logoUrl} />
+      <PublicHeader variant="catalog" />
 
       <main className="flex-grow">
         <Catalog

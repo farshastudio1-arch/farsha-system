@@ -1,57 +1,5 @@
 import { mockSiteSettings, SiteSettings } from '@/data/mockData';
 
-export type CatalogCardDisplayOptions = Pick<
-  SiteSettings,
-  | 'showPrices'
-  | 'showAvailabilityBadges'
-  | 'showProductCode'
-  | 'showProductModel'
-  | 'showProductSize'
-  | 'showProductColor'
-  | 'showProductDescription'
-  | 'showCardCta'
->;
-
-export const catalogCardModePresets: Record<
-  SiteSettings['catalogCardMode'],
-  CatalogCardDisplayOptions
-> = {
-  minimal: {
-    showPrices: false,
-    showAvailabilityBadges: true,
-    showProductCode: false,
-    showProductModel: false,
-    showProductSize: false,
-    showProductColor: false,
-    showProductDescription: false,
-    showCardCta: false,
-  },
-  standard: {
-    showPrices: true,
-    showAvailabilityBadges: true,
-    showProductCode: false,
-    showProductModel: true,
-    showProductSize: true,
-    showProductColor: false,
-    showProductDescription: false,
-    showCardCta: false,
-  },
-  detailed: {
-    showPrices: true,
-    showAvailabilityBadges: true,
-    showProductCode: true,
-    showProductModel: true,
-    showProductSize: true,
-    showProductColor: true,
-    showProductDescription: true,
-    showCardCta: true,
-  },
-};
-
-function isCatalogCardMode(value: unknown): value is SiteSettings['catalogCardMode'] {
-  return value === 'minimal' || value === 'standard' || value === 'detailed';
-}
-
 function normalizeHexColor(value: unknown, fallback: string) {
   return typeof value === 'string' && /^#[0-9A-Fa-f]{6}$/.test(value.trim())
     ? value.trim().toUpperCase()
@@ -66,16 +14,9 @@ function normalizeRadius(value: unknown, fallback: number) {
 }
 
 export function normalizeSiteSettings(value: Partial<SiteSettings>): SiteSettings {
-  const catalogCardMode = isCatalogCardMode(value.catalogCardMode)
-    ? value.catalogCardMode
-    : mockSiteSettings.catalogCardMode;
-
   return {
     ...mockSiteSettings,
     ...value,
-    catalogCardMode,
-    currency: 'IDR',
-    brandColor: normalizeHexColor(value.brandColor, mockSiteSettings.brandColor),
     accentColor: normalizeHexColor(value.accentColor, mockSiteSettings.accentColor),
     backgroundColor: normalizeHexColor(value.backgroundColor, mockSiteSettings.backgroundColor),
     textColor: normalizeHexColor(value.textColor, mockSiteSettings.textColor),
@@ -95,16 +36,5 @@ export function normalizeSiteSettings(value: Partial<SiteSettings>): SiteSetting
       value.defaultDesktopGrid === 4
         ? value.defaultDesktopGrid
         : mockSiteSettings.defaultDesktopGrid,
-  };
-}
-
-export function applyCatalogCardMode(
-  settings: SiteSettings,
-  mode: SiteSettings['catalogCardMode'],
-) {
-  return {
-    ...settings,
-    catalogCardMode: mode,
-    ...catalogCardModePresets[mode],
   };
 }

@@ -90,7 +90,6 @@ export interface LandingCategoryContent {
 export interface SiteSettings {
   studioName: string;
   tagline: string;
-  status: 'active' | 'maintenance' | 'coming-soon';
   locationLabel: string;
   whatsappNumber: string;
   email: string;
@@ -98,10 +97,6 @@ export interface SiteSettings {
   instagramUrl: string;
   tiktokUrl: string;
   mapsUrl: string;
-  currency: 'IDR';
-  defaultProductStatus: 'available' | 'rented' | 'maintenance';
-  defaultSort: 'newest' | 'price-low' | 'price-high' | 'featured';
-  catalogCardMode: 'minimal' | 'standard' | 'detailed';
   showPrices: boolean;
   showAvailabilityBadges: boolean;
   showProductCode: boolean;
@@ -112,7 +107,6 @@ export interface SiteSettings {
   showCardCta: boolean;
   defaultMobileGrid: 1 | 2 | 3;
   defaultDesktopGrid: 2 | 3 | 4;
-  brandColor: string;
   accentColor: string;
   backgroundColor: string;
   textColor: string;
@@ -120,16 +114,12 @@ export interface SiteSettings {
   surfaceColor: string;
   borderColor: string;
   borderRadius: number;
-  logoUrl: string;
-  faviconUrl: string;
-  showPromoBanner: boolean;
   updatedAt: string;
 }
 
 export const mockSiteSettings: SiteSettings = {
   studioName: 'Farsha Studio',
   tagline: 'Premium kebaya rental studio',
-  status: 'active',
   locationLabel: 'Jakarta Barat, Indonesia',
   whatsappNumber: '+62 812-3456-7890',
   email: 'hello@farshastudio.com',
@@ -137,10 +127,6 @@ export const mockSiteSettings: SiteSettings = {
   instagramUrl: 'https://instagram.com/farshastudio',
   tiktokUrl: 'https://tiktok.com/@farshastudio',
   mapsUrl: 'https://maps.google.com/?q=Farsha%20Studio%20Jakarta%20Barat',
-  currency: 'IDR',
-  defaultProductStatus: 'available',
-  defaultSort: 'newest',
-  catalogCardMode: 'standard',
   showPrices: true,
   showAvailabilityBadges: true,
   showProductCode: false,
@@ -151,7 +137,6 @@ export const mockSiteSettings: SiteSettings = {
   showCardCta: false,
   defaultMobileGrid: 1,
   defaultDesktopGrid: 3,
-  brandColor: '#111111',
   accentColor: '#111111',
   backgroundColor: '#FFFFFF',
   textColor: '#111111',
@@ -159,9 +144,6 @@ export const mockSiteSettings: SiteSettings = {
   surfaceColor: '#FFFFFF',
   borderColor: '#E5E5E5',
   borderRadius: 0,
-  logoUrl: '/logo.png',
-  faviconUrl: '/logo-mark.png',
-  showPromoBanner: true,
   updatedAt: '2026-06-29T00:00:00.000Z',
 };
 
