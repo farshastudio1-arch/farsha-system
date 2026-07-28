@@ -86,7 +86,7 @@ export default function CatalogReport() {
           <p className="mt-3 text-2xl font-semibold tracking-tight text-neutral-950">
             {formatRupiah(summary.totalIncome)}
           </p>
-          <p className="mt-2 text-sm text-neutral-500">Realized rental cash on costed items</p>
+          <p className="mt-2 text-sm text-neutral-500">Realized rental revenue on costed items</p>
         </div>
         <div
           className={`border p-4 shadow-sm ${

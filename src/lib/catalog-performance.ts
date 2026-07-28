@@ -2,9 +2,9 @@ import type { KebayaItem } from '@/data/mockData';
 import type { PosLedgerState } from '@/lib/pos-ledger';
 
 // Where an item sits on the path from purchase cost to earning its keep.
-// Note: "income" is realized cash collected on rentals, and "profit" here means
-// income has exceeded the item's acquisition cost — it is NOT net profit (it
-// ignores laundry, repairs, and depreciation).
+// Note: "income" is realized rental revenue, and "profit" here means income has
+// exceeded the item's acquisition cost — it is NOT net profit (it ignores
+// laundry, repairs, deposits, and depreciation).
 export type CatalogPerformanceStatus =
   | 'no-cost'
   | 'push-marketing'
@@ -69,22 +69,24 @@ function classify(cost: number | null, income: number): CatalogPerformanceStatus
   return 'push-marketing';
 }
 
-// Sum realized cash per item across the POS ledger (voids excluded).
+function getTransactionIncome(transaction: PosLedgerState['transactions'][number]) {
+  return Math.max(
+    transaction.itemPrice + transaction.penaltyAmount + transaction.adjustmentAmount,
+    0,
+  );
+}
+
+// Sum realized rental revenue per item across the POS ledger (voids excluded).
 function incomeByItemId(ledger: PosLedgerState) {
   const map = new Map<string, { income: number; count: number }>();
 
   for (const transaction of ledger.transactions) {
-    if (transaction.status === 'void') {
+    if (transaction.status === 'void' || transaction.kind !== 'rental') {
       continue;
     }
 
-    const net =
-      transaction.depositReceived +
-      transaction.penaltyAmount +
-      transaction.adjustmentAmount -
-      transaction.refundedAmount;
     const current = map.get(transaction.itemId) ?? { income: 0, count: 0 };
-    current.income += net;
+    current.income += getTransactionIncome(transaction);
     current.count += 1;
     map.set(transaction.itemId, current);
   }
