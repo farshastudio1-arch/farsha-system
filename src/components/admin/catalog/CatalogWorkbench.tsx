@@ -4,6 +4,8 @@ import { ChangeEvent, FormEvent, useMemo, useState } from 'react';
 import {
   AlertTriangle,
   CheckCircle,
+  ChevronLeft,
+  ChevronRight,
   Clock,
   Edit,
   GripVertical,
@@ -418,6 +420,14 @@ const inputCls =
 const selectCls =
   'w-full border border-neutral-200 bg-white px-4 py-2 text-sm outline-none focus:ring-2 focus:ring-neutral-900';
 
+type CatalogTab = 'details' | 'pricing' | 'photos';
+
+const catalogTabs: { id: CatalogTab; step: string; label: string; hint: string }[] = [
+  { id: 'details', step: '01', label: 'Details', hint: 'Identity, categories & story' },
+  { id: 'pricing', step: '02', label: 'Pricing & Fit', hint: 'Rates & measurements' },
+  { id: 'photos', step: '03', label: 'Photos', hint: 'Cover & gallery' },
+];
+
 type CatalogWorkbenchMode = 'published' | 'draft';
 
 export default function CatalogWorkbench({ mode = 'published' }: { mode?: CatalogWorkbenchMode }) {
@@ -438,6 +448,7 @@ export default function CatalogWorkbench({ mode = 'published' }: { mode?: Catalo
   const [coverageFilter, setCoverageFilter] = useState<CoverageFilter>('all');
   const [qualityFilter, setQualityFilter] = useState<'all' | 'issues'>('all');
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState<CatalogTab>('details');
   const [isSaving, setIsSaving] = useState(false);
   const [editingItem, setEditingItem] = useState<KebayaItem | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<KebayaItem | null>(null);
@@ -492,6 +503,7 @@ export default function CatalogWorkbench({ mode = 'published' }: { mode?: Catalo
     setEditingItem(null);
     // New items in the Upcoming section start as drafts.
     setForm({ ...createEmptyForm(codeDate, nextCatalogSequence), published: !isDraftMode });
+    setActiveTab('details');
     setFormError('');
     setImgErrors({});
     setUploadError('');
@@ -508,6 +520,7 @@ export default function CatalogWorkbench({ mode = 'published' }: { mode?: Catalo
 
     setEditingItem(item);
     setForm(itemToForm(item));
+    setActiveTab('details');
     setFormError('');
     setImgErrors({});
     setUploadError('');
@@ -696,16 +709,19 @@ export default function CatalogWorkbench({ mode = 'published' }: { mode?: Catalo
     );
 
     if (!name || !code || !form.color.trim()) {
+      setActiveTab('details');
       setFormError('Name, code, and color are required.');
       return;
     }
 
     if (form.rentalIncludes.length === 0) {
+      setActiveTab('details');
       setFormError('Choose at least one item included in the rent.');
       return;
     }
 
     if (!Number.isFinite(price) || price <= 0) {
+      setActiveTab('pricing');
       setFormError('Rental price must be greater than 0.');
       return;
     }
@@ -714,11 +730,13 @@ export default function CatalogWorkbench({ mode = 'published' }: { mode?: Catalo
       compareAtPrice !== null &&
       (!Number.isFinite(compareAtPrice) || compareAtPrice <= price)
     ) {
+      setActiveTab('pricing');
       setFormError('Before price must be higher than the rental price, or left empty.');
       return;
     }
 
     if (duplicateCode) {
+      setActiveTab('details');
       setFormError('Code already exists. Use a unique inventory code.');
       return;
     }
@@ -803,6 +821,7 @@ export default function CatalogWorkbench({ mode = 'published' }: { mode?: Catalo
   const coverUrl = form.imageUrls.find((url) => url.trim()) ?? '';
   const filledImageCount = form.imageUrls.filter((url) => url.trim()).length;
   const canAddImageSlot = form.imageUrls.length < maxImageSlots;
+  const activeTabIndex = catalogTabs.findIndex((tab) => tab.id === activeTab);
   const editingProjectedItem = editingItem
     ? projectedItems.find((item) => item.id === editingItem.id) ?? null
     : null;
@@ -1259,149 +1278,36 @@ export default function CatalogWorkbench({ mode = 'published' }: { mode?: Catalo
 
       {isModalOpen && (
         <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 p-0 backdrop-blur-sm sm:items-center sm:p-4">
-          <div className="flex max-h-[96vh] w-full max-w-5xl flex-col overflow-hidden bg-white shadow-2xl sm:max-h-[92vh] xl:flex-row">
-            <div className="flex max-h-64 shrink-0 flex-col border-b border-neutral-200 bg-neutral-50 xl:max-h-none xl:w-72 xl:border-b-0 xl:border-r">
-              <div className="hidden aspect-[3/4] w-full overflow-hidden bg-neutral-200 xl:block">
-                {coverUrl ? (
-                  /* eslint-disable-next-line @next/next/no-img-element */
-                  <img src={coverUrl} alt="Cover preview" className="h-full w-full object-cover" />
-                ) : (
-                  <div className="flex h-full flex-col items-center justify-center gap-2 text-neutral-300">
-                    <ImagePlus className="h-10 w-10" />
-                    <span className="text-xs">Cover photo</span>
-                  </div>
-                )}
-              </div>
-
-              <div className="min-h-0 flex-1 overflow-y-auto p-4">
-                <SectionLabel>
-                  Photos ({filledImageCount}/{maxImageSlots})
-                </SectionLabel>
-                <div className="mb-3 space-y-2">
-                  <label
-                    className={`flex w-full items-center justify-center gap-2 border px-3 py-2.5 text-xs font-semibold transition-colors ${
-                      isUploadingImage || filledImageCount >= maxImageSlots
-                        ? 'cursor-not-allowed border-neutral-200 bg-neutral-100 text-neutral-400'
-                        : 'cursor-pointer border-neutral-900 bg-neutral-900 text-white hover:bg-neutral-800'
-                    }`}
-                  >
-                    <ImagePlus className="h-4 w-4" />
-                    {isUploadingImage ? 'Uploading...' : 'Upload photo'}
-                    <input
-                      type="file"
-                      accept={acceptedUploadInput}
-                      disabled={isUploadingImage || filledImageCount >= maxImageSlots}
-                      onChange={uploadImage}
-                      className="sr-only"
-                    />
-                  </label>
-                  <p className="text-[10px] leading-relaxed text-neutral-400">
-                    JPG, PNG, or WebP. Max 5 MB each.
-                  </p>
-                  {uploadError && (
-                    <p className="border border-red-200 bg-red-50 px-2 py-1.5 text-[10px] font-medium text-red-600">
-                      {uploadError}
-                    </p>
-                  )}
-                </div>
-                <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-1">
-                  {form.imageUrls.map((url, index) => (
-                    <div key={index} className="flex items-start gap-2">
-                      <div className="relative h-12 w-12 shrink-0 overflow-hidden border border-neutral-200 bg-neutral-100">
-                        {url.trim() && !imgErrors[index] ? (
-                          /* eslint-disable-next-line @next/next/no-img-element */
-                          <img
-                            src={url}
-                            alt={`Foto ${index + 1}`}
-                            className="h-full w-full object-cover"
-                            onError={() => setImgErrors((prev) => ({ ...prev, [index]: true }))}
-                          />
-                        ) : (
-                          <div className="flex h-full w-full items-center justify-center text-[10px] font-bold text-neutral-300">
-                            {index + 1}
-                          </div>
-                        )}
-                        {index === 0 && (
-                          <div className="absolute bottom-0 left-0 right-0 bg-neutral-900/70 py-0.5 text-center text-[8px] font-bold uppercase tracking-wider text-white">
-                            Cover
-                          </div>
-                        )}
-                      </div>
-
-                      <div className="min-w-0 flex-1">
-                        <input
-                          type="url"
-                          value={url}
-                          onChange={(event) => setImageUrl(index, event.target.value)}
-                          placeholder={`URL foto ${index + 1}`}
-                          className="w-full border border-neutral-200 bg-white px-2 py-1.5 text-xs transition-all focus:border-neutral-400 focus:outline-none focus:ring-1 focus:ring-neutral-900"
-                        />
-                        {imgErrors[index] && url.trim() && (
-                          <p className="mt-0.5 text-[10px] text-red-500">URL tidak valid</p>
-                        )}
-                        <button
-                          type="button"
-                          onClick={() => setPickerTarget(index)}
-                          className="mt-1 inline-flex items-center gap-1.5 border border-neutral-200 bg-neutral-50 px-2 py-1 text-[10px] font-semibold text-neutral-600 transition-colors hover:bg-white hover:text-neutral-900"
-                        >
-                          <Images className="h-3 w-3" />
-                          Choose
-                        </button>
-                      </div>
-
-                      <div className="flex shrink-0 flex-col gap-0.5">
-                        <button
-                          type="button"
-                          onClick={() => moveImage(index, index - 1)}
-                          disabled={index === 0}
-                          aria-label="Pindah ke atas"
-                          className="flex h-5 w-5 items-center justify-center text-neutral-300 transition-colors hover:text-neutral-700 disabled:opacity-20"
-                        >
-                          <GripVertical className="h-3 w-3" />
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => removeImageSlot(index)}
-                          aria-label={`Hapus foto ${index + 1}`}
-                          className="flex h-5 w-5 items-center justify-center text-neutral-300 transition-colors hover:text-red-500"
-                        >
-                          <X className="h-3 w-3" />
-                        </button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-
-                {canAddImageSlot && (
-                  <button
-                    type="button"
-                    onClick={addImageSlot}
-                    className="mt-3 flex w-full items-center justify-center gap-1.5 border border-dashed border-neutral-300 py-2 text-xs font-medium text-neutral-500 transition-colors hover:border-neutral-500 hover:text-neutral-700"
-                  >
-                    <ImagePlus className="h-3.5 w-3.5" />
-                    Add URL field
-                  </button>
-                )}
-                <button
-                  type="button"
-                  onClick={() => setPickerTarget('append')}
-                  className="mt-2 flex w-full items-center justify-center gap-1.5 border border-neutral-200 bg-white py-2 text-xs font-semibold text-neutral-600 transition-colors hover:bg-neutral-50 hover:text-neutral-900"
-                >
-                  <Images className="h-3.5 w-3.5" />
-                  Choose from library
-                </button>
-              </div>
-            </div>
-
+          <div className="flex max-h-[96vh] w-full max-w-5xl flex-col overflow-hidden bg-white shadow-2xl sm:max-h-[92vh]">
             <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
-              <div className="flex items-start justify-between gap-4 border-b border-neutral-200 px-4 py-4 sm:px-6 sm:py-5">
-                <div>
-                  <h2 className="text-lg font-semibold text-neutral-900">
-                    {editingItem ? 'Edit catalog item' : 'Add catalog item'}
-                  </h2>
-                  <p className="mt-1 text-sm text-neutral-500">
-                    Keep this aligned with what shoppers see on catalog cards and product details.
-                  </p>
+              <div className="flex items-start justify-between gap-4 border-b border-neutral-200 bg-white px-4 py-4 sm:px-6 sm:py-5">
+                <div className="flex min-w-0 items-center gap-3 sm:gap-4">
+                  <div className="hidden h-14 w-11 shrink-0 overflow-hidden border border-neutral-200 bg-neutral-100 sm:block">
+                    {coverUrl ? (
+                      /* eslint-disable-next-line @next/next/no-img-element */
+                      <img
+                        src={coverUrl}
+                        alt="Cover preview"
+                        className="h-full w-full object-cover"
+                      />
+                    ) : (
+                      <div className="flex h-full w-full items-center justify-center text-neutral-300">
+                        <ImagePlus className="h-4 w-4" />
+                      </div>
+                    )}
+                  </div>
+                  <div className="min-w-0">
+                    <p className="font-mono text-[10px] font-bold uppercase tracking-widest text-neutral-400">
+                      {editingItem
+                        ? `Editing / ${editingItem.code}`
+                        : isDraftMode
+                          ? 'New draft'
+                          : 'New item'}
+                    </p>
+                    <h2 className="mt-1 truncate text-lg font-semibold text-neutral-900">
+                      {editingItem ? 'Edit catalog item' : 'Add catalog item'}
+                    </h2>
+                  </div>
                 </div>
                 <button
                   type="button"
@@ -1411,6 +1317,57 @@ export default function CatalogWorkbench({ mode = 'published' }: { mode?: Catalo
                 >
                   <X className="h-5 w-5" />
                 </button>
+              </div>
+
+              <div className="flex shrink-0 items-stretch gap-1 overflow-x-auto border-b border-neutral-200 bg-neutral-50 px-2 sm:px-4">
+                {catalogTabs.map((tab) => {
+                  const isActive = activeTab === tab.id;
+                  const filledCount = tab.id === 'photos' ? filledImageCount : 0;
+
+                  return (
+                    <button
+                      key={tab.id}
+                      type="button"
+                      onClick={() => setActiveTab(tab.id)}
+                      className={`relative flex shrink-0 items-center gap-2.5 border-b-2 px-2 py-3 text-left transition-colors sm:px-3 ${
+                        isActive
+                          ? 'border-neutral-900'
+                          : 'border-transparent hover:border-neutral-300'
+                      }`}
+                    >
+                      <span
+                        className={`flex h-6 w-6 shrink-0 items-center justify-center font-mono text-[10px] font-bold transition-colors ${
+                          isActive
+                            ? 'bg-neutral-900 text-white'
+                            : 'bg-neutral-200 text-neutral-500'
+                        }`}
+                      >
+                        {tab.step}
+                      </span>
+                      <span className="flex flex-col leading-tight">
+                        <span
+                          className={`text-sm font-semibold ${
+                            isActive ? 'text-neutral-900' : 'text-neutral-500'
+                          }`}
+                        >
+                          {tab.label}
+                          {tab.id === 'photos' && filledCount > 0 && (
+                            <span
+                              className={`ml-1.5 font-mono text-[10px] ${
+                                isActive ? 'text-neutral-500' : 'text-neutral-400'
+                              }`}
+                            >
+                              {filledCount}
+                            </span>
+                          )}
+                        </span>
+                        <span className="hidden text-[10px] font-medium text-neutral-400 lg:block">
+                          {tab.hint}
+                        </span>
+                      </span>
+                    </button>
+                  );
+                })}
               </div>
 
               <form onSubmit={saveItem} className="flex min-h-0 flex-1 flex-col overflow-hidden">
@@ -1429,10 +1386,11 @@ export default function CatalogWorkbench({ mode = 'published' }: { mode?: Catalo
                       </div>
                     </div>
                   )}
-                  <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_280px]">
-                    <div className="space-y-5">
+                  <div className={`flex flex-col gap-6 ${activeTab === 'photos' ? '' : 'xl:flex-row'}`}>
+                    <div className="min-w-0 flex-1 space-y-5">
+                      {activeTab === 'details' && (
                       <section className="border border-neutral-200 bg-white p-4">
-                        <SectionLabel>1. Product identity</SectionLabel>
+                        <SectionLabel>Product identity</SectionLabel>
                         <div className="grid gap-4 md:grid-cols-2">
                           <FieldLabel label="Name">
                             <input
@@ -1713,9 +1671,11 @@ export default function CatalogWorkbench({ mode = 'published' }: { mode?: Catalo
                           </div>
                         </div>
                       </section>
+                      )}
 
+                      {activeTab === 'pricing' && (
                       <section className="border border-neutral-200 bg-white p-4">
-                        <SectionLabel>2. Pricing</SectionLabel>
+                        <SectionLabel>Pricing</SectionLabel>
                         <p className="mb-4 text-sm text-neutral-500">
                           Admin controls the rental price here.
                         </p>
@@ -1796,11 +1756,13 @@ export default function CatalogWorkbench({ mode = 'published' }: { mode?: Catalo
                           </FieldLabel>
                         </div>
                       </section>
+                      )}
 
+                      {activeTab === 'pricing' && (
                       <section className="border border-neutral-200 bg-white p-4">
                         <div className="flex flex-col gap-1 border-b border-neutral-200 pb-3 sm:flex-row sm:items-end sm:justify-between">
                           <div>
-                            <SectionLabel>3. Detail ukuran</SectionLabel>
+                            <SectionLabel>Detail ukuran</SectionLabel>
                             <p className="text-sm text-neutral-500">
                               These values appear inside the public product detail modal.
                             </p>
@@ -1880,9 +1842,11 @@ export default function CatalogWorkbench({ mode = 'published' }: { mode?: Catalo
                           </div>
                         </div>
                       </section>
+                      )}
 
+                      {activeTab === 'details' && (
                       <section className="border border-neutral-200 bg-white p-4">
-                        <SectionLabel>4. Product story</SectionLabel>
+                        <SectionLabel>Product story</SectionLabel>
                         <textarea
                           rows={4}
                           value={form.description}
@@ -1891,9 +1855,149 @@ export default function CatalogWorkbench({ mode = 'published' }: { mode?: Catalo
                           className={`${inputCls} resize-none`}
                         />
                       </section>
+                      )}
+
+                      {activeTab === 'photos' && (
+                        <section className="border border-neutral-200 bg-white p-4">
+                          <div className="flex flex-col gap-3 border-b border-neutral-200 pb-4 sm:flex-row sm:items-end sm:justify-between">
+                            <div>
+                              <SectionLabel>
+                                Photos ({filledImageCount}/{maxImageSlots})
+                              </SectionLabel>
+                              <p className="text-sm text-neutral-500">
+                                First photo is the cover. Reorder to control the public gallery.
+                              </p>
+                            </div>
+                            <div className="flex flex-wrap gap-2">
+                              <label
+                                className={`inline-flex items-center justify-center gap-2 border px-3 py-2 text-xs font-semibold transition-colors ${
+                                  isUploadingImage || filledImageCount >= maxImageSlots
+                                    ? 'cursor-not-allowed border-neutral-200 bg-neutral-100 text-neutral-400'
+                                    : 'cursor-pointer border-neutral-900 bg-neutral-900 text-white hover:bg-neutral-800'
+                                }`}
+                              >
+                                <ImagePlus className="h-4 w-4" />
+                                {isUploadingImage ? 'Uploading...' : 'Upload photo'}
+                                <input
+                                  type="file"
+                                  accept={acceptedUploadInput}
+                                  disabled={isUploadingImage || filledImageCount >= maxImageSlots}
+                                  onChange={uploadImage}
+                                  className="sr-only"
+                                />
+                              </label>
+                              <button
+                                type="button"
+                                onClick={() => setPickerTarget('append')}
+                                className="inline-flex items-center justify-center gap-2 border border-neutral-200 bg-white px-3 py-2 text-xs font-semibold text-neutral-600 transition-colors hover:bg-neutral-50 hover:text-neutral-900"
+                              >
+                                <Images className="h-4 w-4" />
+                                From library
+                              </button>
+                            </div>
+                          </div>
+
+                          <p className="mt-3 text-[10px] leading-relaxed text-neutral-400">
+                            JPG, PNG, or WebP. Max 5 MB each.
+                          </p>
+                          {uploadError && (
+                            <p className="mt-2 border border-red-200 bg-red-50 px-2 py-1.5 text-[10px] font-medium text-red-600">
+                              {uploadError}
+                            </p>
+                          )}
+
+                          <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+                            {form.imageUrls.map((url, index) => (
+                              <div key={index} className="group flex flex-col gap-1.5">
+                                <div className="relative aspect-[3/4] overflow-hidden border border-neutral-200 bg-neutral-100">
+                                  {url.trim() && !imgErrors[index] ? (
+                                    /* eslint-disable-next-line @next/next/no-img-element */
+                                    <img
+                                      src={url}
+                                      alt={`Foto ${index + 1}`}
+                                      className="h-full w-full object-cover"
+                                      onError={() =>
+                                        setImgErrors((prev) => ({ ...prev, [index]: true }))
+                                      }
+                                    />
+                                  ) : (
+                                    <div className="flex h-full w-full flex-col items-center justify-center gap-1 text-neutral-300">
+                                      <ImagePlus className="h-5 w-5" />
+                                      <span className="font-mono text-[10px] font-bold">
+                                        {index + 1}
+                                      </span>
+                                    </div>
+                                  )}
+
+                                  {index === 0 ? (
+                                    <span className="absolute left-0 top-0 bg-neutral-900 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-white">
+                                      Cover
+                                    </span>
+                                  ) : (
+                                    <span className="absolute left-0 top-0 bg-neutral-900/70 px-1.5 py-0.5 font-mono text-[9px] font-bold text-white">
+                                      {index + 1}
+                                    </span>
+                                  )}
+
+                                  <div className="absolute right-1 top-1 flex gap-1">
+                                    <button
+                                      type="button"
+                                      onClick={() => moveImage(index, index - 1)}
+                                      disabled={index === 0}
+                                      aria-label="Pindahkan lebih awal"
+                                      className="flex h-6 w-6 items-center justify-center bg-white/90 text-neutral-600 shadow-sm transition-colors hover:bg-white hover:text-neutral-900 disabled:cursor-not-allowed disabled:opacity-30"
+                                    >
+                                      <GripVertical className="h-3.5 w-3.5" />
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={() => removeImageSlot(index)}
+                                      aria-label={`Hapus foto ${index + 1}`}
+                                      className="flex h-6 w-6 items-center justify-center bg-white/90 text-neutral-600 shadow-sm transition-colors hover:bg-red-50 hover:text-red-600"
+                                    >
+                                      <X className="h-3.5 w-3.5" />
+                                    </button>
+                                  </div>
+                                </div>
+
+                                <input
+                                  type="url"
+                                  value={url}
+                                  onChange={(event) => setImageUrl(index, event.target.value)}
+                                  placeholder={`URL foto ${index + 1}`}
+                                  className="w-full border border-neutral-200 bg-white px-2 py-1.5 text-xs transition-all focus:border-neutral-400 focus:outline-none focus:ring-1 focus:ring-neutral-900"
+                                />
+                                {imgErrors[index] && url.trim() && (
+                                  <p className="text-[10px] text-red-500">URL tidak valid</p>
+                                )}
+                                <button
+                                  type="button"
+                                  onClick={() => setPickerTarget(index)}
+                                  className="inline-flex items-center justify-center gap-1.5 border border-neutral-200 bg-neutral-50 px-2 py-1 text-[10px] font-semibold text-neutral-600 transition-colors hover:bg-white hover:text-neutral-900"
+                                >
+                                  <Images className="h-3 w-3" />
+                                  Choose
+                                </button>
+                              </div>
+                            ))}
+
+                            {canAddImageSlot && (
+                              <button
+                                type="button"
+                                onClick={addImageSlot}
+                                className="flex aspect-[3/4] flex-col items-center justify-center gap-1.5 border border-dashed border-neutral-300 text-xs font-medium text-neutral-500 transition-colors hover:border-neutral-500 hover:text-neutral-700"
+                              >
+                                <ImagePlus className="h-5 w-5" />
+                                Add URL field
+                              </button>
+                            )}
+                          </div>
+                        </section>
+                      )}
                     </div>
 
-                    <aside className="hidden self-start border border-neutral-200 bg-neutral-50 p-4 xl:block">
+                    {activeTab !== 'photos' && (
+                    <aside className="hidden self-start border border-neutral-200 bg-neutral-50 p-4 xl:block xl:w-[280px] xl:shrink-0">
                       <SectionLabel>Public detail preview</SectionLabel>
                       <div className="space-y-3">
                         <div>
@@ -1955,29 +2059,57 @@ export default function CatalogWorkbench({ mode = 'published' }: { mode?: Catalo
                         </div>
                       </div>
                     </aside>
+                    )}
                   </div>
                 </div>
 
-                <div className="border-t border-neutral-200 px-4 py-4 sm:px-6">
+                <div className="border-t border-neutral-200 bg-white px-4 py-4 sm:px-6">
                   {formError && (
-                    <p className="mb-3 text-sm font-medium text-red-600">{formError}</p>
+                    <p className="mb-3 border border-red-200 bg-red-50 px-3 py-2 text-sm font-medium text-red-600">
+                      {formError}
+                    </p>
                   )}
-                  <div className="grid grid-cols-2 gap-3 sm:flex sm:justify-end">
-                    <button
-                      type="button"
-                      onClick={closeModal}
-                      disabled={isSaving}
-                      className="border border-neutral-200 bg-white px-4 py-2.5 text-sm font-semibold text-neutral-700 transition-colors hover:bg-neutral-50"
-                    >
-                      Cancel
-                    </button>
-                    <button
-                      type="submit"
-                      disabled={isSaving}
-                      className="bg-neutral-900 px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-neutral-800 disabled:cursor-not-allowed disabled:opacity-50"
-                    >
-                      {isSaving ? 'Saving to database...' : editingItem ? 'Save item' : 'Add item'}
-                    </button>
+                  <div className="flex flex-col-reverse gap-3 sm:flex-row sm:items-center sm:justify-between">
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setActiveTab(catalogTabs[activeTabIndex - 1].id)}
+                        disabled={activeTabIndex === 0}
+                        className="inline-flex items-center gap-1.5 border border-neutral-200 bg-white px-3 py-2.5 text-sm font-semibold text-neutral-600 transition-colors hover:bg-neutral-50 hover:text-neutral-900 disabled:cursor-not-allowed disabled:opacity-40"
+                      >
+                        <ChevronLeft className="h-4 w-4" />
+                        Back
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setActiveTab(catalogTabs[activeTabIndex + 1].id)}
+                        disabled={activeTabIndex === catalogTabs.length - 1}
+                        className="inline-flex items-center gap-1.5 border border-neutral-200 bg-white px-3 py-2.5 text-sm font-semibold text-neutral-600 transition-colors hover:bg-neutral-50 hover:text-neutral-900 disabled:cursor-not-allowed disabled:opacity-40"
+                      >
+                        Next
+                        <ChevronRight className="h-4 w-4" />
+                      </button>
+                      <span className="hidden font-mono text-[10px] font-bold uppercase tracking-widest text-neutral-400 sm:block">
+                        Step {activeTabIndex + 1} / {catalogTabs.length}
+                      </span>
+                    </div>
+                    <div className="grid grid-cols-2 gap-3 sm:flex sm:justify-end">
+                      <button
+                        type="button"
+                        onClick={closeModal}
+                        disabled={isSaving}
+                        className="border border-neutral-200 bg-white px-4 py-2.5 text-sm font-semibold text-neutral-700 transition-colors hover:bg-neutral-50"
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        type="submit"
+                        disabled={isSaving}
+                        className="bg-neutral-900 px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-neutral-800 disabled:cursor-not-allowed disabled:opacity-50"
+                      >
+                        {isSaving ? 'Saving...' : editingItem ? 'Save item' : 'Add item'}
+                      </button>
+                    </div>
                   </div>
                 </div>
               </form>
