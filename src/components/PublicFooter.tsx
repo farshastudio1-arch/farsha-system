@@ -62,6 +62,11 @@ export default function PublicFooter({ cmsContent, siteSettings }: PublicFooterP
                   </Link>
                 </li>
                 <li>
+                  <Link href="/blog" className="text-[var(--theme-text)] hover:text-neutral-500 transition-colors font-medium">
+                    Blog
+                  </Link>
+                </li>
+                <li>
                   <a
                     href={waMuaHref}
                     target="_blank"
