@@ -50,20 +50,25 @@ export default function PublicFooter({ cmsContent, siteSettings }: PublicFooterP
 
           {/* Links Grid */}
           <div className="lg:col-span-7 grid grid-cols-3 gap-8">
-            {/* Catalog */}
+            {/* Links */}
             <div className="space-y-3.5">
               <h4 className="font-mono text-[10px] font-bold uppercase tracking-[0.2em] text-[color-mix(in_srgb,var(--theme-text)_60%,transparent)]">
-                Katalog
+                Links
               </h4>
               <ul className="space-y-2.5 text-xs sm:text-sm">
                 <li>
-                  <Link href="/catalog?view=all" className="text-[var(--theme-text)] hover:text-neutral-500 transition-colors font-medium">
-                    Semua Koleksi
+                  <Link href="#" className="text-[var(--theme-text)] hover:text-neutral-500 transition-colors font-medium">
+                    About
                   </Link>
                 </li>
                 <li>
                   <Link href="/blog" className="text-[var(--theme-text)] hover:text-neutral-500 transition-colors font-medium">
                     Blog
+                  </Link>
+                </li>
+                <li>
+                  <Link href="#" className="text-[var(--theme-text)] hover:text-neutral-500 transition-colors font-medium">
+                    FAQs
                   </Link>
                 </li>
                 <li>
@@ -136,6 +141,17 @@ export default function PublicFooter({ cmsContent, siteSettings }: PublicFooterP
                     className="group inline-flex items-center gap-1 text-[var(--theme-text)] hover:text-neutral-500 transition-colors font-medium"
                   >
                     Instagram
+                    <span className="text-[10px] text-neutral-400 group-hover:text-neutral-500 transition-colors">↗</span>
+                  </a>
+                </li>
+                <li>
+                  <a
+                    href="#"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="group inline-flex items-center gap-1 text-[var(--theme-text)] hover:text-neutral-500 transition-colors font-medium"
+                  >
+                    Threads
                     <span className="text-[10px] text-neutral-400 group-hover:text-neutral-500 transition-colors">↗</span>
                   </a>
                 </li>
