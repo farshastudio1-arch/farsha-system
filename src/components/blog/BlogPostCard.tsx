@@ -3,8 +3,8 @@ import Link from 'next/link';
 import type { PublicBlogListItem } from '@/lib/blog-db';
 import { formatBlogDate } from '@/lib/blog-format';
 
-// Image-led feed card — cover, title, excerpt, author avatar + name, date,
-// reading time. Shared by the server-rendered first page and the client
+// Image-led feed card — author byline on top, then a wide 16:9 cover, title,
+// and excerpt. Shared by the server-rendered first page and the client
 // "Load more" batches, so it stays free of client-only APIs.
 export default function BlogPostCard({ post }: { post: PublicBlogListItem }) {
   return (
@@ -12,7 +12,26 @@ export default function BlogPostCard({ post }: { post: PublicBlogListItem }) {
       href={`/blog/${post.slug}`}
       className="group flex flex-col overflow-hidden border border-[var(--theme-border)] bg-[var(--theme-surface)] transition-colors hover:border-[color-mix(in_srgb,var(--theme-text)_40%,transparent)]"
     >
-      <div className="aspect-[4/3] overflow-hidden bg-[color-mix(in_srgb,var(--theme-text)_6%,transparent)]">
+      <div className="flex items-center gap-3 px-5 pt-5 pb-4">
+        {post.authorAvatarUrl ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={post.authorAvatarUrl}
+            alt=""
+            className="h-8 w-8 rounded-full object-cover"
+          />
+        ) : null}
+        <div className="min-w-0 text-xs text-[color-mix(in_srgb,var(--theme-text)_60%,transparent)]">
+          {post.authorName ? (
+            <p className="truncate font-medium text-[var(--theme-text)]">{post.authorName}</p>
+          ) : null}
+          <p>
+            {formatBlogDate(post.publishedAt)} · {post.readingTimeMinutes} min baca
+          </p>
+        </div>
+      </div>
+
+      <div className="aspect-[16/9] overflow-hidden bg-[color-mix(in_srgb,var(--theme-text)_6%,transparent)]">
         {post.coverUrl ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img
@@ -33,25 +52,6 @@ export default function BlogPostCard({ post }: { post: PublicBlogListItem }) {
             {post.excerpt}
           </p>
         ) : null}
-
-        <div className="mt-4 flex items-center gap-3 pt-4">
-          {post.authorAvatarUrl ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              src={post.authorAvatarUrl}
-              alt=""
-              className="h-8 w-8 rounded-full object-cover"
-            />
-          ) : null}
-          <div className="min-w-0 text-xs text-[color-mix(in_srgb,var(--theme-text)_60%,transparent)]">
-            {post.authorName ? (
-              <p className="truncate font-medium text-[var(--theme-text)]">{post.authorName}</p>
-            ) : null}
-            <p>
-              {formatBlogDate(post.publishedAt)} · {post.readingTimeMinutes} min baca
-            </p>
-          </div>
-        </div>
       </div>
     </Link>
   );
