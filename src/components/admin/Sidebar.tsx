@@ -35,11 +35,11 @@ const navItems: NavEntry[] = [
       { name: 'Report', href: '/admin/catalog/report' },
     ],
   },
-  { name: 'CMS', href: '/admin/cms', icon: FileText },
-  { name: 'Blog', href: '/admin/blog', icon: Newspaper },
   { name: 'Media', href: '/admin/media', icon: Images },
-  { name: 'Marketing', href: '/admin/marketing', icon: Megaphone },
+  { name: 'Blog', href: '/admin/blog', icon: Newspaper },
   { name: 'Name Generator', href: '/admin/name-generator', icon: Sparkles },
+  { name: 'Marketing', href: '/admin/marketing', icon: Megaphone },
+  { name: 'CMS', href: '/admin/cms', icon: FileText },
   { name: 'Settings', href: '/admin/settings', icon: Settings },
 ];
 
