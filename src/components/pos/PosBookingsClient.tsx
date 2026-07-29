@@ -129,6 +129,7 @@ type ManualBookingForm = {
   deliveryAddress: string;
   paymentReference: string;
   notes: string;
+  isPartner: boolean;
 };
 
 const queueFilters: Array<{ value: QueueFilter; label: string }> = [
@@ -230,6 +231,7 @@ function createEmptyManualBookingForm(itemId: string): ManualBookingForm {
     deliveryAddress: '',
     paymentReference: '',
     notes: '',
+    isPartner: false,
   };
 }
 
@@ -557,11 +559,9 @@ export default function PosBookingsClient({
     ? getDayDifference(manualDefaultReturnDueDate, manualReturnDueDate)
     : 0;
   const manualExtraReturnFee = manualExtraReturnDays * 100000;
-  const manualDpTotal = 100000;
-  const manualInstagramDiscount = manualBookingForm.customerInstagram.trim()
-    ? Math.round(manualDpTotal * 0.1)
-    : 0;
-  const manualPayNowTotal = Math.max(manualDpTotal - manualInstagramDiscount, 0);
+  // Partner bookings carry no booking fee; the server enforces DP = 0 as well.
+  const manualDpTotal = manualBookingForm.isPartner ? 0 : 100000;
+  const manualPayNowTotal = Math.max(manualDpTotal, 0);
   const manualRentalEstimateTotal = (manualBookingItem?.rentalPrice ?? 0) + manualExtraReturnFee;
 
   const documentHistoryCounts = useMemo(
@@ -685,8 +685,8 @@ export default function PosBookingsClient({
           notes: manualBookingForm.notes,
           source: 'whatsapp',
           status: 'requested',
+          isPartner: manualBookingForm.isPartner,
           dpPerItem: manualDpTotal,
-          instagramDiscountAmount: manualInstagramDiscount,
           extraReturnFeeTotal: manualExtraReturnFee,
           rentalEstimateTotal: manualRentalEstimateTotal,
           paymentReference: manualBookingForm.paymentReference,
@@ -1205,9 +1205,25 @@ export default function PosBookingsClient({
                   <input
                     value={manualBookingForm.customerInstagram}
                     onChange={(event) => updateManualBookingForm('customerInstagram', event.target.value)}
-                    placeholder="Opsional, diskon Biaya Booking 10%"
+                    placeholder="@username (opsional)"
                     className="min-h-12 w-full border border-neutral-200 bg-white px-3 text-sm text-neutral-900 outline-none focus:border-neutral-900"
                   />
+                </label>
+
+                <label className="flex items-start gap-3 border border-neutral-200 bg-white p-3 md:col-span-2">
+                  <input
+                    type="checkbox"
+                    checked={manualBookingForm.isPartner}
+                    onChange={(event) => updateManualBookingForm('isPartner', event.target.checked)}
+                    className="mt-0.5 h-4 w-4"
+                  />
+                  <span className="space-y-0.5 text-sm">
+                    <span className="block font-semibold text-neutral-900">Booking partner (tanpa biaya booking)</span>
+                    <span className="block text-xs text-neutral-500">
+                      Biaya booking Rp0 dan kalender langsung terkunci. Sewa &amp; deposit di-nol-kan
+                      manual saat transaksi POS, dan ambil foto ID &amp; wajah partner saat pickup.
+                    </span>
+                  </span>
                 </label>
 
                 <div className="space-y-1.5">
@@ -1327,14 +1343,16 @@ export default function PosBookingsClient({
                       <span>Biaya Booking</span>
                       <strong className="text-neutral-950">{formatCurrency(manualDpTotal)}</strong>
                     </div>
-                    <div className="flex justify-between gap-3">
-                      <span>Diskon Instagram</span>
-                      <strong className="text-neutral-950">-{formatCurrency(manualInstagramDiscount)}</strong>
-                    </div>
                     <div className="flex justify-between gap-3 border-t border-neutral-200 pt-2">
                       <span>Biaya Booking dibayar</span>
                       <strong className="text-neutral-950">{formatCurrency(manualPayNowTotal)}</strong>
                     </div>
+                    {manualBookingForm.isPartner && (
+                      <p className="text-xs font-medium text-emerald-700">
+                        Booking partner: biaya booking Rp0, kalender langsung terkunci. Ambil foto ID
+                        &amp; wajah saat pickup di POS.
+                      </p>
+                    )}
                     <div className="flex justify-between gap-3 text-xs">
                       <span>Estimasi sewa</span>
                       <strong className="text-neutral-950">{formatCurrency(manualRentalEstimateTotal)}</strong>
@@ -2038,10 +2056,12 @@ export default function PosBookingsClient({
                     <span>Subtotal Biaya Booking</span>
                     <strong>{formatCurrency(documentData.subtotalAmount)}</strong>
                   </div>
-                  <div className="mt-2 flex justify-between gap-3">
-                    <span>Diskon Instagram</span>
-                    <strong>-{formatCurrency(documentData.discountAmount)}</strong>
-                  </div>
+                  {documentData.discountAmount > 0 && (
+                    <div className="mt-2 flex justify-between gap-3">
+                      <span>Diskon Instagram</span>
+                      <strong>-{formatCurrency(documentData.discountAmount)}</strong>
+                    </div>
+                  )}
                   <div className="mt-3 flex justify-between gap-3 border-t border-neutral-200 pt-3 text-base">
                     <span className="font-semibold">{documentKind === 'receipt' ? 'Biaya Booking diterima' : 'Total Biaya Booking'}</span>
                     <strong>{formatCurrency(documentData.totalAmount)}</strong>

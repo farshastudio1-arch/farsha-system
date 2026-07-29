@@ -21,7 +21,6 @@ type PublicBookingPayload = {
   deliveryAddress?: unknown;
   notes?: unknown;
   dpPerItem?: unknown;
-  instagramDiscountAmount?: unknown;
   extraReturnFeeTotal?: unknown;
   rentalEstimateTotal?: unknown;
 };
@@ -52,7 +51,6 @@ export async function POST(request: Request) {
       source: 'catalog',
       status: 'requested',
       dpPerItem: Number(body.dpPerItem),
-      instagramDiscountAmount: Number(body.instagramDiscountAmount),
       extraReturnFeeTotal: Number(body.extraReturnFeeTotal),
       rentalEstimateTotal: Number(body.rentalEstimateTotal),
     });

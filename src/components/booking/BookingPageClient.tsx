@@ -144,9 +144,8 @@ export default function BookingPageClient({
   const extraReturnFee = extraReturnDays * previewExtraReturnDayFee * selectedItems.length;
   const rentalSubtotal = selectedItems.reduce((sum, item) => sum + item.rentalPrice, 0);
   const dpTotal = previewDpAmount * selectedItems.length;
-  const instagramDpDiscount = customerInstagram.trim() ? Math.round(dpTotal * 0.1) : 0;
   const estimatedRentalTotal = Math.max(rentalSubtotal + extraReturnFee, 0);
-  const payNowTotal = Math.max(dpTotal - instagramDpDiscount, 0);
+  const payNowTotal = Math.max(dpTotal, 0);
   const orderConfirmationKey = [
     bookingDates?.pickupDate ?? '',
     bookingDates?.eventDate ?? '',
@@ -279,7 +278,6 @@ export default function BookingPageClient({
           deliveryAddress,
           notes,
           dpPerItem: previewDpAmount,
-          instagramDiscountAmount: instagramDpDiscount,
           extraReturnFeeTotal: extraReturnFee,
           rentalEstimateTotal: estimatedRentalTotal,
         }),
@@ -639,7 +637,7 @@ export default function BookingPageClient({
                         <input
                           value={customerInstagram}
                           onChange={(event) => setCustomerInstagram(event.target.value)}
-                          placeholder="Diskon biaya booking 10%"
+                          placeholder="@username (opsional)"
                           className="w-full border theme-border bg-white px-4 py-3 text-sm focus:outline-none focus:ring-1 focus:ring-neutral-900"
                         />
                       </label>
@@ -693,10 +691,6 @@ export default function BookingPageClient({
                     <div className="flex justify-between gap-4">
                       <span>Biaya Booking ({selectedItems.length} item)</span>
                       <strong>{formatCurrency(dpTotal)}</strong>
-                    </div>
-                    <div className="flex justify-between gap-4">
-                      <span>Diskon Instagram</span>
-                      <strong>-{formatCurrency(instagramDpDiscount)}</strong>
                     </div>
                     <div className="border-t border-neutral-200 pt-2">
                       <div className="flex justify-between gap-4 font-semibold text-neutral-950">

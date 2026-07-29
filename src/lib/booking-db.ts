@@ -53,8 +53,8 @@ export type CreateBookingInput = {
   notes?: string;
   source?: BookingSource;
   status?: Extract<BookingStatus, 'requested' | 'payment_submitted'>;
+  isPartner?: boolean;
   dpPerItem?: number;
-  instagramDiscountAmount?: number;
   extraReturnFeeTotal?: number;
   rentalEstimateTotal?: number;
   paymentReference?: string;
@@ -79,6 +79,7 @@ export type BookingQueueRow = {
   instagramDiscountAmount: number;
   extraReturnFeeTotal: number;
   rentalEstimateTotal: number;
+  isPartner: boolean;
   createdAt: string;
   updatedAt: string;
   itemCount: number;
@@ -801,9 +802,14 @@ export async function createBooking(input: CreateBookingInput) {
 
   const bookingId = createId('booking');
   const bookingNumber = makeBookingNumber(dates.pickupDate);
-  const dpPerItem = normalizeAmount(input.dpPerItem, defaultDpPerItem);
+  const isPartner = input.isPartner === true;
+  // Partner bookings carry no booking fee (DP). The waived deposit is covered by
+  // capturing the partner's ID + photo at POS pickup instead.
+  const dpPerItem = isPartner ? 0 : normalizeAmount(input.dpPerItem, defaultDpPerItem);
   const dpTotal = dpPerItem * items.length;
-  const instagramDiscountAmount = normalizeAmount(input.instagramDiscountAmount);
+  // The Instagram discount was removed; the column is retained (always 0) so
+  // historical bookings keep their recorded discount without a destructive migration.
+  const instagramDiscountAmount = 0;
   const extraReturnDays = getDayDifference(addDays(dates.pickupDate, 2), dates.returnDueDate);
   const extraReturnFeeTotal =
     input.extraReturnFeeTotal !== undefined
@@ -814,7 +820,18 @@ export async function createBooking(input: CreateBookingInput) {
       ? normalizeAmount(input.rentalEstimateTotal)
       : items.reduce((sum, item) => sum + item.rental_price, 0) + extraReturnFeeTotal;
   const paymentId = createId('booking-payment');
-  const status = input.status === 'payment_submitted' ? 'payment_submitted' : 'requested';
+  // Partner bookings have no payment lifecycle: they are created already confirmed
+  // so they block the calendar immediately (the whole reason partners must book here).
+  const status: BookingStatus = isPartner
+    ? 'dp_confirmed'
+    : input.status === 'payment_submitted'
+      ? 'payment_submitted'
+      : 'requested';
+  const paymentStatus = isPartner
+    ? 'verified'
+    : status === 'payment_submitted'
+      ? 'submitted'
+      : 'pending';
   const customer = await upsertCustomerFromContact({
     displayName: customerName,
     primaryPhone: customerWhatsapp,
@@ -844,10 +861,11 @@ export async function createBooking(input: CreateBookingInput) {
           instagram_discount_amount,
           extra_return_fee_total,
           rental_estimate_total,
+          is_partner,
           created_by,
           updated_by
         )
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       )
       .bind(
         bookingId,
@@ -866,6 +884,7 @@ export async function createBooking(input: CreateBookingInput) {
         instagramDiscountAmount,
         extraReturnFeeTotal,
         rentalEstimateTotal,
+        isPartner ? 1 : 0,
         normalizeOptionalText(input.createdBy),
         normalizeOptionalText(input.createdBy),
       ),
@@ -923,7 +942,7 @@ export async function createBooking(input: CreateBookingInput) {
       .bind(
         paymentId,
         bookingId,
-        status === 'payment_submitted' ? 'submitted' : 'pending',
+        paymentStatus,
         Math.max(dpTotal - instagramDiscountAmount, 0),
         0,
         'transfer',
@@ -948,9 +967,11 @@ export async function createBooking(input: CreateBookingInput) {
         null,
         status,
         'create',
-        input.source === 'whatsapp' || input.source === 'admin'
-          ? 'Manual booking created.'
-          : 'Catalog booking request created.',
+        isPartner
+          ? 'Partner booking created (no booking fee, calendar blocked).'
+          : input.source === 'whatsapp' || input.source === 'admin'
+            ? 'Manual booking created.'
+            : 'Catalog booking request created.',
         normalizeOptionalText(input.createdBy),
       ),
   ];
@@ -991,6 +1012,7 @@ export async function listBookingQueue() {
                 b.instagram_discount_amount AS instagramDiscountAmount,
                 b.extra_return_fee_total AS extraReturnFeeTotal,
                 b.rental_estimate_total AS rentalEstimateTotal,
+                b.is_partner AS isPartner,
                 b.created_at AS createdAt,
                 b.updated_at AS updatedAt,
                 COUNT(DISTINCT bi.id) AS itemCount,
@@ -1037,6 +1059,7 @@ export async function listBookingQueue() {
 
     return result.results.map((booking) => ({
       ...booking,
+      isPartner: Boolean(booking.isPartner),
       itemIds: parseStringArray(booking.itemIds),
       itemCodes: parseStringArray(booking.itemCodes),
       itemNames: parseStringArray(booking.itemNames),
