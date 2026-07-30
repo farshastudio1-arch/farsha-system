@@ -36,6 +36,7 @@ export async function POST(request: Request) {
     const formData = await request.formData();
     const file = formData.get('file');
     const filenameHint = String(formData.get('filenameHint') ?? formData.get('code') ?? 'upload');
+    const altText = String(formData.get('altText') ?? '').trim();
     const albumIdValue = formData.get('albumId');
     const sourceArea = normalizeMediaSourceArea(formData.get('sourceArea'));
     const originalFilename = String(formData.get('originalFilename') ?? '');
@@ -97,6 +98,7 @@ export async function POST(request: Request) {
       width: Number.isFinite(width) && width > 0 ? width : null,
       height: Number.isFinite(height) && height > 0 ? height : null,
       title: file.name.replace(/\.[^.]+$/, ''),
+      altText,
       albumId,
       sourceArea,
     });

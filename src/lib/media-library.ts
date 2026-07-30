@@ -101,6 +101,53 @@ export function sanitizeMediaSegment(value: string, fallback = 'library') {
   return segment || fallback;
 }
 
+function escapeRegExp(value: string) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+/**
+ * Next sequence number for a naming stem, scoped to the exact stem prefix.
+ * Scans existing tidy names of the form `${stemPrefix}-NN` and returns max + 1.
+ * Messy legacy names simply don't match, so they don't disturb the count.
+ */
+export function nextMediaSequence(stemPrefix: string, existingNames: string[]) {
+  const pattern = new RegExp(`^${escapeRegExp(stemPrefix)}-(\\d+)$`);
+  let highest = 0;
+
+  for (const name of existingNames) {
+    const match = pattern.exec(name.trim().toLowerCase());
+
+    if (match) {
+      highest = Math.max(highest, Number.parseInt(match[1], 10));
+    }
+  }
+
+  return highest + 1;
+}
+
+/**
+ * Builds the tidy, consistent file stem: `{album}-{subject}-{NN}` (album optional).
+ * Everything is slugified so the shape can never drift (`Wisuda Green` is impossible).
+ * Returns '' when subject slugifies to nothing, which callers use to block the upload.
+ */
+export function buildMediaName(
+  albumName: string | null | undefined,
+  subject: string,
+  existingNames: string[],
+) {
+  const subjectSlug = sanitizeMediaSegment(subject, '');
+
+  if (!subjectSlug) {
+    return '';
+  }
+
+  const albumSlug = albumName ? sanitizeMediaSegment(albumName, '') : '';
+  const prefix = albumSlug ? `${albumSlug}-${subjectSlug}` : subjectSlug;
+  const sequence = nextMediaSequence(prefix, existingNames);
+
+  return `${prefix}-${String(sequence).padStart(2, '0')}`;
+}
+
 export function createMediaAssetKey(
   sourceArea: MediaSourceArea,
   filename: string,

@@ -21,8 +21,8 @@ import {
   saveMediaAlbumAction,
   updateMediaAssetAction,
 } from '@/lib/farsha-actions';
-import { optimizeImageBeforeUpload } from '@/lib/client-image-optimizer';
-import { MediaAsset } from '@/lib/media-library';
+import { optimizeImageBeforeUpload, ImageOptimizationResult } from '@/lib/client-image-optimizer';
+import { buildMediaName, MediaAsset } from '@/lib/media-library';
 import {
   useSavedMediaLibrary,
   writeSavedMediaAlbums,
@@ -33,6 +33,16 @@ import {
 const maxUploadBytes = 5 * 1024 * 1024;
 const acceptedUploadTypes = ['image/jpeg', 'image/png', 'image/webp'];
 const acceptedUploadInput = acceptedUploadTypes.join(',');
+const extensionForType: Record<string, string> = {
+  'image/jpeg': 'jpg',
+  'image/png': 'png',
+  'image/webp': 'webp',
+};
+
+type PendingUpload = {
+  optimization: ImageOptimizationResult;
+  previewUrl: string;
+};
 
 const inputCls =
   'w-full border border-neutral-200 bg-neutral-50 px-4 py-2.5 text-sm transition-all focus:bg-white focus:outline-none focus:ring-2 focus:ring-neutral-900';
@@ -75,6 +85,15 @@ function formatDate(value: string) {
   }).format(date);
 }
 
+function suggestSubjectFromFilename(filename: string) {
+  return filename
+    .replace(/\.[^.]+$/, '')
+    .replace(/[_-]+/g, ' ')
+    .replace(/\b(img|image|photo|dsc|screenshot)\b/gi, '')
+    .replace(/\d{4,}/g, '')
+    .trim();
+}
+
 function FieldLabel({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <label className="block">
@@ -92,7 +111,9 @@ export default function MediaLibraryPage() {
   const [actionError, setActionError] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   const [isUploading, setIsUploading] = useState(false);
-  const [optimizationMessage, setOptimizationMessage] = useState('');
+  const [isPreparingUpload, setIsPreparingUpload] = useState(false);
+  const [pendingUpload, setPendingUpload] = useState<PendingUpload | null>(null);
+  const [uploadDraft, setUploadDraft] = useState({ subject: '', altText: '', albumId: '' });
   const [uploadAlbumId, setUploadAlbumId] = useState('');
   const [albumName, setAlbumName] = useState('');
   const [editingAlbumId, setEditingAlbumId] = useState<string | null>(null);
@@ -154,27 +175,52 @@ export default function MediaLibraryPage() {
   const usedAssets = assets.filter((asset) => (asset.usage?.length ?? 0) > 0);
   const unfiledAssets = assets.filter((asset) => !asset.albumId);
 
-  const uploadImage = async (event: ChangeEvent<HTMLInputElement>) => {
+  const uploadAlbumName = albums.find((album) => album.id === uploadDraft.albumId)?.name ?? null;
+  const computedFileName = pendingUpload
+    ? buildMediaName(
+        uploadAlbumName,
+        uploadDraft.subject,
+        assets.map((asset) => asset.title),
+      )
+    : '';
+
+  const closeUploadModal = () => {
+    if (isUploading) {
+      return;
+    }
+
+    setPendingUpload((current) => {
+      if (current) {
+        URL.revokeObjectURL(current.previewUrl);
+      }
+
+      return null;
+    });
+    setUploadDraft({ subject: '', altText: '', albumId: '' });
+  };
+
+  const handleFilePicked = async (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0] ?? null;
     event.target.value = '';
 
-    if (!file || isUploading) {
+    if (!file || isPreparingUpload || pendingUpload) {
       return;
     }
 
     if (!acceptedUploadTypes.includes(file.type)) {
       setActionError('Use JPG, PNG, or WebP image files.');
+      setSaveState('error');
       return;
     }
 
     if (file.size <= 0) {
       setActionError('Image file is empty.');
+      setSaveState('error');
       return;
     }
 
-    setIsUploading(true);
+    setIsPreparingUpload(true);
     setActionError('');
-    setOptimizationMessage('Optimizing image before upload...');
     setSaveState('idle');
 
     try {
@@ -182,16 +228,52 @@ export default function MediaLibraryPage() {
 
       if (optimization.file.size > maxUploadBytes) {
         setActionError('Image must be 5 MB or smaller after optimization.');
-        setOptimizationMessage(optimization.message);
         setSaveState('error');
         return;
       }
 
-      setOptimizationMessage(optimization.message);
+      const previewUrl = URL.createObjectURL(optimization.file);
+      setPendingUpload({ optimization, previewUrl });
+      setUploadDraft({
+        subject: suggestSubjectFromFilename(optimization.originalFile.name),
+        altText: '',
+        albumId: uploadAlbumId,
+      });
+    } catch {
+      setActionError('Could not read that image. Please try again.');
+      setSaveState('error');
+    } finally {
+      setIsPreparingUpload(false);
+    }
+  };
+
+  const confirmUpload = async () => {
+    if (!pendingUpload || isUploading) {
+      return;
+    }
+
+    const stem = computedFileName;
+
+    if (!stem) {
+      setActionError('Add a subject so the file can be named.');
+      setSaveState('error');
+      return;
+    }
+
+    setIsUploading(true);
+    setActionError('');
+
+    try {
+      const { optimization } = pendingUpload;
+      const extension = extensionForType[optimization.file.type] ?? 'webp';
+      const namedFile = new File([optimization.file], `${stem}.${extension}`, {
+        type: optimization.file.type,
+      });
 
       const formData = new FormData();
-      formData.append('file', optimization.file);
-      formData.append('filenameHint', optimization.originalFile.name);
+      formData.append('file', namedFile);
+      formData.append('filenameHint', stem);
+      formData.append('altText', uploadDraft.altText.trim());
       formData.append('sourceArea', 'media-library');
       formData.append('originalFilename', optimization.originalFile.name);
       formData.append('originalSize', String(optimization.originalSize));
@@ -202,8 +284,8 @@ export default function MediaLibraryPage() {
       if (optimization.height) {
         formData.append('height', String(optimization.height));
       }
-      if (uploadAlbumId) {
-        formData.append('albumId', uploadAlbumId);
+      if (uploadDraft.albumId) {
+        formData.append('albumId', uploadDraft.albumId);
       }
 
       const response = await fetch('/api/admin/media/upload', {
@@ -222,6 +304,9 @@ export default function MediaLibraryPage() {
       }
 
       writeSavedMediaAssets([payload.data.asset, ...assets]);
+      URL.revokeObjectURL(pendingUpload.previewUrl);
+      setPendingUpload(null);
+      setUploadDraft({ subject: '', altText: '', albumId: '' });
       setSaveState('saved');
     } catch {
       setActionError('Upload failed. Please try again.');
@@ -391,26 +476,21 @@ export default function MediaLibraryPage() {
           )}
           <label
             className={`inline-flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-semibold transition-colors ${
-              isUploading
+              isPreparingUpload || isUploading || pendingUpload
                 ? 'cursor-not-allowed bg-neutral-100 text-neutral-400'
                 : 'cursor-pointer bg-neutral-900 text-white hover:bg-neutral-800'
             }`}
           >
             <Upload className="h-4 w-4" />
-            {isUploading ? 'Uploading...' : 'Upload image'}
+            {isPreparingUpload ? 'Preparing...' : 'Upload image'}
             <input
               type="file"
               accept={acceptedUploadInput}
-              disabled={isUploading}
-              onChange={uploadImage}
+              disabled={isPreparingUpload || isUploading || Boolean(pendingUpload)}
+              onChange={handleFilePicked}
               className="sr-only"
             />
           </label>
-          {optimizationMessage && (
-            <span className="border border-neutral-200 bg-neutral-50 px-3 py-2 text-xs font-semibold text-neutral-600">
-              {optimizationMessage}
-            </span>
-          )}
         </div>
       </div>
 
@@ -547,7 +627,7 @@ export default function MediaLibraryPage() {
           </section>
 
           <section className="border border-neutral-200 bg-white p-4 shadow-sm">
-            <FieldLabel label="Upload into album">
+            <FieldLabel label="Default album for uploads">
               <select
                 value={uploadAlbumId}
                 onChange={(event) => setUploadAlbumId(event.target.value)}
@@ -562,7 +642,8 @@ export default function MediaLibraryPage() {
               </select>
             </FieldLabel>
             <p className="mt-2 text-xs leading-relaxed text-neutral-500">
-              JPG, PNG, or WebP. Max 5 MB each. Images are reusable until deleted here.
+              JPG, PNG, or WebP. Max 5 MB each. You&apos;ll name each file and confirm before it
+              uploads — this just preselects the album.
             </p>
           </section>
         </aside>
@@ -680,6 +761,154 @@ export default function MediaLibraryPage() {
           )}
         </section>
       </section>
+
+      {pendingUpload && (
+        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 p-0 backdrop-blur-sm sm:items-center sm:p-4">
+          <div className="flex max-h-[92vh] w-full max-w-4xl flex-col overflow-hidden bg-white shadow-2xl md:flex-row">
+            <div className="shrink-0 border-b border-neutral-200 bg-neutral-100 md:w-80 md:border-b-0 md:border-r">
+              <div className="aspect-[4/5] overflow-hidden">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={pendingUpload.previewUrl}
+                  alt="Upload preview"
+                  className="h-full w-full object-cover"
+                />
+              </div>
+              <div className="space-y-1 p-4">
+                <p className="text-xs font-semibold text-neutral-700">
+                  {formatBytes(pendingUpload.optimization.file.size)}
+                  {pendingUpload.optimization.width && pendingUpload.optimization.height
+                    ? ` · ${pendingUpload.optimization.width}×${pendingUpload.optimization.height}`
+                    : ''}
+                </p>
+                <p className="text-xs leading-relaxed text-neutral-500">
+                  {pendingUpload.optimization.message}
+                </p>
+              </div>
+            </div>
+            <form
+              onSubmit={(event) => {
+                event.preventDefault();
+                confirmUpload();
+              }}
+              className="flex min-h-0 flex-1 flex-col"
+            >
+              <div className="flex items-start justify-between gap-4 border-b border-neutral-200 px-4 py-4 sm:px-6">
+                <div>
+                  <h2 className="text-lg font-semibold text-neutral-950">Prepare upload</h2>
+                  <p className="mt-1 text-sm text-neutral-500">
+                    Name the file before it uploads. Nothing is stored until you confirm.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={closeUploadModal}
+                  disabled={isUploading}
+                  aria-label="Cancel upload"
+                  className="p-2 text-neutral-400 transition-colors hover:bg-neutral-100 hover:text-neutral-900 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
+
+              <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-4 py-5 sm:px-6">
+                <FieldLabel label="Album">
+                  <select
+                    value={uploadDraft.albumId}
+                    onChange={(event) =>
+                      setUploadDraft((current) => ({ ...current, albumId: event.target.value }))
+                    }
+                    className={inputCls}
+                  >
+                    <option value="">Unfiled</option>
+                    {albums.map((album) => (
+                      <option key={album.id} value={album.id}>
+                        {album.name}
+                      </option>
+                    ))}
+                  </select>
+                </FieldLabel>
+                <FieldLabel label="Subject">
+                  <input
+                    type="text"
+                    autoFocus
+                    value={uploadDraft.subject}
+                    onChange={(event) =>
+                      setUploadDraft((current) => ({ ...current, subject: event.target.value }))
+                    }
+                    placeholder="green kebaya"
+                    className={inputCls}
+                  />
+                </FieldLabel>
+
+                <div
+                  className={`border p-3 ${
+                    computedFileName
+                      ? 'border-neutral-200 bg-neutral-50'
+                      : 'border-amber-200 bg-amber-50'
+                  }`}
+                >
+                  <p className="text-xs font-semibold uppercase tracking-widest text-neutral-400">
+                    File name
+                  </p>
+                  {computedFileName ? (
+                    <p className="mt-1 break-all font-mono text-sm font-semibold text-neutral-900">
+                      {computedFileName}.
+                      {extensionForType[pendingUpload.optimization.file.type] ?? 'webp'}
+                    </p>
+                  ) : (
+                    <p className="mt-1 text-sm font-semibold text-amber-700">
+                      Add a subject to name this file.
+                    </p>
+                  )}
+                  {computedFileName && (
+                    <p className="mt-1 text-xs text-neutral-500">
+                      Album and subject build the name automatically. The number keeps repeats
+                      distinct.
+                    </p>
+                  )}
+                </div>
+
+                <FieldLabel label="Alt text">
+                  <textarea
+                    rows={3}
+                    value={uploadDraft.altText}
+                    onChange={(event) =>
+                      setUploadDraft((current) => ({ ...current, altText: event.target.value }))
+                    }
+                    placeholder="Describe the image for accessibility"
+                    className={`${inputCls} resize-none`}
+                  />
+                </FieldLabel>
+                {!uploadDraft.altText.trim() && (
+                  <p className="text-xs text-amber-600">
+                    No alt text yet — easiest to write now. You can still upload without it.
+                  </p>
+                )}
+              </div>
+
+              <div className="flex flex-col gap-2 border-t border-neutral-200 p-4 sm:flex-row sm:justify-end sm:px-6">
+                <button
+                  type="button"
+                  onClick={closeUploadModal}
+                  disabled={isUploading}
+                  className="border border-neutral-200 bg-white px-4 py-2.5 text-sm font-semibold text-neutral-700 transition-colors hover:bg-neutral-50 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={isUploading || !computedFileName}
+                  className="inline-flex items-center justify-center gap-2 bg-neutral-900 px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-neutral-800 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  <Upload className="h-4 w-4" />
+                  {isUploading ? 'Uploading...' : 'Upload image'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
 
       {editingAsset && (
         <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 p-0 backdrop-blur-sm sm:items-center sm:p-4">
