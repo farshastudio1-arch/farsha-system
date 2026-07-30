@@ -7,6 +7,7 @@ interface PosBookingsPageProps {
     itemId?: string | string[];
     bookingId?: string | string[];
     status?: string | string[];
+    created?: string | string[];
   }>;
 }
 
@@ -15,6 +16,7 @@ export default async function PosBookingsPage({ searchParams }: PosBookingsPageP
   const itemIdParam = Array.isArray(params.itemId) ? params.itemId[0] : params.itemId;
   const bookingIdParam = Array.isArray(params.bookingId) ? params.bookingId[0] : params.bookingId;
   const statusParam = Array.isArray(params.status) ? params.status[0] : params.status;
+  const createdParam = Array.isArray(params.created) ? params.created[0] : params.created;
   const [catalogItems, databaseBookings] = await Promise.all([
     listCatalogItems({ includeUnpublished: true }),
     listBookingQueue(),
@@ -27,6 +29,7 @@ export default async function PosBookingsPage({ searchParams }: PosBookingsPageP
       initialBookingId={bookingIdParam ?? ''}
       initialQueueFilter={statusParam ?? 'active'}
       initialBookings={databaseBookings}
+      initialActionMessage={createdParam ? `Booking ${createdParam} dibuat sebagai request.` : ''}
     />
   );
 }

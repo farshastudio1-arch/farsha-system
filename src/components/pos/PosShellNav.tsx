@@ -11,6 +11,7 @@ import {
   History,
   LayoutDashboard,
   LineChart,
+  Plus,
   ReceiptText,
   ShoppingBag,
   Store,
@@ -75,6 +76,12 @@ const navItems: NavItem[] = [
         label: 'Workspace',
         description: 'Queue operations',
         icon: CalendarCheck,
+      },
+      {
+        href: '/pos/bookings/create',
+        label: 'New Booking',
+        description: 'Manual booking entry',
+        icon: Plus,
       },
       {
         href: '/pos/bookings/history',
