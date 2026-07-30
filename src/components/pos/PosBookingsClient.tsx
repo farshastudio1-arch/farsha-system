@@ -435,6 +435,43 @@ export default function PosBookingsClient({
   const selectedBooking =
     bookings.find((booking) => booking.id === selectedBookingId) ?? filteredBookings[0] ?? null;
 
+  const catalogLookup = useMemo(() => {
+    const map = new Map<string, KebayaItem>();
+    for (const item of initialItems) {
+      map.set(item.id, item);
+      if (item.code) {
+        map.set(item.code, item);
+      }
+    }
+    return map;
+  }, [initialItems]);
+
+  const resolveBookingItems = (booking: BookingQueueRow): KebayaItem[] => {
+    const keys =
+      booking.itemIds.length > 0
+        ? booking.itemIds
+        : booking.itemCodes.length > 0
+          ? booking.itemCodes
+          : booking.firstItemId
+            ? [booking.firstItemId]
+            : booking.firstItemCode
+              ? [booking.firstItemCode]
+              : [];
+
+    const seen = new Set<string>();
+    const items: KebayaItem[] = [];
+    for (const key of keys) {
+      const item = catalogLookup.get(key);
+      if (item && !seen.has(item.id)) {
+        seen.add(item.id);
+        items.push(item);
+      }
+    }
+    return items;
+  };
+
+  const selectedBookingItems = selectedBooking ? resolveBookingItems(selectedBooking) : [];
+
   const documentHistoryCounts = useMemo(
     () => ({
       invoice: bookings.filter((booking) => booking.invoiceNumber).length,
@@ -994,6 +1031,52 @@ export default function PosBookingsClient({
                   </h2>
                   <p className="mt-2 text-sm text-neutral-500">{getItemLabel(selectedBooking)}</p>
                 </header>
+
+                {selectedBookingItems.length > 0 ? (
+                  <div className="space-y-2">
+                    <div className="relative h-64 w-full overflow-hidden border border-neutral-200 bg-neutral-100">
+                      {selectedBookingItems[0].imageUrls[0] ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img
+                          src={selectedBookingItems[0].imageUrls[0]}
+                          alt={selectedBookingItems[0].name}
+                          className="h-full w-full object-cover"
+                        />
+                      ) : (
+                        <div className="flex h-full w-full items-center justify-center text-neutral-300">
+                          <ImageUp className="h-8 w-8" />
+                        </div>
+                      )}
+                      <span className="absolute left-2 top-2 bg-neutral-950/80 px-2 py-1 font-mono text-[10px] font-bold uppercase tracking-wider text-white">
+                        {selectedBookingItems[0].code}
+                      </span>
+                    </div>
+                    {selectedBookingItems.length > 1 && (
+                      <div className="flex gap-2 overflow-x-auto">
+                        {selectedBookingItems.slice(1).map((item) => (
+                          <div
+                            key={item.id}
+                            className="relative h-20 w-16 shrink-0 overflow-hidden border border-neutral-200 bg-neutral-100"
+                            title={`${item.code} / ${item.name}`}
+                          >
+                            {item.imageUrls[0] ? (
+                              // eslint-disable-next-line @next/next/no-img-element
+                              <img
+                                src={item.imageUrls[0]}
+                                alt={item.name}
+                                className="h-full w-full object-cover"
+                              />
+                            ) : (
+                              <div className="flex h-full w-full items-center justify-center text-neutral-300">
+                                <ImageUp className="h-4 w-4" />
+                              </div>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                ) : null}
 
                 <div className="grid gap-3 text-sm">
                   <div className="border border-neutral-200 bg-neutral-50 p-3">
