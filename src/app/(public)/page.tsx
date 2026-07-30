@@ -17,7 +17,7 @@ const rentalPaths = [
     benefit:
       'Tanpa perlu membuat appointment atau membayar biaya booking di awal. Cukup kunjungi studio kami di jam operasional, pilih koleksi yang tersedia, lakukan fitting, dan bawa pulang hari itu juga.',
     note: 'Pilihan baju terbatas sepenuhnya pada ketersediaan stok di hari kunjungan tersebut.',
-    ctaLabel: 'Kunjungi Kami',
+    ctaLabel: 'Google Map',
     ctaType: 'maps',
   },
   {
@@ -29,7 +29,7 @@ const rentalPaths = [
       'Dapatkan prioritas utama untuk memilih style favorit tanpa takut kehabisan slot. Tanggal acara kamu akan kami kunci secara eksklusif dalam sistem reservasi kami.',
     note:
       'Melakukan pengisian tanggal dan membayar biaya booking sebesar Rp100.000/kebaya untuk mengunci slot.',
-    ctaLabel: 'Cek Tanggal',
+    ctaLabel: 'Lihat Katalog',
     ctaHref: '/catalog?view=all',
   },
 ];
@@ -305,22 +305,22 @@ export default async function Home() {
                         <li className="landing-rental-step">
                           <span className="landing-rental-step-num">1</span>
                           <div className="landing-rental-step-content">
-                            <span className="landing-rental-step-label">Pilih tanggal acara</span>
-                            <p className="landing-rental-step-desc">Tentukan tanggal acara kamu dan cek ketersediaan slot di sistem kami.</p>
+                            <span className="landing-rental-step-label">Pilih Kebaya / Dress</span>
+                            <p className="landing-rental-step-desc">Pilih Kebaya / Dress kesukaan kamu di katalog kami.</p>
                           </div>
                         </li>
                         <li className="landing-rental-step">
                           <span className="landing-rental-step-num">2</span>
                           <div className="landing-rental-step-content">
-                            <span className="landing-rental-step-label">Bayar biaya booking</span>
-                            <p className="landing-rental-step-desc">Amankan slot dengan biaya Rp100.000/kebaya untuk mengunci tanggal kamu.</p>
+                            <span className="landing-rental-step-label">Pilih Tanggal</span>
+                            <p className="landing-rental-step-desc">Klik tombol &ldquo;Cek Tanggal&rdquo; di kebaya yang kamu pilih untuk memastikan ketersediaan.</p>
                           </div>
                         </li>
                         <li className="landing-rental-step">
                           <span className="landing-rental-step-num">3</span>
                           <div className="landing-rental-step-content">
-                            <span className="landing-rental-step-label">Datang & fitting prioritas</span>
-                            <p className="landing-rental-step-desc">Kamu mendapat akses prioritas memilih style favorit tanpa khawatir kehabisan.</p>
+                            <span className="landing-rental-step-label">Buat Request Booking</span>
+                            <p className="landing-rental-step-desc">Klik tombol &ldquo;Booking Sekarang&rdquo; untuk membuat request booking.</p>
                           </div>
                         </li>
                       </ol>
