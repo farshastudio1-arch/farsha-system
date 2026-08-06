@@ -354,7 +354,7 @@ export default function BookingPageClient({
               <p className="mt-4 hidden font-mono text-[10px] font-bold uppercase tracking-widest text-neutral-400 md:block">
                 Amankan Tanggal, Acara Aman
               </p>
-              <h1 className="mt-3 font-serif text-2xl font-semibold leading-tight text-neutral-950 md:mt-1 md:text-3xl">
+              <h1 className="mt-3 font-display text-2xl font-semibold leading-tight text-neutral-950 md:mt-1 md:text-3xl">
                 Booking Kebaya
               </h1>
               <p className="mt-1 text-sm leading-relaxed text-neutral-500 md:mt-2 md:max-w-2xl">
@@ -432,7 +432,7 @@ export default function BookingPageClient({
                 <header className="flex items-center gap-3">
                   <CalendarCheck className="h-5 w-5 text-neutral-400" />
                   <div>
-                    <h2 className="font-serif text-xl font-semibold leading-tight text-neutral-950 md:text-2xl">
+                    <h2 className="font-display text-xl font-semibold leading-tight text-neutral-950 md:text-2xl">
                       Detail Pesanan
                     </h2>
                   </div>
@@ -567,7 +567,7 @@ export default function BookingPageClient({
                 <header className="flex items-start gap-3">
                   <UserRound className="mt-1 h-5 w-5 text-neutral-400" />
                   <div>
-                    <h2 className="font-serif text-xl font-semibold leading-tight text-neutral-950 md:text-2xl">
+                    <h2 className="font-display text-xl font-semibold leading-tight text-neutral-950 md:text-2xl">
                       Data Diri
                     </h2>
                     <p className="mt-1 text-sm text-neutral-500">
@@ -679,7 +679,7 @@ export default function BookingPageClient({
                 <header className="flex items-center gap-3">
                   <ShieldCheck className="h-5 w-5 text-neutral-400" />
                   <div>
-                    <h2 className="font-serif text-xl font-semibold leading-tight text-neutral-950 md:text-2xl">
+                    <h2 className="font-display text-xl font-semibold leading-tight text-neutral-950 md:text-2xl">
                       Review Pembayaran
                     </h2>
                   </div>
@@ -945,7 +945,7 @@ export default function BookingPageClient({
                 <p className="font-mono text-[10px] font-bold uppercase tracking-widest text-neutral-400">
                   Konfirmasi Booking
                 </p>
-                <h2 className="mt-1 font-serif text-2xl font-semibold text-neutral-950">
+                <h2 className="mt-1 font-display text-2xl font-semibold text-neutral-950">
                   Kirim request booking?
                 </h2>
                 <p className="mt-2 text-sm leading-relaxed text-neutral-500">

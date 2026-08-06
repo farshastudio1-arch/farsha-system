@@ -180,7 +180,7 @@ export default function PosDashboardClient({ initialLedger, financeSummary }: Po
             <p className="font-mono text-[10px] font-bold uppercase tracking-widest text-neutral-400">
               Dashboard POS
             </p>
-            <h1 className="mt-1 font-serif text-2xl font-semibold tracking-tight text-neutral-950 sm:text-3xl">
+            <h1 className="mt-1 font-display text-2xl font-semibold tracking-tight text-neutral-950 sm:text-3xl">
               Daily Command Center
             </h1>
             <p className="mt-1 max-w-2xl text-sm text-neutral-500">

@@ -402,7 +402,7 @@ function CatalogCardPreview({
               {product.model}
             </span>
           )}
-          <h3 className="font-serif text-base font-semibold leading-tight text-neutral-950">
+          <h3 className="font-display text-base font-semibold leading-tight text-neutral-950">
             {product.name}
           </h3>
           {settings.showProductDescription && (

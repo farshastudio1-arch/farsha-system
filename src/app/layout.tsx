@@ -1,7 +1,6 @@
 import type { Metadata } from 'next';
-import { Lora, Manrope } from 'next/font/google';
+import { Lora, Manrope, Open_Sans } from 'next/font/google';
 import ThemeProvider from '@/components/ThemeProvider';
-import BackToTop from '@/components/BackToTop';
 import { getSiteSettings } from '@/lib/farsha-db';
 import './globals.css';
 
@@ -13,6 +12,12 @@ const lora = Lora({
 
 const manrope = Manrope({
   variable: '--font-manrope',
+  subsets: ['latin'],
+  display: 'swap',
+});
+
+const openSans = Open_Sans({
+  variable: '--font-open-sans',
   subsets: ['latin'],
   display: 'swap',
 });
@@ -33,11 +38,10 @@ export default async function RootLayout({
   const siteSettings = await getSiteSettings();
 
   return (
-    <html lang="id" className={`${lora.variable} ${manrope.variable} h-full antialiased`}>
+    <html lang="id" className={`${lora.variable} ${manrope.variable} ${openSans.variable} h-full antialiased`}>
       <body className="min-h-full flex flex-col bg-[var(--theme-background)] text-[var(--theme-text)] font-sans">
         <ThemeProvider initialSettings={siteSettings} />
         {children}
-        <BackToTop />
         <script src="/farsha-catalog-fallback.js" defer />
       </body>
     </html>

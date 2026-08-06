@@ -144,7 +144,7 @@ function SectionHeader({
         <p className="font-mono text-[10px] font-bold uppercase tracking-widest text-neutral-400">
           {step}
         </p>
-        <h2 className="mt-0.5 font-serif text-lg font-semibold text-neutral-950">{title}</h2>
+        <h2 className="mt-0.5 font-display text-lg font-semibold text-neutral-950">{title}</h2>
         <p className="mt-0.5 text-xs text-neutral-500">{description}</p>
       </div>
     </div>
@@ -318,7 +318,7 @@ export default function PosBookingCreateClient({
               <ArrowLeft className="h-3.5 w-3.5" />
               Booking Control Desk
             </button>
-            <h1 className="mt-2 font-serif text-4xl font-semibold text-neutral-950">New Booking</h1>
+            <h1 className="mt-2 font-display text-4xl font-semibold text-neutral-950">New Booking</h1>
             <p className="mt-2 max-w-2xl text-sm text-neutral-500">
               Input booking manual sebagai request. Kalender baru terkunci setelah bukti transfer
               diupload dan Biaya Booking dikonfirmasi di Booking Control Desk.

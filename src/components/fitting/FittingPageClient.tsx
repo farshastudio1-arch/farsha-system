@@ -233,7 +233,7 @@ export default function FittingPageClient({
               <p className="font-mono text-[10px] font-bold uppercase tracking-widest text-neutral-400">
                 Fitting Appointment
               </p>
-              <h1 className="mt-2 font-serif text-3xl font-semibold leading-tight text-neutral-950 md:text-4xl">
+              <h1 className="mt-2 font-display text-3xl font-semibold leading-tight text-neutral-950 md:text-4xl">
                 Jadwal Fitting
               </h1>
               <p className="mt-2 max-w-2xl text-sm leading-relaxed text-neutral-500">
@@ -298,7 +298,7 @@ export default function FittingPageClient({
             <div className="space-y-4">
               <header className="flex items-center gap-3">
                 <UserRound className="h-5 w-5 text-neutral-400" />
-                <h2 className="font-serif text-xl font-semibold text-neutral-950">Data Customer</h2>
+                <h2 className="font-display text-xl font-semibold text-neutral-950">Data Customer</h2>
               </header>
 
               <label className="block space-y-1.5">
@@ -348,7 +348,7 @@ export default function FittingPageClient({
               <header className="flex items-center justify-between gap-3">
                 <div className="flex items-center gap-3">
                   <CalendarCheck className="h-5 w-5 text-neutral-400" />
-                  <h2 className="font-serif text-xl font-semibold text-neutral-950">Tanggal & Jam</h2>
+                  <h2 className="font-display text-xl font-semibold text-neutral-950">Tanggal & Jam</h2>
                 </div>
                 <button
                   type="button"

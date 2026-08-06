@@ -130,7 +130,7 @@ export default async function PosFinancePage({ searchParams }: PosFinancePagePro
             <p className="font-mono text-[10px] font-bold uppercase tracking-widest text-neutral-400">
               Simple Cash Accounting
             </p>
-            <h1 className="mt-1 font-serif text-2xl font-semibold tracking-tight text-neutral-950 sm:text-3xl">
+            <h1 className="mt-1 font-display text-2xl font-semibold tracking-tight text-neutral-950 sm:text-3xl">
               Finance Ledger
             </h1>
             <p className="mt-1 max-w-2xl text-sm text-neutral-500">

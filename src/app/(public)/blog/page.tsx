@@ -41,7 +41,7 @@ export default async function BlogFeedPage() {
             <p className="font-mono text-[11px] font-bold uppercase tracking-[0.25em] text-[color-mix(in_srgb,var(--theme-text)_55%,transparent)]">
               Blog
             </p>
-            <h1 className="mt-3 font-serif text-3xl font-bold tracking-tight text-[var(--theme-text)] sm:text-4xl">
+            <h1 className="mt-3 font-display text-3xl font-bold tracking-tight text-[var(--theme-text)] sm:text-4xl">
             Artikel-artikel pilihan kami
             </h1>
             

@@ -872,7 +872,7 @@ export default function PosBookingsClient({
               <p className="font-mono text-xs font-bold uppercase tracking-widest text-neutral-400">
                 POS Booking
               </p>
-              <h1 className="mt-1 font-serif text-4xl font-semibold text-neutral-950">
+              <h1 className="mt-1 font-display text-4xl font-semibold text-neutral-950">
                 Booking Control Desk
               </h1>
               <p className="mt-2 max-w-2xl text-sm text-neutral-500">
@@ -1327,7 +1327,7 @@ export default function PosBookingsClient({
               <p className="font-mono text-[10px] font-bold uppercase tracking-widest text-neutral-400">
                 Booking Documents
               </p>
-              <h2 className="mt-1 font-serif text-2xl font-semibold text-neutral-950">
+              <h2 className="mt-1 font-display text-2xl font-semibold text-neutral-950">
                 Invoice & Paid Receipt History
               </h2>
               <p className="mt-1 text-sm text-neutral-500">
@@ -1524,7 +1524,7 @@ export default function PosBookingsClient({
                   <p className="font-mono text-xs font-bold uppercase tracking-widest text-neutral-400">
                     Farsha Studio
                   </p>
-                  <h1 className="mt-2 font-serif text-3xl font-semibold text-neutral-950">
+                  <h1 className="mt-2 font-display text-3xl font-semibold text-neutral-950">
                     {documentKind === 'receipt' ? 'Receipt Biaya Booking Terbayar' : 'Invoice Biaya Booking'}
                   </h1>
                   <p className="mt-2 text-sm text-neutral-500">

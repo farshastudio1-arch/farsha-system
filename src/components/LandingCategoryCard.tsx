@@ -70,7 +70,7 @@ export default function LandingCategoryCard({ category }: LandingCategoryCardPro
 
         <div className="absolute inset-x-0 bottom-0 z-20 p-4 sm:p-5">
           <Link href={`/catalog?category=${category.slug}`} className="block max-w-[92%] pr-12 text-white">
-            <h3 className="font-serif text-xl font-semibold leading-tight sm:text-2xl">
+            <h3 className="font-display text-xl font-semibold leading-tight sm:text-2xl">
               {category.title}
             </h3>
             <p className="mt-2 max-w-[24rem] text-sm leading-relaxed text-white/85">

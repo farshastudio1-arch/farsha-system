@@ -59,7 +59,7 @@ export default async function Home() {
                 <span className="theme-muted-strong font-mono text-xs font-bold uppercase tracking-widest">
                   {applyLocation(cmsContent.heroEyebrow)}
                 </span>
-                <h1 className="mt-3 max-w-xl font-serif text-4xl font-semibold leading-tight tracking-tight text-[var(--theme-text)] sm:text-5xl md:mx-auto lg:mx-0">
+                <h1 className="mt-3 max-w-xl font-display text-4xl font-semibold leading-tight tracking-tight text-[var(--theme-text)] sm:text-5xl md:mx-auto lg:mx-0">
                   {cmsContent.heroTitle}
                 </h1>
                 <p className="theme-muted-strong mt-4 max-w-md text-sm leading-relaxed sm:text-base md:mx-auto lg:mx-0">
@@ -150,7 +150,7 @@ export default async function Home() {
                 <span className="theme-muted font-mono text-[10px] font-semibold uppercase tracking-widest">
                   {cmsContent.categoryEyebrow}
                 </span>
-                <h2 className="mt-1 font-serif text-2xl font-semibold text-[var(--theme-text)] sm:text-3xl">
+                <h2 className="mt-1 font-display text-2xl font-semibold text-[var(--theme-text)] sm:text-3xl">
                   {cmsContent.categoryTitle}
                 </h2>
               </div>
@@ -173,7 +173,7 @@ export default async function Home() {
               <span className="landing-rental-eyebrow font-mono text-[10px] font-bold uppercase tracking-[0.45em]">
                 panduan sewa
               </span>
-              <h2 className="landing-rental-title font-serif font-semibold leading-[1.02] text-[var(--theme-text)]">
+              <h2 className="landing-rental-title font-display font-semibold leading-[1.02] text-[var(--theme-text)]">
                 Cara Sewa di<br />Farsha Studio
               </h2>
               <p className="landing-rental-subtitle theme-muted-strong leading-relaxed">
@@ -211,7 +211,7 @@ export default async function Home() {
 
                       {/* Title block */}
                       <div className="landing-rental-panel-title-block">
-                        <h3 className="landing-rental-panel-title font-serif font-semibold text-[var(--theme-text)]">
+                        <h3 className="landing-rental-panel-title font-display font-semibold text-[var(--theme-text)]">
                           {pathA.title}
                         </h3>
                         <p className="landing-rental-panel-tagline font-serif italic text-[var(--theme-text)]">
@@ -292,7 +292,7 @@ export default async function Home() {
 
                       {/* Title block */}
                       <div className="landing-rental-panel-title-block">
-                        <h3 className="landing-rental-panel-title font-serif font-semibold text-[var(--theme-text)]">
+                        <h3 className="landing-rental-panel-title font-display font-semibold text-[var(--theme-text)]">
                           {pathB.title}
                         </h3>
                         <p className="landing-rental-panel-tagline font-serif italic text-[var(--theme-text)]">
@@ -367,7 +367,7 @@ export default async function Home() {
             <span className="theme-muted font-mono text-[10px] font-semibold uppercase tracking-widest">
               {cmsContent.finalEyebrow}
             </span>
-            <h2 className="mt-3 font-serif text-3xl font-semibold text-[var(--theme-text)] sm:text-4xl">
+            <h2 className="mt-3 font-display text-3xl font-semibold text-[var(--theme-text)] sm:text-4xl">
               {cmsContent.aboutTitle}
             </h2>
             <p className="theme-muted-strong mt-3 max-w-xl text-sm leading-relaxed sm:text-base">

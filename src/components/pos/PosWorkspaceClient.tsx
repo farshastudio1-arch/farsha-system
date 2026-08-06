@@ -1314,7 +1314,7 @@ export default function PosWorkspaceClient({
                 <p className="font-mono text-[10px] font-bold uppercase tracking-widest text-neutral-400">
                   Transactions
                 </p>
-                <h1 className="mt-1 font-serif text-2xl font-semibold tracking-tight text-neutral-950 sm:text-3xl">
+                <h1 className="mt-1 font-display text-2xl font-semibold tracking-tight text-neutral-950 sm:text-3xl">
                   Cashier Workspace
                 </h1>
                 <p className="mt-1 max-w-2xl text-sm text-neutral-500">
@@ -2362,7 +2362,7 @@ export default function PosWorkspaceClient({
             <p className="font-mono text-[10px] font-bold uppercase tracking-widest text-neutral-400">
               Receipt History
             </p>
-            <h2 className="mt-1 font-serif text-xl font-semibold text-neutral-950">
+            <h2 className="mt-1 font-display text-xl font-semibold text-neutral-950">
               Open & Closed Receipts
             </h2>
             <p className="mt-1 text-xs text-neutral-500">
@@ -2514,7 +2514,7 @@ export default function PosWorkspaceClient({
                 <p className="font-mono text-[10px] font-bold uppercase tracking-widest text-neutral-400">
                   Konfirmasi
                 </p>
-                <h3 className="mt-1 font-serif text-xl font-semibold text-neutral-950">
+                <h3 className="mt-1 font-display text-xl font-semibold text-neutral-950">
                   {pendingRentalAction === 'print' ? 'Konfirmasi Pembayaran' : 'Batalkan input sewa?'}
                 </h3>
               </div>
@@ -2653,7 +2653,7 @@ export default function PosWorkspaceClient({
                 <p className="font-mono text-[10px] font-bold uppercase tracking-widest text-neutral-400">
                   Webcam Capture
                 </p>
-                <h3 className="mt-1 font-serif text-xl font-semibold text-neutral-950">
+                <h3 className="mt-1 font-display text-xl font-semibold text-neutral-950">
                   {cameraState.field === 'customerPhoto' ? 'Customer photo' : 'ID document photo'}
                 </h3>
               </div>
@@ -2709,7 +2709,7 @@ export default function PosWorkspaceClient({
                 <p className="font-mono text-[10px] font-bold uppercase tracking-widest text-neutral-400">
                   Konfirmasi
                 </p>
-                <h3 className="mt-1 font-serif text-xl font-semibold text-neutral-950">
+                <h3 className="mt-1 font-display text-xl font-semibold text-neutral-950">
                   {pendingPosAction === 'return'
                     ? 'Proses pengembalian?'
                     : 'Tandai cuci selesai?'}
@@ -3106,7 +3106,7 @@ export default function PosWorkspaceClient({
                 <p className="font-mono text-[10px] font-bold uppercase tracking-widest text-neutral-400">
                   Surat Pernyataan
                 </p>
-                <h3 className="mt-1 font-serif text-xl font-semibold text-neutral-950">
+                <h3 className="mt-1 font-display text-xl font-semibold text-neutral-950">
                   Komitmen Penyewaan
                 </h3>
               </div>

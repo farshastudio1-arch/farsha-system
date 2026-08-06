@@ -2,7 +2,8 @@
 
 @theme {
   --font-serif: var(--font-lora), Georgia, serif;
-  --font-sans: var(--font-manrope), system-ui, sans-serif;
+  --font-display: var(--font-manrope), system-ui, sans-serif;
+  --font-sans: var(--font-open-sans), system-ui, sans-serif;
 }
 
 :root {

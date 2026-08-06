@@ -212,7 +212,7 @@ export default function ProductCard({
         {/* Title */}
         <h3
           onClick={() => onOpenDetail(product)}
-          className={`font-serif text-[var(--theme-text)] cursor-pointer hover:text-[var(--theme-accent)] transition-colors leading-tight font-medium ${
+          className={`font-display text-[var(--theme-text)] cursor-pointer hover:text-[var(--theme-accent)] transition-colors leading-tight font-medium ${
             isOneColumn ? 'text-lg sm:text-xl mb-1' : 'text-sm sm:text-base mb-0.5 line-clamp-2'
           }`}
         >

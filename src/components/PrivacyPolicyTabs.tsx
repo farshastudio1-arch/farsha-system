@@ -192,7 +192,7 @@ export default function PrivacyPolicyTabs() {
             <p className="theme-muted-strong font-mono text-xs font-bold uppercase tracking-widest">
               {policy.eyebrow}
             </p>
-            <h1 className="max-w-3xl font-serif text-4xl font-semibold leading-tight tracking-tight text-[var(--theme-text)] sm:text-5xl">
+            <h1 className="max-w-3xl font-display text-4xl font-semibold leading-tight tracking-tight text-[var(--theme-text)] sm:text-5xl">
               {policy.title}
             </h1>
           </div>
@@ -210,7 +210,7 @@ export default function PrivacyPolicyTabs() {
         <div className="grid gap-5 lg:grid-cols-2">
           {policy.sections.map((section) => (
             <section key={section.title} className="theme-surface theme-border border p-5 sm:p-6">
-              <h2 className="font-serif text-xl font-semibold text-[var(--theme-text)]">
+              <h2 className="font-display text-xl font-semibold text-[var(--theme-text)]">
                 {section.title}
               </h2>
               <div className="theme-muted-strong mt-4 space-y-3 text-sm leading-relaxed">

@@ -192,7 +192,7 @@ export default function PublicFooter({ cmsContent, siteSettings }: PublicFooterP
 
       {/* Decorative Huge Watermark Background */}
       <div 
-        className="select-none pointer-events-none absolute bottom-[-5%] sm:bottom-[-10%] md:bottom-[-20%] left-1/2 -translate-x-1/2 font-serif text-[18vw] font-bold text-[var(--theme-text)] leading-none tracking-tight whitespace-nowrap z-0"
+        className="select-none pointer-events-none absolute bottom-[-5%] sm:bottom-[-10%] md:bottom-[-20%] left-1/2 -translate-x-1/2 font-serif text-[18vw] font-bold uppercase text-[var(--theme-text)] leading-none tracking-tight whitespace-nowrap z-0"
         style={{ opacity: 0.025 }}
       >
         farsha

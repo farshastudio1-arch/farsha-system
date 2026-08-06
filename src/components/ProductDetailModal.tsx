@@ -709,7 +709,7 @@ export default function ProductDetailModal({
                   </span>
                 </div>
 
-                <h2 className="font-serif text-xl sm:text-2xl md:text-3xl text-[var(--theme-text)] font-semibold leading-tight">
+                <h2 className="font-display text-xl sm:text-2xl md:text-3xl text-[var(--theme-text)] font-semibold leading-tight">
                   {product.name}
                 </h2>
                 <div className="mt-3 flex items-baseline gap-1.5 flex-wrap md:hidden">

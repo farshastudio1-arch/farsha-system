@@ -410,7 +410,7 @@ export default function Filters({
       {/* DESKTOP SIDEBAR PANEL */}
       <div className="theme-surface theme-border hidden lg:block border p-6 h-fit sticky top-24 max-w-[280px]">
         <div className="theme-border flex justify-between items-center pb-4 border-b mb-5">
-          <h3 className="font-serif text-lg font-semibold text-[var(--theme-text)]">
+          <h3 className="font-display text-lg font-semibold text-[var(--theme-text)]">
             Filter Koleksi
           </h3>
           {totalActiveFilters > 0 && (
@@ -471,7 +471,7 @@ export default function Filters({
           {/* Header Mobile Filter Drawer */}
           <div className="theme-surface theme-border flex justify-between items-center px-6 py-4.5 border-b sticky top-0 z-10">
             <div className="flex items-center gap-2">
-              <h3 className="font-serif text-xl font-bold text-[var(--theme-text)]">
+              <h3 className="font-display text-xl font-bold text-[var(--theme-text)]">
                 Filter Koleksi
               </h3>
               {totalActiveFilters > 0 && (

@@ -79,7 +79,7 @@ export default async function BlogArticlePage({ params }: BlogArticlePageProps) 
           </Link>
 
           <header className="mt-6">
-            <h1 className="font-serif text-3xl font-bold leading-tight tracking-tight text-[var(--theme-text)] sm:text-4xl">
+            <h1 className="font-display text-3xl font-bold leading-tight tracking-tight text-[var(--theme-text)] sm:text-4xl">
               {post.title}
             </h1>
 
