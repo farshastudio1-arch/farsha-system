@@ -3,16 +3,8 @@
   "name": "farsha-system",
   "main": ".open-next/worker.js",
   "compatibility_date": "2026-06-28",
-  "compatibility_flags": ["nodejs_compat"],
-  "routes": [
-    {
-      "pattern": "farshastudio.com",
-      "custom_domain": true
-    },
-    {
-      "pattern": "titipsewa.farshastudio.com",
-      "custom_domain": true
-    }
+  "compatibility_flags": [
+    "nodejs_compat"
   ],
   "assets": {
     "directory": ".open-next/assets",
