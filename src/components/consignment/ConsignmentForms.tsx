@@ -101,15 +101,19 @@ export function SetPasswordForm({ token }: { token: string }) {
         setError('');
         const formData = new FormData(event.currentTarget);
         startTransition(async () => {
-          const result = await consignorSetPasswordAction({
-            token,
-            password: String(formData.get('password') ?? ''),
-          });
-          if (result.ok) {
-            router.push('/dashboard');
-            router.refresh();
-          } else {
-            setError(result.error);
+          try {
+            const result = await consignorSetPasswordAction({
+              token,
+              password: String(formData.get('password') ?? ''),
+            });
+            if (result.ok) {
+              router.push('/dashboard');
+              router.refresh();
+            } else {
+              setError(result.error);
+            }
+          } catch {
+            setError('Gagal menyimpan password. Refresh halaman ini lalu coba link invite terbaru.');
           }
         });
       }}

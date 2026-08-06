@@ -1,5 +1,7 @@
 const encoder = new TextEncoder();
-const passwordIterations = 210_000;
+const passwordAlgorithm = 'pbkdf2-sha256';
+const passwordIterations = 100_000;
+const legacyPasswordIterations = 210_000;
 const passwordKeyLengthBits = 256;
 
 function bytesToHex(bytes: Uint8Array) {
@@ -33,7 +35,7 @@ export function createSalt() {
   return bytesToHex(salt);
 }
 
-export async function hashPassword(password: string, salt = createSalt()) {
+async function derivePasswordHash(password: string, salt: string, iterations: number) {
   const baseKey = await crypto.subtle.importKey(
     'raw',
     encoder.encode(password),
@@ -46,19 +48,46 @@ export async function hashPassword(password: string, salt = createSalt()) {
       name: 'PBKDF2',
       hash: 'SHA-256',
       salt: hexToBytes(salt),
-      iterations: passwordIterations,
+      iterations,
     },
     baseKey,
     passwordKeyLengthBits,
   );
 
+  return bytesToHex(new Uint8Array(bits));
+}
+
+function formatPasswordHash(hash: string, iterations: number) {
+  return `${passwordAlgorithm}$${iterations}$${hash}`;
+}
+
+function parsePasswordHash(storedHash: string) {
+  const [algorithm, iterationsValue, hash] = storedHash.split('$');
+  const iterations = Number(iterationsValue);
+
+  if (algorithm === passwordAlgorithm && Number.isInteger(iterations) && iterations > 0 && hash) {
+    return { hash, iterations };
+  }
+
+  return { hash: storedHash, iterations: legacyPasswordIterations };
+}
+
+export async function hashPassword(password: string, salt = createSalt()) {
+  const hash = await derivePasswordHash(password, salt, passwordIterations);
+
   return {
-    hash: bytesToHex(new Uint8Array(bits)),
+    hash: formatPasswordHash(hash, passwordIterations),
     salt,
   };
 }
 
 export async function verifyPassword(password: string, expectedHash: string, salt: string) {
-  const result = await hashPassword(password, salt);
-  return result.hash === expectedHash;
+  const parsedHash = parsePasswordHash(expectedHash);
+
+  try {
+    const result = await derivePasswordHash(password, salt, parsedHash.iterations);
+    return result === parsedHash.hash;
+  } catch {
+    return false;
+  }
 }
