@@ -51,6 +51,7 @@ import { useSavedPosLedger } from '@/lib/pos-ledger-client';
 type CatalogFormState = {
   name: string;
   code: string;
+  consignorId: string;
   rentalPrice: string;
   compareAtRentalPrice: string;
   model: KebayaItem['model'];
@@ -94,6 +95,7 @@ type MediaUploadResponse =
 const emptyForm: CatalogFormState = {
   name: '',
   code: '',
+  consignorId: '',
   rentalPrice: '',
   compareAtRentalPrice: '',
   model: 'Kebaya Modern',
@@ -238,6 +240,7 @@ function itemToForm(item: KebayaItem): CatalogFormState {
   return {
     name: item.name,
     code: item.code,
+    consignorId: item.consignorId ?? '',
     rentalPrice: String(item.rentalPrice),
     compareAtRentalPrice: item.compareAtRentalPrice ? String(item.compareAtRentalPrice) : '',
     model: item.model,
@@ -281,6 +284,7 @@ function createItemFromForm(form: CatalogFormState, id: string): KebayaItem {
   return {
     id,
     code: form.code.trim(),
+    consignorId: form.consignorId.trim() || null,
     name: form.name.trim(),
     color: form.color.trim() || 'Neutral',
     canResize: form.canResize,
@@ -432,7 +436,13 @@ const catalogTabs: { id: CatalogTab; icon: typeof Images; label: string; hint: s
 
 type CatalogWorkbenchMode = 'published' | 'draft';
 
-export default function CatalogWorkbench({ mode = 'published' }: { mode?: CatalogWorkbenchMode }) {
+export default function CatalogWorkbench({
+  mode = 'published',
+  consignorOptions = [],
+}: {
+  mode?: CatalogWorkbenchMode;
+  consignorOptions?: Array<{ id: string; name: string; email: string }>;
+}) {
   const isDraftMode = mode === 'draft';
   const {
     bookingPressure,
@@ -1434,6 +1444,20 @@ export default function CatalogWorkbench({ mode = 'published' }: { mode?: Catalo
                               {modelOptions.map((option) => (
                                 <option key={option} value={option}>
                                   {option}
+                                </option>
+                              ))}
+                            </select>
+                          </FieldLabel>
+                          <FieldLabel label="Consignor">
+                            <select
+                              value={form.consignorId}
+                              onChange={(event) => updateFormField('consignorId', event.target.value)}
+                              className={selectCls}
+                            >
+                              <option value="">Studio owned / buyout</option>
+                              {consignorOptions.map((option) => (
+                                <option key={option.id} value={option.id}>
+                                  {option.name} · {option.email}
                                 </option>
                               ))}
                             </select>

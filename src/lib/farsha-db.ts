@@ -32,6 +32,7 @@ type CatalogRow = {
   hijab_friendly?: number | null;
   cost?: number | null;
   published?: number | null;
+  consignor_id?: string | null;
   rental_includes?: string | null;
   categories?: string | null;
   measurements?: string | null;
@@ -62,6 +63,7 @@ const catalogOptionalSelectFields = [
   'hijab_friendly',
   'cost',
   'published',
+  'consignor_id',
 ];
 // Known-good fallback when PRAGMA cannot report the schema.
 const catalogSelectFieldsLegacy =
@@ -88,7 +90,8 @@ function isMissingCatalogItemDetailColumnError(error: unknown) {
     message.includes('no such column: rental_includes') ||
     message.includes('no such column: hijab_friendly') ||
     message.includes('no such column: cost') ||
-    message.includes('no such column: published')
+    message.includes('no such column: published') ||
+    message.includes('no such column: consignor_id')
   );
 }
 
@@ -298,6 +301,7 @@ function catalogRowToItem(row: CatalogRow, index: number): KebayaItem | null {
       cost: row.cost ?? null,
       published:
         row.published === null || row.published === undefined ? true : row.published === 1,
+      consignorId: row.consignor_id ?? null,
       rentalIncludes: parseJson<KebayaItem['rentalIncludes']>(row.rental_includes, undefined),
       categories: parseJson<KebayaItem['categories']>(row.categories, undefined),
       measurements: parseJson<KebayaItem['measurements']>(row.measurements, undefined),
@@ -673,9 +677,9 @@ export async function upsertCatalogItem(item: KebayaItem): Promise<void> {
       .prepare(
         `INSERT INTO kebaya_items (
           id, code, name, color, size, model, rental_price, compare_at_rental_price, can_resize, status, rental_end_date,
-          image_urls, description, rental_includes, categories, measurements, hijab_friendly, cost, published
+          image_urls, description, rental_includes, categories, measurements, hijab_friendly, cost, published, consignor_id
         )
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ON CONFLICT(id) DO UPDATE SET
           code = excluded.code,
           name = excluded.name,
@@ -695,6 +699,7 @@ export async function upsertCatalogItem(item: KebayaItem): Promise<void> {
           hijab_friendly = excluded.hijab_friendly,
           cost = excluded.cost,
           published = excluded.published,
+          consignor_id = excluded.consignor_id,
           updated_at = CURRENT_TIMESTAMP`,
       )
       .bind(
@@ -717,6 +722,7 @@ export async function upsertCatalogItem(item: KebayaItem): Promise<void> {
         normalized.hijabFriendly ? 1 : 0,
         normalized.cost ?? null,
         normalized.published === false ? 0 : 1,
+        normalized.consignorId,
       )
       .run();
   } catch (error) {
@@ -744,6 +750,10 @@ export async function upsertCatalogItem(item: KebayaItem): Promise<void> {
       throw new Error(
         'Draft state and item cost cannot be saved until migrations 0023_catalog_cost.sql and 0024_catalog_published.sql are applied.',
       );
+    }
+
+    if (normalized.consignorId) {
+      throw new Error('Consignor ownership cannot be saved until migration 0031_consignment.sql is applied.');
     }
 
     await db

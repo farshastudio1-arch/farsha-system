@@ -978,8 +978,10 @@ export default function PosWorkspaceClient({
 
     if (!dueDate) {
       const today = getTodayInputValue();
-      setStartDate(today);
-      setDueDate(addDaysToInputDate(today, 3));
+      queueMicrotask(() => {
+        setStartDate(today);
+        setDueDate(addDaysToInputDate(today, 3));
+      });
     }
   }, [dueDate, rentalBasket.length]);
 
@@ -988,36 +990,40 @@ export default function PosWorkspaceClient({
     if (selectedItem) {
       const projection = projections[selectedItem.id];
       if (projection?.effectiveStatus === 'rented' && selectedTransaction) {
-        // Prefill Return details
-        setReturnDate(new Date().toISOString().slice(0, 10));
-        setRefundAmount(selectedTransaction.depositReceived.toString());
-        setReturnNotes('');
-        setReturnPaymentMethod(selectedTransaction.paymentMethod);
-        setStatusMessage('');
+        queueMicrotask(() => {
+          setReturnDate(new Date().toISOString().slice(0, 10));
+          setRefundAmount(selectedTransaction.depositReceived.toString());
+          setReturnNotes('');
+          setReturnPaymentMethod(selectedTransaction.paymentMethod);
+          setStatusMessage('');
 
-        // Calculate late penalty (e.g. 20,000 IDR per day late)
-        if (selectedTransaction.dueDate) {
-          const today = new Date();
-          today.setHours(0, 0, 0, 0);
-          const due = new Date(selectedTransaction.dueDate);
-          const diffTime = today.getTime() - due.getTime();
-          const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-          if (diffDays > 0) {
-            setPenaltyAmount((diffDays * 20000).toString());
+          if (selectedTransaction.dueDate) {
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            const due = new Date(selectedTransaction.dueDate);
+            const diffTime = today.getTime() - due.getTime();
+            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+            if (diffDays > 0) {
+              setPenaltyAmount((diffDays * 20000).toString());
+            } else {
+              setPenaltyAmount('0');
+            }
           } else {
             setPenaltyAmount('0');
           }
-        } else {
-          setPenaltyAmount('0');
-        }
-        setReturnAdjustmentAmount('0');
+          setReturnAdjustmentAmount('0');
+        });
       } else if (projection?.effectiveStatus === 'maintenance') {
-        setMaintenanceNote('Dry cleaned, pressed and inspected');
-        setStatusMessage('');
+        queueMicrotask(() => {
+          setMaintenanceNote('Dry cleaned, pressed and inspected');
+          setStatusMessage('');
+        });
       }
     } else {
-      // Clear states
-      setDueDate('');
+      queueMicrotask(() => {
+        // Clear states
+        setDueDate('');
+      });
     }
   }, [selectedItemId, selectedItem, projections, selectedTransaction]);
 

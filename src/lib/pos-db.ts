@@ -1,4 +1,5 @@
 import { getD1Database } from '@/lib/cloudflare';
+import { accrueConsignorPayouts } from '@/lib/consignor-db';
 import {
   normalizePosLedger,
   type PosAuditEntry,
@@ -481,6 +482,11 @@ export async function savePosLedgerSnapshot(ledger: PosLedgerState): Promise<Pos
     await db.batch(statements);
   }
 
+  await accrueConsignorPayouts({
+    transactions: normalized.transactions,
+    receipts: normalized.receipts,
+  });
+
   return listPosLedger();
 }
 
@@ -501,6 +507,11 @@ export async function savePosLedgerSnapshotWithAttachments(
   if (statements.length > 0) {
     await db.batch(statements);
   }
+
+  await accrueConsignorPayouts({
+    transactions: normalized.transactions,
+    receipts: normalized.receipts,
+  });
 
   return listPosLedger();
 }

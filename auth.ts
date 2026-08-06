@@ -44,6 +44,8 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     },
     authorized({ auth, request }) {
       const pathname = request.nextUrl.pathname;
+      const host = request.headers.get("host")?.split(":")[0]?.toLowerCase();
+      const consignmentHost = process.env.CONSIGNMENT_HOST?.toLowerCase();
       const isLoginPage = pathname === "/admin/login";
       const isProtectedPath =
         pathname === "/admin" ||
@@ -51,6 +53,10 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         pathname === "/pos" ||
         pathname.startsWith("/pos/");
       const isAdmin = auth?.user?.role === "admin";
+
+      if (host && consignmentHost && host === consignmentHost && isProtectedPath) {
+        return true;
+      }
 
       if (isLoginPage) {
         return isAdmin

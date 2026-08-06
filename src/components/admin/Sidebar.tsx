@@ -39,6 +39,7 @@ const navItems: NavEntry[] = [
   { name: 'Blog', href: '/admin/blog', icon: Newspaper },
   { name: 'Name Generator', href: '/admin/name-generator', icon: Sparkles },
   { name: 'Marketing', href: '/admin/marketing', icon: Megaphone },
+  { name: 'Consignment', href: '/admin/consignment', icon: FileText },
   { name: 'CMS', href: '/admin/cms', icon: FileText },
   { name: 'Settings', href: '/admin/settings', icon: Settings },
 ];

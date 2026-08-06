@@ -82,6 +82,9 @@ function revalidatePublicAndAdmin() {
   revalidatePath('/catalog');
   revalidatePath('/admin');
   revalidatePath('/admin/catalog');
+  revalidatePath('/admin/consignment');
+  revalidatePath('/titipsewa');
+  revalidatePath('/titipsewa/dashboard');
   revalidatePath('/admin/settings');
   revalidatePath('/admin/cms');
   revalidatePath('/privacy-policy');
@@ -107,7 +110,14 @@ function getActionErrorMessage(error: unknown, fallback: string) {
     message.includes('no such table: name_generator_used_names') ||
     message.includes('no such table: customers') ||
     message.includes('no such column: customer_id') ||
-    message.includes('no such table: pos_transaction_attachments')
+    message.includes('no such table: pos_transaction_attachments') ||
+    message.includes('no such table: consignors') ||
+    message.includes('no such table: consignor_sessions') ||
+    message.includes('no such table: consignor_tokens') ||
+    message.includes('no such table: consignor_payouts') ||
+    message.includes('no such table: consignor_payout_requests') ||
+    message.includes('no such table: consignor_withdrawal_requests') ||
+    message.includes('no such column: consignor_id')
   ) {
     return catalogSchemaError;
   }
@@ -202,6 +212,9 @@ export async function savePosLedgerAction(
     revalidatePath('/catalog');
     revalidatePath('/admin');
     revalidatePath('/admin/catalog');
+    revalidatePath('/admin/consignment');
+    revalidatePath('/titipsewa');
+    revalidatePath('/titipsewa/dashboard');
     revalidatePath('/pos');
     revalidatePath('/pos/dashboard');
     revalidatePath('/pos/transactions');

@@ -45,6 +45,7 @@ export interface KebayaItem {
   hijabFriendly: boolean;
   cost?: number | null;
   published?: boolean;
+  consignorId?: string | null;
   rentalIncludes?: KebayaRentalInclude[];
   categories?: KebayaCategory[];
   measurements?: Partial<KebayaMeasurements>;

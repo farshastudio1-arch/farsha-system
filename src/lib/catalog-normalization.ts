@@ -144,6 +144,11 @@ export function normalizePublished(value: unknown): boolean {
   return value !== false;
 }
 
+export function normalizeConsignorId(value: unknown): string | null {
+  const normalized = normalizeText(value);
+  return normalized || null;
+}
+
 export function normalizeRentalIncludes(value: unknown): NonNullable<KebayaItem['rentalIncludes']> {
   if (!Array.isArray(value)) {
     return defaultRentalIncludes;
@@ -188,6 +193,7 @@ export function normalizeCatalogItem(value: Partial<KebayaItem>, index: number):
     hijabFriendly: normalizeHijabFriendly(value.hijabFriendly),
     cost: normalizeCost(value.cost),
     published: normalizePublished(value.published),
+    consignorId: normalizeConsignorId(value.consignorId),
     rentalIncludes: normalizeRentalIncludes(value.rentalIncludes),
     categories: normalizeCategories(value.categories),
     measurements: normalizeMeasurements(value.measurements),
