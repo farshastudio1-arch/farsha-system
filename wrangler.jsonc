@@ -10,6 +10,16 @@
     "directory": ".open-next/assets",
     "binding": "ASSETS"
   },
+  "routes": [
+    {
+      "pattern": "farshastudio.com",
+      "custom_domain": true
+    },
+    {
+      "pattern": "titipsewa.farshastudio.com",
+      "custom_domain": true
+    }
+  ],
   "vars": {
     "R2_PUBLIC_BASE_URL": "https://images.farshastudio.com",
     "CONSIGNMENT_HOST": "titipsewa.farshastudio.com",
