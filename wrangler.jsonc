@@ -4,22 +4,14 @@
   "main": ".open-next/worker.js",
   "compatibility_date": "2026-06-28",
   "compatibility_flags": [
-    "nodejs_compat"
+    "nodejs_compat",
+    "global_fetch_strictly_public"
   ],
+  "workers_dev": false,
   "assets": {
     "directory": ".open-next/assets",
     "binding": "ASSETS"
   },
-  "routes": [
-    {
-      "pattern": "farshastudio.com/*",
-      "zone_name": "farshastudio.com"
-    },
-    {
-      "pattern": "titipsewa.farshastudio.com/*",
-      "zone_name": "farshastudio.com"
-    }
-  ],
   "vars": {
     "R2_PUBLIC_BASE_URL": "https://images.farshastudio.com",
     "CONSIGNMENT_HOST": "titipsewa.farshastudio.com",

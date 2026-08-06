@@ -21,7 +21,7 @@ function rewriteConsignmentPath(request: NextRequest) {
   const targetPath =
     pathname === '/'
       ? '/titipsewa'
-      : pathname.startsWith('/titipsewa/')
+      : pathname === '/titipsewa' || pathname.startsWith('/titipsewa/')
         ? pathname
         : `/titipsewa${pathname}`;
 
@@ -30,6 +30,10 @@ function rewriteConsignmentPath(request: NextRequest) {
 
 function isLocalDevHost(host: string) {
   return host === 'localhost' || host === '127.0.0.1';
+}
+
+function isInternalWorkerRequest(request: NextRequest) {
+  return request.headers.get('cf-worker') === 'farshastudio.com';
 }
 
 function rewriteLocalConsignmentPath(request: NextRequest) {
@@ -68,7 +72,11 @@ export default auth((request: NextRequest) => {
     return rewriteLocalConsignmentPath(request);
   }
 
-  if (pathname.startsWith('/titipsewa') && !isLocalDevHost(host)) {
+  if (
+    pathname.startsWith('/titipsewa') &&
+    !isLocalDevHost(host) &&
+    !isInternalWorkerRequest(request)
+  ) {
     return new NextResponse('Not Found', { status: 404 });
   }
 

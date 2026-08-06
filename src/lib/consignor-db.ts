@@ -125,10 +125,7 @@ type ConsignorPayoutRow = {
   id: string;
   consignor_id: string;
   item_id: string;
-  item_code: string;
-  item_name: string;
   transaction_id: string;
-  transaction_number: string;
   close_receipt_id: string;
   rental_net: number;
   rate_percent: 40 | 50;
@@ -138,6 +135,9 @@ type ConsignorPayoutRow = {
   paid_at: string | null;
   payout_request_id: string | null;
   transfer_reference: string | null;
+  item_code: string | null;
+  item_name: string | null;
+  transaction_number: string | null;
 };
 
 type ConsignorPayoutRequestRow = {
@@ -610,12 +610,15 @@ export async function getConsignorDashboard(consignorId: string) {
         .all<ConsignorItemRow>(),
       db
         .prepare(
-          `SELECT id, consignor_id, item_id, item_code, item_name, transaction_id,
-            transaction_number, close_receipt_id, rental_net, rate_percent, payout_amount, status,
-            accrued_at, paid_at, payout_request_id, transfer_reference
-           FROM consignor_payouts
-           WHERE consignor_id = ?
-           ORDER BY accrued_at DESC, created_at DESC`,
+          `SELECT cp.id, cp.consignor_id, cp.item_id, cp.transaction_id, cp.close_receipt_id,
+            cp.rental_net, cp.rate_percent, cp.payout_amount, cp.status, cp.accrued_at, cp.paid_at,
+            cp.payout_request_id, cp.transfer_reference, ki.code AS item_code, ki.name AS item_name,
+            pt.transaction_number
+           FROM consignor_payouts cp
+           LEFT JOIN kebaya_items ki ON ki.id = cp.item_id
+           LEFT JOIN pos_transactions pt ON pt.id = cp.transaction_id
+           WHERE cp.consignor_id = ?
+           ORDER BY cp.accrued_at DESC`,
         )
         .bind(consignorId)
         .all<ConsignorPayoutRow>(),
@@ -646,10 +649,10 @@ export async function getConsignorDashboard(consignorId: string) {
     id: row.id,
     consignorId: row.consignor_id,
     itemId: row.item_id,
-    itemCode: row.item_code,
-    itemName: row.item_name,
+    itemCode: row.item_code ?? '',
+    itemName: row.item_name ?? '',
     transactionId: row.transaction_id,
-    transactionNumber: row.transaction_number,
+    transactionNumber: row.transaction_number ?? '',
     closeReceiptId: row.close_receipt_id,
     rentalNet: row.rental_net,
     ratePercent: row.rate_percent,
