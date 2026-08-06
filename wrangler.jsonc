@@ -6,6 +6,10 @@
   "compatibility_flags": ["nodejs_compat"],
   "routes": [
     {
+      "pattern": "farshastudio.com",
+      "custom_domain": true
+    },
+    {
       "pattern": "titipsewa.farshastudio.com",
       "custom_domain": true
     }
