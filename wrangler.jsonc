@@ -12,12 +12,12 @@
   },
   "routes": [
     {
-      "pattern": "farshastudio.com",
-      "custom_domain": true
+      "pattern": "farshastudio.com/*",
+      "zone_name": "farshastudio.com"
     },
     {
-      "pattern": "titipsewa.farshastudio.com",
-      "custom_domain": true
+      "pattern": "titipsewa.farshastudio.com/*",
+      "zone_name": "farshastudio.com"
     }
   ],
   "vars": {
