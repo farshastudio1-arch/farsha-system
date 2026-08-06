@@ -25,7 +25,9 @@ function rewriteConsignmentPath(request: NextRequest) {
         ? pathname
         : `/titipsewa${pathname}`;
 
-  return NextResponse.rewrite(new URL(targetPath, request.url));
+  const targetUrl = request.nextUrl.clone();
+  targetUrl.pathname = targetPath;
+  return NextResponse.rewrite(targetUrl);
 }
 
 function isLocalDevHost(host: string) {
@@ -39,7 +41,9 @@ function isInternalWorkerRequest(request: NextRequest) {
 function rewriteLocalConsignmentPath(request: NextRequest) {
   const pathname = request.nextUrl.pathname;
   const targetPath = pathname === '/' ? '/titipsewa' : `/titipsewa${pathname}`;
-  return NextResponse.rewrite(new URL(targetPath, request.url));
+  const targetUrl = request.nextUrl.clone();
+  targetUrl.pathname = targetPath;
+  return NextResponse.rewrite(targetUrl);
 }
 
 export default auth((request: NextRequest) => {

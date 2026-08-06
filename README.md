@@ -29,3 +29,19 @@ To learn more about Next.js, take a look at the following resources:
 
 You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
 
+## Titipsewa email setup
+
+Consignor activation and reset emails use Resend from `src/lib/email.ts`.
+
+1. Verify a sender domain or address in Resend.
+2. Set `RESEND_API_KEY` as a Cloudflare secret for the Worker.
+3. Set `RESEND_FROM` in `wrangler.jsonc` to a verified sender, for example `Farsha Studio <no-reply@farshastudio.com>`.
+4. Keep `CONSIGNMENT_BASE_URL` pointed at the public consignment host so links in activation emails are correct.
+5. Deploy with the secret in place:
+
+```bash
+npx wrangler secret put RESEND_API_KEY
+npx wrangler deploy
+```
+
+Local dev can use `.env.local`, but production needs the Worker secret. `RESEND_FROM` is already a non-secret Worker variable in `wrangler.jsonc`. If `RESEND_API_KEY` is missing, the admin UI will now show that the invite link was created but the email was not sent.

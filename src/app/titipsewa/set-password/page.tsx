@@ -2,12 +2,13 @@ import Link from 'next/link';
 
 import { SetPasswordForm } from '@/components/consignment/ConsignmentForms';
 
-export default function ConsignorSetPasswordPage({
+export default async function ConsignorSetPasswordPage({
   searchParams,
 }: {
-  searchParams: { token?: string };
+  searchParams: Promise<{ token?: string | string[] }>;
 }) {
-  const token = searchParams.token ?? '';
+  const { token: tokenValue } = await searchParams;
+  const token = Array.isArray(tokenValue) ? tokenValue[0] ?? '' : tokenValue ?? '';
 
   return (
     <main className="mx-auto flex min-h-screen max-w-md items-center px-4 py-10">

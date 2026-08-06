@@ -22,6 +22,11 @@
     "CONSIGNOR_RATE_HIGH": "50",
     "CONSIGNOR_MIN_PAYOUT": "100000"
   },
+  "secrets": {
+    "required": [
+      "RESEND_API_KEY"
+    ]
+  },
   "d1_databases": [
     {
       "binding": "DB",

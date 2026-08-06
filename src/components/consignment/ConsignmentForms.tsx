@@ -42,6 +42,12 @@ function buttonClass() {
   return 'inline-flex items-center justify-center border border-neutral-900 bg-neutral-900 px-4 py-3 text-sm font-semibold text-white transition-colors hover:bg-neutral-700 disabled:cursor-not-allowed disabled:opacity-50';
 }
 
+function inviteFeedback(inviteLink: string, emailSent: boolean) {
+  return emailSent
+    ? `Activation email sent. Link: ${inviteLink}`
+    : `Activation link created, but email was not sent. Configure RESEND_API_KEY and RESEND_FROM. Link: ${inviteLink}`;
+}
+
 export function LoginForm() {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
@@ -221,7 +227,11 @@ export function AdminCreateConsignorForm() {
             email: String(formData.get('email') ?? ''),
             phone: String(formData.get('phone') ?? ''),
           });
-          setFeedback(result.ok ? result.data.consignor.inviteLink : result.error);
+          setFeedback(
+            result.ok
+              ? inviteFeedback(result.data.consignor.inviteLink, result.data.inviteEmailSent)
+              : result.error,
+          );
         });
       }}
     >
@@ -247,20 +257,26 @@ export function AdminResendInviteButton({ consignorId }: { consignorId: string }
   const [feedback, setFeedback] = useState('');
 
   return (
-    <button
-      type="button"
-      className="border border-neutral-200 px-3 py-2 text-sm font-medium text-neutral-700"
-      disabled={pending}
-      onClick={() => {
-        startTransition(async () => {
-          const result = await resendConsignorInviteAction(consignorId);
-          setFeedback(result.ok ? result.data.inviteLink : result.error);
-        });
-      }}
-    >
-      Resend invite
-      {feedback && <span className="ml-2 text-xs text-neutral-500">{feedback}</span>}
-    </button>
+    <div className="max-w-full text-left sm:text-right">
+      <button
+        type="button"
+        className="border border-neutral-200 px-3 py-2 text-sm font-medium text-neutral-700"
+        disabled={pending}
+        onClick={() => {
+          startTransition(async () => {
+            const result = await resendConsignorInviteAction(consignorId);
+            setFeedback(
+              result.ok
+                ? inviteFeedback(result.data.inviteLink, result.data.inviteEmailSent)
+                : result.error,
+            );
+          });
+        }}
+      >
+        Resend invite
+      </button>
+      {feedback && <p className="mt-2 max-w-xs break-all text-xs text-neutral-500">{feedback}</p>}
+    </div>
   );
 }
 
