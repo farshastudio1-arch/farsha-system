@@ -96,7 +96,7 @@ export default function ProductCard({
     <div
       data-farsha-card
       data-farsha-product={fallbackProductData}
-      className={`theme-surface theme-border group flex flex-col border overflow-hidden transition-all duration-300 ${isOneColumn ? ' shadow-sm hover:shadow-md' : ' hover:shadow-sm'
+      className={`theme-surface theme-border group flex flex-col border-0 overflow-hidden transition-all duration-300 ${isOneColumn ? ' shadow-sm hover:shadow-md' : ' hover:shadow-sm'
         }`}
     >
       {/* CARD IMAGE AREA */}
@@ -186,7 +186,7 @@ export default function ProductCard({
 
         {showHijabFriendlyBadge && (
           <div className="absolute bottom-3 right-3 z-10 flex max-w-[62%] flex-wrap justify-end gap-1.5 pointer-events-none">
-            <span className="bg-[#f8edeb] px-2 py-0.5 text-[10px] font-semibold font-mono text-neutral-900 shadow-xs">
+            <span className="bg-[#f8edeb] px-1.5 py-px text-[7px] font-semibold font-mono text-neutral-900 shadow-xs leading-none">
               Hijab Friendly
             </span>
           </div>
@@ -244,7 +244,7 @@ export default function ProductCard({
                   >
                     {visibleCompareAtRentalPrice && (
                       <span
-                        className={`theme-muted-strong line-through ${isOneColumn ? 'text-xs' : 'text-[10px]'
+                        className={`theme-muted-strong line-through ${isOneColumn ? 'text-base sm:text-lg' : 'text-xs sm:text-sm'
                           }`}
                       >
                         {formatRupiah(visibleCompareAtRentalPrice)}
@@ -262,7 +262,8 @@ export default function ProductCard({
                 </div>
               )}
 
-              {(displaySettings.showProductSize || displaySettings.showProductColor) && (
+              {!isMobileTwoColumn &&
+                (displaySettings.showProductSize || displaySettings.showProductColor) && (
                 <div
                   className={`flex flex-wrap gap-1.5 ${isOneColumn ? 'items-center' : 'sm:justify-end'}`}
                 >
@@ -277,7 +278,7 @@ export default function ProductCard({
                     </span>
                   )}
                 </div>
-              )}
+                )}
             </div>
           )}
 
