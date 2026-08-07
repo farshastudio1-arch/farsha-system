@@ -6,9 +6,15 @@ interface PublicFooterProps {
   cmsContent: CMSContent;
   siteSettings: SiteSettings;
   showTitipSewaLink?: boolean;
+  compactMobile?: boolean;
 }
 
-export default function PublicFooter({ cmsContent, siteSettings, showTitipSewaLink = false }: PublicFooterProps) {
+export default function PublicFooter({
+  cmsContent,
+  siteSettings,
+  showTitipSewaLink = false,
+  compactMobile = false,
+}: PublicFooterProps) {
   const whatsappNumber = siteSettings.whatsappNumber || cmsContent.studioPhone;
   const cleanWhatsapp = whatsappNumber.replace(/[^0-9]/g, '');
   const whatsappHref = `https://wa.me/${cleanWhatsapp}`;
@@ -20,13 +26,32 @@ export default function PublicFooter({ cmsContent, siteSettings, showTitipSewaLi
   const waMuaHref = `https://wa.me/${cleanWhatsapp}?text=Halo%20Admin%20Farsha%20Studio%2C%20saya%20tertarik%20tanya%20kerjasama%20MUA.`;
   const waPhotoHref = `https://wa.me/${cleanWhatsapp}?text=Halo%20Admin%20Farsha%20Studio%2C%20saya%20tertarik%20tanya%20kerjasama%20fotografer.`;
 
+  const footerClassName = compactMobile
+    ? 'theme-surface relative overflow-hidden border-t border-[var(--theme-border)] pt-12 pb-14 font-sans z-10 sm:pt-16 sm:pb-20'
+    : 'theme-surface relative overflow-hidden border-t border-[var(--theme-border)] pt-16 pb-20 font-sans z-10';
+  const contentGridClassName = compactMobile
+    ? 'grid grid-cols-1 gap-10 lg:grid-cols-12 items-start'
+    : 'grid grid-cols-1 gap-12 lg:grid-cols-12 items-start';
+  const linksGridClassName = compactMobile
+    ? 'lg:col-span-7 grid grid-cols-1 gap-8 sm:grid-cols-3 sm:gap-8'
+    : 'lg:col-span-7 grid grid-cols-3 gap-8';
+  const bottomBarClassName = compactMobile
+    ? 'border-t border-[var(--theme-border)] mt-10 pt-6 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-[color-mix(in_srgb,var(--theme-text)_60%,transparent)] font-medium sm:mt-16 sm:pt-8'
+    : 'border-t border-[var(--theme-border)] mt-16 pt-8 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-[color-mix(in_srgb,var(--theme-text)_60%,transparent)] font-medium';
+  const bottomLinksClassName = compactMobile
+    ? 'flex flex-col items-center gap-2 sm:flex-row sm:gap-6'
+    : 'flex gap-6';
+  const watermarkClassName = compactMobile
+    ? 'hidden sm:block select-none pointer-events-none absolute bottom-[-5%] sm:bottom-[-10%] md:bottom-[-20%] left-1/2 -translate-x-1/2 font-serif text-[18vw] font-bold uppercase text-[var(--theme-text)] leading-none tracking-tight whitespace-nowrap z-0'
+    : 'select-none pointer-events-none absolute bottom-[-5%] sm:bottom-[-10%] md:bottom-[-20%] left-1/2 -translate-x-1/2 font-serif text-[18vw] font-bold uppercase text-[var(--theme-text)] leading-none tracking-tight whitespace-nowrap z-0';
+
   return (
     <footer
       id="contact-section"
-      className="theme-surface relative overflow-hidden border-t border-[var(--theme-border)] pt-16 pb-20 font-sans z-10"
+      className={footerClassName}
     >
       <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="grid grid-cols-1 gap-12 lg:grid-cols-12 items-start">
+        <div className={contentGridClassName}>
           {/* Brand Info */}
           <div className="space-y-4 lg:col-span-5">
             <Link href="/" className="flex items-center gap-3 w-fit">
@@ -51,7 +76,7 @@ export default function PublicFooter({ cmsContent, siteSettings, showTitipSewaLi
           </div>
 
           {/* Links Grid */}
-          <div className="lg:col-span-7 grid grid-cols-3 gap-8">
+          <div className={linksGridClassName}>
             {/* Links */}
             <div className="space-y-3.5">
               <h4 className="font-mono text-[10px] font-bold uppercase tracking-[0.2em] text-[color-mix(in_srgb,var(--theme-text)_60%,transparent)]">
@@ -187,9 +212,9 @@ export default function PublicFooter({ cmsContent, siteSettings, showTitipSewaLi
         </div>
 
         {/* Divider */}
-        <div className="border-t border-[var(--theme-border)] mt-16 pt-8 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-[color-mix(in_srgb,var(--theme-text)_60%,transparent)] font-medium">
+        <div className={bottomBarClassName}>
           {/* Bottom Links */}
-          <div className="flex gap-6">
+          <div className={bottomLinksClassName}>
             <Link href="/terms" className="hover:text-[var(--theme-text)] transition-colors">
               Syarat & Ketentuan
             </Link>
@@ -207,7 +232,7 @@ export default function PublicFooter({ cmsContent, siteSettings, showTitipSewaLi
 
       {/* Decorative Huge Watermark Background */}
       <div 
-        className="select-none pointer-events-none absolute bottom-[-5%] sm:bottom-[-10%] md:bottom-[-20%] left-1/2 -translate-x-1/2 font-serif text-[18vw] font-bold uppercase text-[var(--theme-text)] leading-none tracking-tight whitespace-nowrap z-0"
+        className={watermarkClassName}
         style={{ opacity: 0.025 }}
       >
         farsha

@@ -34,9 +34,6 @@ const rentalPaths = [
   },
 ];
 
-const rentalCardTitleStyle = { fontSize: '1.8rem' };
-const rentalCardTaglineStyle = { fontSize: '0.9rem' };
-
 export default async function Home() {
   const [cmsContent, siteSettings] = await Promise.all([getCmsContent(), getSiteSettings()]);
   const cleanWhatsapp = siteSettings.whatsappNumber.replace(/[^0-9]/g, '');
@@ -51,12 +48,12 @@ export default async function Home() {
   const trustPoints = cmsContent.trustPoints.map(applyLocation);
 
   return (
-    <div className="theme-surface flex min-h-screen flex-col font-sans antialiased">
+    <div className="landing-page theme-surface flex min-h-screen flex-col font-sans antialiased">
       <PublicHeader />
 
       <main className="flex-grow">
         <section className="landing-hero-satin relative overflow-hidden">
-          <div className="relative z-10 mx-auto max-w-7xl px-4 py-7 sm:px-6 sm:py-9 lg:px-8">
+          <div className="relative z-10 mx-auto max-w-7xl px-4 py-5 sm:px-6 sm:py-9 lg:px-8">
             <div className="landing-hero-grid">
               <div className="theme-border border-b pb-6 lg:border-b-0 lg:border-r lg:pb-0 lg:pr-8 md:text-center lg:text-left">
                 <span className="theme-muted-strong font-mono text-xs font-bold uppercase tracking-widest">
@@ -133,7 +130,7 @@ export default async function Home() {
           </div>
         </section>
 
-        <section className="landing-reminder-strip border-y border-neutral-900/10 py-6 sm:py-7">
+        <section className="landing-reminder-strip border-y border-neutral-900/10 py-4 sm:py-7">
           <div className="relative z-10 mx-auto flex max-w-7xl flex-col items-center justify-center gap-1.5 px-4 sm:px-6 lg:px-8">
             <span className="landing-reminder-label text-neutral-500 font-mono text-[9px] font-bold uppercase tracking-widest">
               <span aria-hidden="true">✨</span>
@@ -146,7 +143,7 @@ export default async function Home() {
           </div>
         </section>
 
-        <section className="theme-surface theme-border border-t py-8 sm:py-10">
+        <section className="theme-surface theme-border border-t py-6 sm:py-10">
           <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
             <div className="theme-border mb-5 flex items-end justify-between gap-5 border-b pb-4">
               <div>
@@ -168,8 +165,8 @@ export default async function Home() {
           </div>
         </section>
 
-        <div className="mx-8 my-2 sm:mx-6 sm:my-10 lg:mx-8">
-          <section className="landing-rental-section theme-surface border-0 py-14 sm:py-20">
+        <div className="mx-4 my-4 sm:mx-6 sm:my-10 lg:mx-8">
+          <section className="landing-rental-section theme-surface border-0 py-10 sm:py-20">
             <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
 
               {/* Section header */}
@@ -217,11 +214,10 @@ export default async function Home() {
                         <div className="landing-rental-panel-title-block">
                           <h3
                             className="landing-rental-panel-title font-display font-semibold text-[var(--theme-text)]"
-                            style={rentalCardTitleStyle}
                           >
                             {pathA.title}
                           </h3>
-                          <p className="landing-rental-panel-tagline" style={rentalCardTaglineStyle}>
+                          <p className="landing-rental-panel-tagline">
                             {pathA.suitableFor}
                           </p>
                         </div>
@@ -301,11 +297,10 @@ export default async function Home() {
                         <div className="landing-rental-panel-title-block">
                           <h3
                             className="landing-rental-panel-title font-display font-semibold text-[var(--theme-text)]"
-                            style={rentalCardTitleStyle}
                           >
                             {pathB.title}
                           </h3>
-                          <p className="landing-rental-panel-tagline" style={rentalCardTaglineStyle}>
+                          <p className="landing-rental-panel-tagline">
                             {pathB.suitableFor}
                           </p>
                         </div>
@@ -360,7 +355,7 @@ export default async function Home() {
           </section>
         </div>
 
-        <section className="theme-soft-surface theme-border border-t py-7">
+        <section className="theme-soft-surface theme-border border-t py-5 sm:py-7">
           <div className="landing-trust-grid mx-auto max-w-7xl divide-y divide-[var(--theme-border)] px-4 sm:divide-x sm:divide-y-0 sm:px-6 lg:px-8">
             {trustPoints.map((point) => (
               <p
@@ -373,7 +368,7 @@ export default async function Home() {
           </div>
         </section>
 
-        <section className="theme-surface theme-border border-t py-12 sm:py-16">
+        <section className="theme-surface theme-border border-t py-10 sm:py-16">
           <div className="mx-auto flex max-w-3xl flex-col items-center px-4 text-center sm:px-6">
             <span className="theme-muted font-mono text-[10px] font-semibold uppercase tracking-widest">
               {cmsContent.finalEyebrow}
@@ -394,7 +389,7 @@ export default async function Home() {
         </section>
       </main>
 
-      <PublicFooter cmsContent={cmsContent} siteSettings={siteSettings} showTitipSewaLink />
+      <PublicFooter cmsContent={cmsContent} siteSettings={siteSettings} showTitipSewaLink compactMobile />
     </div>
   );
 }
