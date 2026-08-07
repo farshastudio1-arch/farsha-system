@@ -280,6 +280,29 @@ select {
     gap: 1rem;
   }
 
+  /* Consignment "cara request titip sewa" step grid.
+     Uses a dedicated class because the plain .grid-cols-* overrides above
+     defeat Tailwind's responsive grid-cols variants. */
+  .consign-step-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 1px;
+    background-color: var(--theme-border);
+    border: 1px solid var(--theme-border);
+  }
+
+  @media (min-width: 640px) {
+    .consign-step-grid {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+  }
+
+  @media (min-width: 1024px) {
+    .consign-step-grid {
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+    }
+  }
+
   .landing-trust-grid {
     display: grid;
     grid-template-columns: minmax(0, 1fr);
