@@ -129,7 +129,7 @@ export default function Catalog({
     maxPrice: maxPriceLimit,
     categories: initialCategory ? [initialCategory] : [],
   });
-  
+
   // Track responsive screen size changes
   useEffect(() => {
     const handleResize = () => {
@@ -296,11 +296,10 @@ export default function Catalog({
 
   const renderSortControl = (id: string, compact = false) => (
     <label
-      className={`theme-outline-action inline-flex items-center border font-semibold uppercase transition-colors ${
-        compact
-          ? 'h-10 min-w-0 gap-1.5 px-2 text-[10px] tracking-wider'
-          : 'h-11 gap-2 px-3 text-xs tracking-wider'
-      }`}
+      className={`theme-outline-action inline-flex items-center border font-semibold uppercase transition-colors ${compact
+        ? 'h-10 min-w-0 gap-1.5 px-2 text-[10px] tracking-wider'
+        : 'h-11 gap-2 px-3 text-xs tracking-wider'
+        }`}
     >
       <ArrowUpDown
         className={`${compact ? 'h-3.5 w-3.5' : 'h-4 w-4'} shrink-0`}
@@ -311,9 +310,8 @@ export default function Catalog({
         id={id}
         value={sortBy}
         onChange={(event) => setSortBy(event.target.value as SortOption)}
-        className={`min-w-0 appearance-none bg-transparent font-semibold uppercase tracking-wider text-[var(--theme-text)] outline-none ${
-          compact ? 'max-w-[4.9rem] text-[10px]' : 'max-w-[8.5rem] pr-1 text-xs'
-        }`}
+        className={`min-w-0 appearance-none bg-transparent font-semibold uppercase tracking-wider text-[var(--theme-text)] outline-none ${compact ? 'max-w-[4.9rem] text-[10px]' : 'max-w-[8.5rem] pr-1 text-xs'
+          }`}
         aria-label="Urutkan katalog"
       >
         {sortOptions.map((option) => (
@@ -327,15 +325,14 @@ export default function Catalog({
 
   const renderGridIcon = (columns: MobileGridColumns | DesktopGridColumns) => (
     <span
-      className={`grid h-4 w-4 gap-0.5 ${
-        columns === 1
-          ? 'grid-cols-1'
-          : columns === 2
-            ? 'grid-cols-2'
-            : columns === 3
-              ? 'grid-cols-3'
-              : 'grid-cols-4'
-      }`}
+      className={`grid h-4 w-4 gap-0.5 ${columns === 1
+        ? 'grid-cols-1'
+        : columns === 2
+          ? 'grid-cols-2'
+          : columns === 3
+            ? 'grid-cols-3'
+            : 'grid-cols-4'
+        }`}
       aria-hidden="true"
     >
       {Array.from({ length: columns }).map((_, index) => (
@@ -346,16 +343,16 @@ export default function Catalog({
 
   const catalogGridClass =
     isMobile && layoutColumns === 3
-      ? 'grid-cols-3 gap-1 sm:gap-1.5'
+      ? 'grid-cols-3 gap-0 sm:gap-1.5'
       : isMobile && layoutColumns === 2
-        ? 'grid-cols-2 gap-2'
-      : layoutColumns === 1
-        ? 'grid-cols-1 max-w-xl sm:max-w-3xl mx-auto gap-5 sm:gap-6'
-        : layoutColumns === 2
-          ? 'grid-cols-2 gap-5 sm:gap-6'
-          : layoutColumns === 3
-            ? 'grid-cols-3 gap-3 sm:gap-4'
-            : 'grid-cols-4 gap-5 sm:gap-6';
+        ? 'grid-cols-2 gap-0'
+        : layoutColumns === 1
+          ? 'grid-cols-1 max-w-xl sm:max-w-3xl mx-auto gap-5 sm:gap-6'
+          : layoutColumns === 2
+            ? 'grid-cols-2 gap-5 sm:gap-6'
+            : layoutColumns === 3
+              ? 'grid-cols-3 gap-3 sm:gap-4'
+              : 'grid-cols-4 gap-5 sm:gap-6';
 
   return (
     <div
@@ -425,11 +422,10 @@ export default function Catalog({
                   type="button"
                   data-farsha-grid-option={columns}
                   onClick={() => selectColumns(columns)}
-                  className={`flex h-8 w-8 items-center justify-center text-[10px] font-semibold transition-all ${
-                    layoutColumns === columns
-                      ? 'theme-selected shadow-xs'
-                      : 'theme-muted-strong hover:bg-[var(--theme-surface)] hover:text-[var(--theme-text)]'
-                  }`}
+                  className={`flex h-8 w-8 items-center justify-center text-[10px] font-semibold transition-all ${layoutColumns === columns
+                    ? 'theme-selected shadow-xs'
+                    : 'theme-muted-strong hover:bg-[var(--theme-surface)] hover:text-[var(--theme-text)]'
+                    }`}
                   aria-label={`Tampilan ${columns} Kolom`}
                   aria-pressed={layoutColumns === columns}
                 >
@@ -450,11 +446,10 @@ export default function Catalog({
                   <button
                     key={columns}
                     onClick={() => selectColumns(columns)}
-                    className={`flex items-center justify-center w-10 h-9 text-xs font-bold transition-all ${
-                      layoutColumns === columns
-                        ? 'theme-selected shadow-xs'
-                        : 'theme-muted-strong hover:bg-[var(--theme-surface)]'
-                    }`}
+                    className={`flex items-center justify-center w-10 h-9 text-xs font-bold transition-all ${layoutColumns === columns
+                      ? 'theme-selected shadow-xs'
+                      : 'theme-muted-strong hover:bg-[var(--theme-surface)]'
+                      }`}
                     aria-label={`Tampilan ${columns} Kolom`}
                     aria-pressed={layoutColumns === columns}
                   >
@@ -515,14 +510,20 @@ export default function Catalog({
               </div>
             ) : (
               /* DYNAMIC GRID CONTAINER */
-              <div className={`grid ${catalogGridClass}`} data-farsha-grid>
+              <div
+                className={`grid ${catalogGridClass} ${isMobile && (layoutColumns === 2 || layoutColumns === 3)
+                  ? '-mx-4 sm:mx-0'
+                  : ''
+                  }`}
+                data-farsha-grid
+              >
                 {sortedProducts.map((product) => (
-                    <ProductCard
-                      key={product.id}
-                      product={product}
-                      layoutColumns={layoutColumns}
-                      isMobile={isMobile}
-                      displaySettings={siteSettings}
+                  <ProductCard
+                    key={product.id}
+                    product={product}
+                    layoutColumns={layoutColumns}
+                    isMobile={isMobile}
+                    displaySettings={siteSettings}
                     onOpenDetail={setSelectedProduct}
                   />
                 ))}

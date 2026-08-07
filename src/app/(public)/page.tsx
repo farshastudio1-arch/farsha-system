@@ -13,7 +13,7 @@ const rentalPaths = [
     optionLabel: 'Opsi A',
     title: 'Datang Langsung',
     icon: MapPin,
-    suitableFor: 'Acara mendadak atau kebutuhan mepet.',
+    suitableFor: 'Cocok Untuk: Acara mendadak atau kebutuhan mepet.',
     benefit:
       'Tanpa perlu membuat appointment atau membayar biaya booking di awal. Cukup kunjungi studio kami di jam operasional, pilih koleksi yang tersedia, lakukan fitting, dan bawa pulang hari itu juga.',
     note: 'Pilihan baju terbatas sepenuhnya pada ketersediaan stok di hari kunjungan tersebut.',
@@ -24,7 +24,7 @@ const rentalPaths = [
     optionLabel: 'Opsi B',
     title: 'Booking Dulu',
     icon: CalendarCheck,
-    suitableFor: 'Persiapan acara jauh-jauh hari.',
+    suitableFor: 'Cocok Untuk: Persiapan acara jauh-jauh hari.',
     benefit:
       'Dapatkan prioritas utama untuk memilih style favorit tanpa takut kehabisan slot. Tanggal acara kamu akan kami kunci secara eksklusif dalam sistem reservasi kami.',
     note:
@@ -33,6 +33,9 @@ const rentalPaths = [
     ctaHref: '/catalog?view=all',
   },
 ];
+
+const rentalCardTitleStyle = { fontSize: '1.8rem' };
+const rentalCardTaglineStyle = { fontSize: '0.9rem' };
 
 export default async function Home() {
   const [cmsContent, siteSettings] = await Promise.all([getCmsContent(), getSiteSettings()]);
@@ -165,189 +168,197 @@ export default async function Home() {
           </div>
         </section>
 
-        <section className="landing-rental-section theme-surface theme-border border-t py-14 sm:py-20">
-          <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+        <div className="mx-8 my-2 sm:mx-6 sm:my-10 lg:mx-8">
+          <section className="landing-rental-section theme-surface border-0 py-14 sm:py-20">
+            <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
 
-            {/* Section header */}
-            <div className="landing-rental-intro">
-              <span className="landing-rental-eyebrow font-mono text-[10px] font-bold uppercase tracking-[0.45em]">
-                panduan sewa
-              </span>
-              <h2 className="landing-rental-title font-display font-semibold leading-[1.02] text-[var(--theme-text)]">
-                Cara Sewa di<br />Farsha Studio
-              </h2>
-              <p className="landing-rental-subtitle theme-muted-strong leading-relaxed">
-                Kami menyediakan dua jalur penyewaan yang dirancang untuk kenyamanan jadwal kamu.
-              </p>
-            </div>
+              {/* Section header */}
+              <div className="landing-rental-intro">
+                <span className="landing-rental-eyebrow font-mono text-[10px] font-bold uppercase tracking-[0.45em]">
+                  panduan sewa
+                </span>
+                <h2 className="landing-rental-title font-display font-semibold leading-[1.02] text-[var(--theme-text)]">
+                  Cara Sewa di<br />Farsha Studio
+                </h2>
+                <p className="landing-rental-subtitle theme-muted-strong leading-relaxed">
+                  Kami menyediakan dua jalur penyewaan yang dirancang untuk kenyamanan jadwal kamu.
+                </p>
+              </div>
 
-            {/* Two path panels */}
-            <div className="landing-rental-panels">
+              {/* Two path panels */}
+              <div className="landing-rental-panels">
 
-              {/* Panel A — Walk-in (light outlined) */}
-              {(() => {
-                const pathA = rentalPaths[0];
-                const IconA = pathA.icon;
-                return (
-                  <article className="landing-rental-panel landing-rental-panel-light group">
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src="/logo-mark.png" alt="" aria-hidden="true"
-                      className="landing-rental-panel-watermark"
-                      style={{ opacity: 0.022 }} />
+                {/* Panel A — Walk-in (light outlined) */}
+                {(() => {
+                  const pathA = rentalPaths[0];
+                  const IconA = pathA.icon;
+                  return (
+                    <article className="landing-rental-panel landing-rental-panel-light group">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src="/logo-mark.png" alt="" aria-hidden="true"
+                        className="landing-rental-panel-watermark"
+                        style={{ opacity: 0.022 }} />
 
-                    {/* Top accent bar */}
-                    <div className="landing-rental-panel-accent" />
+                      {/* Top accent bar */}
+                      <div className="landing-rental-panel-accent" />
 
-                    <div className="landing-rental-panel-inner">
-                      {/* Header row */}
-                      <div className="landing-rental-panel-header">
-                        <div className="landing-rental-panel-badge">
-                          <span className="font-mono text-[9px] font-bold uppercase tracking-[0.3em]">Opsi A</span>
+                      <div className="landing-rental-panel-inner">
+                        {/* Header row */}
+                        <div className="landing-rental-panel-header">
+                          <div className="landing-rental-panel-badge">
+                            <span className="font-mono text-[9px] font-bold uppercase tracking-[0.3em]">Opsi A</span>
+                          </div>
+                          <span className="landing-rental-panel-icon-wrap">
+                            <IconA className="h-5 w-5" aria-hidden="true" />
+                          </span>
                         </div>
-                        <span className="landing-rental-panel-icon-wrap">
-                          <IconA className="h-5 w-5" aria-hidden="true" />
-                        </span>
-                      </div>
 
-                      {/* Title block */}
-                      <div className="landing-rental-panel-title-block">
-                        <h3 className="landing-rental-panel-title font-display font-semibold text-[var(--theme-text)]">
-                          {pathA.title}
-                        </h3>
-                        <p className="landing-rental-panel-tagline">
-                          {pathA.suitableFor}
-                        </p>
-                      </div>
-
-                      {/* Steps */}
-                      <ol className="landing-rental-steps">
-                        <li className="landing-rental-step">
-                          <span className="landing-rental-step-num">1</span>
-                          <div className="landing-rental-step-content">
-                            <span className="landing-rental-step-label">Datang ke studio</span>
-                            <p className="landing-rental-step-desc">Kunjungi kami di jam operasional tanpa perlu appointment sebelumnya.</p>
-                          </div>
-                        </li>
-                        <li className="landing-rental-step">
-                          <span className="landing-rental-step-num">2</span>
-                          <div className="landing-rental-step-content">
-                            <span className="landing-rental-step-label">Pilih & coba koleksi</span>
-                            <p className="landing-rental-step-desc">Pilih dari stok yang tersedia, lakukan fitting langsung di tempat.</p>
-                          </div>
-                        </li>
-                        <li className="landing-rental-step">
-                          <span className="landing-rental-step-num">3</span>
-                          <div className="landing-rental-step-content">
-                            <span className="landing-rental-step-label">Bawa pulang hari itu</span>
-                            <p className="landing-rental-step-desc">Selesai fitting, langsung bawa pulang — tanpa biaya booking di awal.</p>
-                          </div>
-                        </li>
-                      </ol>
-
-                      {/* Note */}
-                      <div className="landing-rental-panel-note">
-                        <span className="landing-rental-note-icon" aria-hidden="true">!</span>
-                        <p className="landing-rental-note-text">{pathA.note}</p>
-                      </div>
-
-                      {/* CTA */}
-                      <a
-                        href={mapsLink}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="landing-rental-panel-cta landing-rental-panel-cta-outline group/cta"
-                      >
-                        <span>{pathA.ctaLabel}</span>
-                        <ArrowRight className="h-4 w-4 shrink-0 transition-transform duration-300 group-hover/cta:translate-x-1" aria-hidden="true" />
-                      </a>
-                    </div>
-                  </article>
-                );
-              })()}
-
-              {/* Panel B — Booking */}
-              {(() => {
-                const pathB = rentalPaths[1];
-                const IconB = pathB.icon;
-                return (
-                  <article className="landing-rental-panel landing-rental-panel-light group">
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src="/logo-mark.png" alt="" aria-hidden="true"
-                      className="landing-rental-panel-watermark"
-                      style={{ opacity: 0.022 }} />
-
-                    {/* Top accent bar */}
-                    <div className="landing-rental-panel-accent" />
-
-                    <div className="landing-rental-panel-inner">
-                      {/* Header row */}
-                      <div className="landing-rental-panel-header">
-                        <div className="landing-rental-panel-badge">
-                          <span className="font-mono text-[9px] font-bold uppercase tracking-[0.3em]">Opsi B</span>
+                        {/* Title block */}
+                        <div className="landing-rental-panel-title-block">
+                          <h3
+                            className="landing-rental-panel-title font-display font-semibold text-[var(--theme-text)]"
+                            style={rentalCardTitleStyle}
+                          >
+                            {pathA.title}
+                          </h3>
+                          <p className="landing-rental-panel-tagline" style={rentalCardTaglineStyle}>
+                            {pathA.suitableFor}
+                          </p>
                         </div>
-                        <span className="landing-rental-panel-icon-wrap">
-                          <IconB className="h-5 w-5" aria-hidden="true" />
-                        </span>
+
+                        {/* Steps */}
+                        <ol className="landing-rental-steps">
+                          <li className="landing-rental-step">
+                            <span className="landing-rental-step-num">1</span>
+                            <div className="landing-rental-step-content">
+                              <span className="landing-rental-step-label">Datang ke studio</span>
+                              <p className="landing-rental-step-desc">Kunjungi kami di jam operasional tanpa perlu appointment sebelumnya.</p>
+                            </div>
+                          </li>
+                          <li className="landing-rental-step">
+                            <span className="landing-rental-step-num">2</span>
+                            <div className="landing-rental-step-content">
+                              <span className="landing-rental-step-label">Pilih & coba koleksi</span>
+                              <p className="landing-rental-step-desc">Pilih dari stok yang tersedia, lakukan fitting langsung di tempat.</p>
+                            </div>
+                          </li>
+                          <li className="landing-rental-step">
+                            <span className="landing-rental-step-num">3</span>
+                            <div className="landing-rental-step-content">
+                              <span className="landing-rental-step-label">Bawa pulang hari itu</span>
+                              <p className="landing-rental-step-desc">Selesai fitting, langsung bawa pulang — tanpa biaya booking di awal.</p>
+                            </div>
+                          </li>
+                        </ol>
+
+                        {/* Note */}
+                        <div className="landing-rental-panel-note">
+                          <span className="landing-rental-note-icon" aria-hidden="true">!</span>
+                          <p className="landing-rental-note-text">{pathA.note}</p>
+                        </div>
+
+                        {/* CTA */}
+                        <a
+                          href={mapsLink}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="landing-rental-panel-cta landing-rental-panel-cta-outline group/cta"
+                        >
+                          <span>{pathA.ctaLabel}</span>
+                          <ArrowRight className="h-4 w-4 shrink-0 transition-transform duration-300 group-hover/cta:translate-x-1" aria-hidden="true" />
+                        </a>
                       </div>
+                    </article>
+                  );
+                })()}
 
-                      {/* Title block */}
-                      <div className="landing-rental-panel-title-block">
-                        <h3 className="landing-rental-panel-title font-display font-semibold text-[var(--theme-text)]">
-                          {pathB.title}
-                        </h3>
-                        <p className="landing-rental-panel-tagline">
-                          {pathB.suitableFor}
-                        </p>
+                {/* Panel B — Booking */}
+                {(() => {
+                  const pathB = rentalPaths[1];
+                  const IconB = pathB.icon;
+                  return (
+                    <article className="landing-rental-panel landing-rental-panel-light group">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src="/logo-mark.png" alt="" aria-hidden="true"
+                        className="landing-rental-panel-watermark"
+                        style={{ opacity: 0.022 }} />
+
+                      {/* Top accent bar */}
+                      <div className="landing-rental-panel-accent" />
+
+                      <div className="landing-rental-panel-inner">
+                        {/* Header row */}
+                        <div className="landing-rental-panel-header">
+                          <div className="landing-rental-panel-badge">
+                            <span className="font-mono text-[9px] font-bold uppercase tracking-[0.3em]">Opsi B</span>
+                          </div>
+                          <span className="landing-rental-panel-icon-wrap">
+                            <IconB className="h-5 w-5" aria-hidden="true" />
+                          </span>
+                        </div>
+
+                        {/* Title block */}
+                        <div className="landing-rental-panel-title-block">
+                          <h3
+                            className="landing-rental-panel-title font-display font-semibold text-[var(--theme-text)]"
+                            style={rentalCardTitleStyle}
+                          >
+                            {pathB.title}
+                          </h3>
+                          <p className="landing-rental-panel-tagline" style={rentalCardTaglineStyle}>
+                            {pathB.suitableFor}
+                          </p>
+                        </div>
+
+                        {/* Steps */}
+                        <ol className="landing-rental-steps">
+                          <li className="landing-rental-step">
+                            <span className="landing-rental-step-num">1</span>
+                            <div className="landing-rental-step-content">
+                              <span className="landing-rental-step-label">Pilih Kebaya / Dress</span>
+                              <p className="landing-rental-step-desc">Pilih Kebaya / Dress kesukaan kamu di katalog kami.</p>
+                            </div>
+                          </li>
+                          <li className="landing-rental-step">
+                            <span className="landing-rental-step-num">2</span>
+                            <div className="landing-rental-step-content">
+                              <span className="landing-rental-step-label">Pilih Tanggal</span>
+                              <p className="landing-rental-step-desc">Klik tombol &ldquo;Cek Tanggal&rdquo; di kebaya yang kamu pilih untuk memastikan ketersediaan.</p>
+                            </div>
+                          </li>
+                          <li className="landing-rental-step">
+                            <span className="landing-rental-step-num">3</span>
+                            <div className="landing-rental-step-content">
+                              <span className="landing-rental-step-label">Buat Request Booking</span>
+                              <p className="landing-rental-step-desc">Klik tombol &ldquo;Booking Sekarang&rdquo; untuk membuat request booking.</p>
+                            </div>
+                          </li>
+                        </ol>
+
+                        {/* Note */}
+                        <div className="landing-rental-panel-note">
+                          <span className="landing-rental-note-icon" aria-hidden="true">!</span>
+                          <p className="landing-rental-note-text">{pathB.note}</p>
+                        </div>
+
+                        {/* CTA */}
+                        <Link
+                          href={pathB.ctaHref!}
+                          className="landing-rental-panel-cta landing-rental-panel-cta-outline group/cta"
+                        >
+                          <span>{pathB.ctaLabel}</span>
+                          <ArrowRight className="h-4 w-4 shrink-0 transition-transform duration-300 group-hover/cta:translate-x-1" aria-hidden="true" />
+                        </Link>
                       </div>
+                    </article>
+                  );
+                })()}
+              </div>
 
-                      {/* Steps */}
-                      <ol className="landing-rental-steps">
-                        <li className="landing-rental-step">
-                          <span className="landing-rental-step-num">1</span>
-                          <div className="landing-rental-step-content">
-                            <span className="landing-rental-step-label">Pilih Kebaya / Dress</span>
-                            <p className="landing-rental-step-desc">Pilih Kebaya / Dress kesukaan kamu di katalog kami.</p>
-                          </div>
-                        </li>
-                        <li className="landing-rental-step">
-                          <span className="landing-rental-step-num">2</span>
-                          <div className="landing-rental-step-content">
-                            <span className="landing-rental-step-label">Pilih Tanggal</span>
-                            <p className="landing-rental-step-desc">Klik tombol &ldquo;Cek Tanggal&rdquo; di kebaya yang kamu pilih untuk memastikan ketersediaan.</p>
-                          </div>
-                        </li>
-                        <li className="landing-rental-step">
-                          <span className="landing-rental-step-num">3</span>
-                          <div className="landing-rental-step-content">
-                            <span className="landing-rental-step-label">Buat Request Booking</span>
-                            <p className="landing-rental-step-desc">Klik tombol &ldquo;Booking Sekarang&rdquo; untuk membuat request booking.</p>
-                          </div>
-                        </li>
-                      </ol>
 
-                      {/* Note */}
-                      <div className="landing-rental-panel-note">
-                        <span className="landing-rental-note-icon" aria-hidden="true">!</span>
-                        <p className="landing-rental-note-text">{pathB.note}</p>
-                      </div>
-
-                      {/* CTA */}
-                      <Link
-                        href={pathB.ctaHref!}
-                        className="landing-rental-panel-cta landing-rental-panel-cta-outline group/cta"
-                      >
-                        <span>{pathB.ctaLabel}</span>
-                        <ArrowRight className="h-4 w-4 shrink-0 transition-transform duration-300 group-hover/cta:translate-x-1" aria-hidden="true" />
-                      </Link>
-                    </div>
-                  </article>
-                );
-              })()}
             </div>
-
-
-          </div>
-        </section>
+          </section>
+        </div>
 
         <section className="theme-soft-surface theme-border border-t py-7">
           <div className="landing-trust-grid mx-auto max-w-7xl divide-y divide-[var(--theme-border)] px-4 sm:divide-x sm:divide-y-0 sm:px-6 lg:px-8">

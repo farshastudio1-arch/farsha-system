@@ -840,7 +840,7 @@ export default function ProductDetailModal({
 
                 <div className="space-y-4 text-xs leading-relaxed theme-muted-strong">
                   <section className="space-y-2">
-                    <h5 className="text-sm font-semibold text-[var(--theme-text)]">1. Datang Langsung</h5>
+                    <h5 className="text-sm font-semibold text-[var(--theme-text)]">* Datang Langsung</h5>
                     <ul className="space-y-1.5">
                       <li>
                         <strong>Cocok untuk:</strong> Acara mendadak/mepet.
@@ -856,7 +856,7 @@ export default function ProductDetailModal({
                   </section>
 
                   <section className="space-y-2">
-                    <h5 className="text-sm font-semibold text-[var(--theme-text)]">2. Booking Dulu</h5>
+                    <h5 className="text-sm font-semibold text-[var(--theme-text)]">* Booking Dulu</h5>
                     <ul className="space-y-1.5">
                       <li>
                         <strong>Cocok untuk:</strong> Acara jauh-jauh hari.
@@ -865,7 +865,7 @@ export default function ProductDetailModal({
                         <strong>Benefit:</strong> Bebas pilih style favorit tanpa takut kehabisan slot.
                       </li>
                       <li>
-                        <strong>Catatan:</strong> Mengisi tanggal di tombol &quot;Cek Tanggal&quot; bawah &
+                        <strong>Catatan: </strong> Mengisi tanggal di tombol &quot;Cek Tanggal&quot; di bawah lalu
                         membayar biaya booking Rp100.000/kebaya untuk kunci tanggal.
                       </li>
                     </ul>
@@ -889,9 +889,19 @@ export default function ProductDetailModal({
                       biaya tambahan.
                     </li>
                   </ul>
-                  <p className="mt-3 text-xs leading-relaxed theme-muted-strong">
-                    Masih bingung? Klik tombol &quot;WA ADMIN&quot; untuk tanya-tanya langsung!
-                  </p>
+                </div>
+
+                <div>
+                  <h4 className="theme-muted text-xs font-semibold uppercase tracking-wider font-mono mb-3">
+                    Masih Bingung?
+                  </h4>
+                  <ul className="space-y-2 text-xs theme-muted-strong leading-relaxed">
+                    <li>
+                      <strong>Klik tombol &quot;WA ADMIN&quot; </strong> untuk tanya-tanya langsung, sepuasnya :)
+                    </li>
+
+                  </ul>
+
                 </div>
               </div>
 
