@@ -214,7 +214,7 @@ export default async function Home() {
                         <h3 className="landing-rental-panel-title font-display font-semibold text-[var(--theme-text)]">
                           {pathA.title}
                         </h3>
-                        <p className="landing-rental-panel-tagline font-serif italic text-[var(--theme-text)]">
+                        <p className="landing-rental-panel-tagline">
                           {pathA.suitableFor}
                         </p>
                       </div>
@@ -295,7 +295,7 @@ export default async function Home() {
                         <h3 className="landing-rental-panel-title font-display font-semibold text-[var(--theme-text)]">
                           {pathB.title}
                         </h3>
-                        <p className="landing-rental-panel-tagline font-serif italic text-[var(--theme-text)]">
+                        <p className="landing-rental-panel-tagline">
                           {pathB.suitableFor}
                         </p>
                       </div>
@@ -383,7 +383,7 @@ export default async function Home() {
         </section>
       </main>
 
-      <PublicFooter cmsContent={cmsContent} siteSettings={siteSettings} />
+      <PublicFooter cmsContent={cmsContent} siteSettings={siteSettings} showTitipSewaLink />
     </div>
   );
 }

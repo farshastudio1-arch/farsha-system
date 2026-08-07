@@ -5,15 +5,17 @@ import { CMSContent, SiteSettings } from '@/data/mockData';
 interface PublicFooterProps {
   cmsContent: CMSContent;
   siteSettings: SiteSettings;
+  showTitipSewaLink?: boolean;
 }
 
-export default function PublicFooter({ cmsContent, siteSettings }: PublicFooterProps) {
+export default function PublicFooter({ cmsContent, siteSettings, showTitipSewaLink = false }: PublicFooterProps) {
   const whatsappNumber = siteSettings.whatsappNumber || cmsContent.studioPhone;
   const cleanWhatsapp = whatsappNumber.replace(/[^0-9]/g, '');
   const whatsappHref = `https://wa.me/${cleanWhatsapp}`;
   const instagramHref = siteSettings.instagramUrl || 'https://instagram.com';
   const tiktokHref = siteSettings.tiktokUrl || 'https://tiktok.com';
   const mapsHref = siteSettings.mapsUrl || cmsContent.mapsCtaUrl || '#';
+  const titipSewaHref = (process.env.CONSIGNMENT_BASE_URL || 'https://titipsewa.farshastudio.com').replace(/\/+$/, '');
 
   const waMuaHref = `https://wa.me/${cleanWhatsapp}?text=Halo%20Admin%20Farsha%20Studio%2C%20saya%20tertarik%20tanya%20kerjasama%20MUA.`;
   const waPhotoHref = `https://wa.me/${cleanWhatsapp}?text=Halo%20Admin%20Farsha%20Studio%2C%20saya%20tertarik%20tanya%20kerjasama%20fotografer.`;
@@ -66,6 +68,19 @@ export default function PublicFooter({ cmsContent, siteSettings }: PublicFooterP
                     Blog
                   </Link>
                 </li>
+                {showTitipSewaLink ? (
+                  <li>
+                    <a
+                      href={titipSewaHref}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="group inline-flex items-center gap-1 text-[var(--theme-text)] hover:text-neutral-500 transition-colors font-medium"
+                    >
+                      Titip Sewa
+                      <span className="text-[10px] text-neutral-400 group-hover:text-neutral-500 transition-colors">↗</span>
+                    </a>
+                  </li>
+                ) : null}
                 <li>
                   <Link href="#" className="text-[var(--theme-text)] hover:text-neutral-500 transition-colors font-medium">
                     FAQs
