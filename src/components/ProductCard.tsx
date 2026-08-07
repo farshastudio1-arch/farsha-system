@@ -77,15 +77,14 @@ export default function ProductCard({
         />
         {displaySettings.showAvailabilityBadges && (
           <span
-            className={`mobile-availability-dot absolute left-1.5 top-1.5 h-2.5 w-2.5 border border-[var(--theme-surface)] shadow-sm ${
-              product.status === 'available'
+            className={`mobile-availability-dot absolute left-1.5 top-1.5 h-2.5 w-2.5 border border-[var(--theme-surface)] shadow-sm ${product.status === 'available'
                 ? 'bg-emerald-500'
                 : product.status === 'rented'
                   ? 'bg-amber-500'
                   : product.status === 'maintenance'
                     ? 'bg-rose-500'
                     : 'bg-slate-400'
-            }`}
+              }`}
             aria-label={statusInfo.text}
           />
         )}
@@ -97,9 +96,8 @@ export default function ProductCard({
     <div
       data-farsha-card
       data-farsha-product={fallbackProductData}
-      className={`theme-surface theme-border group flex flex-col border overflow-hidden transition-all duration-300 ${
-        isOneColumn ? ' shadow-sm hover:shadow-md' : ' hover:shadow-sm'
-      }`}
+      className={`theme-surface theme-border group flex flex-col border overflow-hidden transition-all duration-300 ${isOneColumn ? ' shadow-sm hover:shadow-md' : ' hover:shadow-sm'
+        }`}
     >
       {/* CARD IMAGE AREA */}
       <div className="theme-soft-surface relative w-full overflow-hidden">
@@ -144,11 +142,10 @@ export default function ProductCard({
                         setActiveImageIndex(index);
                       }
                     }}
-                    className={`w-1.5 h-1.5 rounded-full transition-all duration-300 ${
-                      activeImageIndex === index
+                    className={`w-1.5 h-1.5 rounded-full transition-all duration-300 ${activeImageIndex === index
                         ? 'bg-[var(--theme-surface)] w-3'
                         : 'bg-[color-mix(in_srgb,var(--theme-surface)_40%,transparent)] hover:bg-[color-mix(in_srgb,var(--theme-surface)_70%,transparent)]'
-                    }`}
+                      }`}
                     aria-label={`Lihat foto ${index + 1}`}
                   />
                 ))}
@@ -198,9 +195,8 @@ export default function ProductCard({
 
       {/* CARD CONTENT */}
       <div
-        className={`flex flex-col flex-grow ${
-          isOneColumn ? 'p-5' : isMobileTwoColumn ? 'p-2.5' : 'p-3 sm:p-4'
-        }`}
+        className={`flex flex-col flex-grow ${isOneColumn ? 'p-5' : isMobileTwoColumn ? 'p-2.5' : 'p-3 sm:p-4'
+          }`}
       >
         {/* Kebaya Model Category */}
         {displaySettings.showProductModel && (
@@ -212,9 +208,8 @@ export default function ProductCard({
         {/* Title */}
         <h3
           onClick={() => onOpenDetail(product)}
-          className={`font-display text-[var(--theme-text)] cursor-pointer hover:text-[var(--theme-accent)] transition-colors leading-tight font-medium ${
-            isOneColumn ? 'text-lg sm:text-xl mb-1' : 'text-sm sm:text-base mb-0.5 line-clamp-2'
-          }`}
+          className={`font-display text-[var(--theme-text)] cursor-pointer hover:text-[var(--theme-accent)] transition-colors leading-tight font-medium ${isOneColumn ? 'text-lg sm:text-xl mb-1' : 'text-sm sm:text-base mb-0.5 line-clamp-2'
+            }`}
         >
           {product.name}
         </h3>
@@ -230,57 +225,61 @@ export default function ProductCard({
         {(displaySettings.showPrices ||
           displaySettings.showProductSize ||
           displaySettings.showProductColor) && (
-          <div
-            className={`mt-0 flex justify-between ${
-              isOneColumn
-                ? 'flex-row items-end gap-3'
-                : 'flex-col items-start gap-1.5 sm:flex-row sm:items-end sm:gap-3'
-            }`}
-          >
-            {displaySettings.showPrices && (
-              <div className="flex flex-col">
+            <div
+              className={`mt-0 flex justify-between ${isOneColumn
+                  ? 'flex-row items-end gap-3'
+                  : 'flex-col items-start gap-1.5 sm:flex-row sm:items-end sm:gap-3'
+                }`}
+            >
+              {displaySettings.showPrices && (
+                <div className="flex flex-col">
+                  <div
+                    className={`font-mono ${
+                      isMobile
+                        ? 'flex flex-col items-start leading-tight'
+                        : `flex flex-wrap items-baseline gap-x-2 gap-y-0.5 ${
+                            isOneColumn ? '' : 'leading-tight'
+                          }`
+                    }`}
+                  >
+                    {visibleCompareAtRentalPrice && (
+                      <span
+                        className={`theme-muted-strong line-through ${isOneColumn ? 'text-xs' : 'text-[10px]'
+                          }`}
+                      >
+                        {formatRupiah(visibleCompareAtRentalPrice)}
+                      </span>
+                    )}
+                    <span className={isMobile ? 'flex items-baseline gap-x-2' : 'contents'}>
+                      <span
+                        className={`text-[var(--theme-text)] font-semibold ${isOneColumn ? 'text-base sm:text-lg' : 'text-xs sm:text-sm'}`}
+                      >
+                        {formatRupiah(product.rentalPrice)}
+                      </span>
+                      <span className="theme-muted-strong text-[9px] font-normal">/3 hari</span>
+                    </span>
+                  </div>
+                </div>
+              )}
+
+              {(displaySettings.showProductSize || displaySettings.showProductColor) && (
                 <div
-                  className={`flex flex-wrap items-baseline gap-x-2 gap-y-0.5 font-mono ${
-                    isOneColumn ? '' : 'leading-tight'
-                  }`}
+                  className={`flex flex-wrap gap-1.5 ${isOneColumn ? 'items-center' : 'sm:justify-end'}`}
                 >
-                  {visibleCompareAtRentalPrice && (
-                    <span
-                      className={`theme-muted-strong line-through ${
-                        isOneColumn ? 'text-xs' : 'text-[10px]'
-                      }`}
-                    >
-                      {formatRupiah(visibleCompareAtRentalPrice)}
+                  {displaySettings.showProductSize && (
+                    <span className="theme-soft-surface theme-muted-strong text-[10px] font-medium px-2 py-0.5 font-mono">
+                      Fit {product.size}
                     </span>
                   )}
-                  <span
-                    className={`text-[var(--theme-text)] font-semibold ${isOneColumn ? 'text-base sm:text-lg' : 'text-xs sm:text-sm'}`}
-                  >
-                    {formatRupiah(product.rentalPrice)}
-                  </span>
-                  <span className="theme-muted-strong text-[9px] font-normal">/3 hari</span>
+                  {displaySettings.showProductColor && (
+                    <span className="theme-soft-surface theme-muted-strong text-[10px] font-medium px-2 py-0.5 font-mono">
+                      {product.color}
+                    </span>
+                  )}
                 </div>
-              </div>
-            )}
-
-            {(displaySettings.showProductSize || displaySettings.showProductColor) && (
-              <div
-                className={`flex flex-wrap gap-1.5 ${isOneColumn ? 'items-center' : 'sm:justify-end'}`}
-              >
-                {displaySettings.showProductSize && (
-                  <span className="theme-soft-surface theme-muted-strong text-[10px] font-medium px-2 py-0.5 font-mono">
-                    Fit {product.size}
-                  </span>
-                )}
-                {displaySettings.showProductColor && (
-                  <span className="theme-soft-surface theme-muted-strong text-[10px] font-medium px-2 py-0.5 font-mono">
-                    {product.color}
-                  </span>
-                )}
-              </div>
-            )}
-          </div>
-        )}
+              )}
+            </div>
+          )}
 
         {/* WhatsApp Quick Link in 1-column layout */}
         {displaySettings.showCardCta && (
