@@ -71,6 +71,7 @@ export default auth((request: NextRequest) => {
       pathname === '/forgot' ||
       pathname === '/set-password' ||
       pathname === '/dashboard' ||
+      pathname === '/settings' ||
       pathname === '/terms')
   ) {
     return rewriteLocalConsignmentPath(request);

@@ -5,6 +5,8 @@ import { createToken, hashToken } from '@/lib/consignor-crypto';
 
 export type ConsignorStatus = 'invited' | 'active' | 'suspended';
 
+export type ConsignorPayoutMethod = 'bank' | 'ewallet';
+
 export type Consignor = {
   id: string;
   email: string;
@@ -13,6 +15,8 @@ export type Consignor = {
   name: string;
   phone: string;
   status: ConsignorStatus;
+  avatarSeed: string | null;
+  payoutMethod: ConsignorPayoutMethod;
   bankAccountName: string | null;
   bankName: string | null;
   bankAccountNumber: string | null;
@@ -25,13 +29,11 @@ export type Consignor = {
 export type ConsignorTokenPurpose = 'set_password' | 'reset_password';
 export type ConsignorPayoutStatus = 'accrued' | 'paid';
 export type ConsignorPayoutRequestStatus = 'pending' | 'settled' | 'rejected';
-export type ConsignorWithdrawalRequestStatus = 'pending' | 'approved' | 'rejected';
 
 export type ConsignorItemSummary = KebayaItem & {
   payoutBalance: number;
   payoutCount: number;
   lastPayoutAt: string | null;
-  pendingWithdrawal: boolean;
 };
 
 export type ConsignorPayoutLine = {
@@ -66,25 +68,11 @@ export type ConsignorPayoutRequest = {
   bankAccountNumber: string | null;
 };
 
-export type ConsignorWithdrawalRequest = {
-  id: string;
-  consignorId: string;
-  itemId: string;
-  itemCode: string;
-  itemName: string;
-  status: ConsignorWithdrawalRequestStatus;
-  requestedAt: string;
-  resolvedAt: string | null;
-  note: string | null;
-  adminNote: string | null;
-};
-
 export type ConsignorDashboard = {
   consignor: Consignor;
   items: ConsignorItemSummary[];
   payouts: ConsignorPayoutLine[];
   payoutRequests: ConsignorPayoutRequest[];
-  withdrawalRequests: ConsignorWithdrawalRequest[];
   availableBalance: number;
   requestedBalance: number;
   paidBalance: number;
@@ -103,6 +91,8 @@ type ConsignorRow = {
   name: string;
   phone: string;
   status: ConsignorStatus;
+  avatar_seed: string | null;
+  payout_method: string | null;
   bank_account_name: string | null;
   bank_name: string | null;
   bank_account_number: string | null;
@@ -153,19 +143,6 @@ type ConsignorPayoutRequestRow = {
   bank_account_number: string | null;
 };
 
-type ConsignorWithdrawalRequestRow = {
-  id: string;
-  consignor_id: string;
-  item_id: string;
-  item_code: string;
-  item_name: string;
-  status: ConsignorWithdrawalRequestStatus;
-  requested_at: string;
-  resolved_at: string | null;
-  note: string | null;
-  admin_note: string | null;
-};
-
 type ConsignorItemRow = {
   id: string;
   code: string;
@@ -190,7 +167,6 @@ type ConsignorItemRow = {
   payout_balance: number;
   payout_count: number;
   last_payout_at: string | null;
-  pending_withdrawal: number;
 };
 
 type ConsignorSummaryRow = ConsignorRow & {
@@ -199,7 +175,6 @@ type ConsignorSummaryRow = ConsignorRow & {
   requested_balance: number;
   paid_balance: number;
   pending_payout_requests: number;
-  pending_withdrawal_requests: number;
 };
 
 function isSchemaMissing(error: unknown) {
@@ -210,7 +185,6 @@ function isSchemaMissing(error: unknown) {
     message.includes('no such table: consignor_tokens') ||
     message.includes('no such table: consignor_payouts') ||
     message.includes('no such table: consignor_payout_requests') ||
-    message.includes('no such table: consignor_withdrawal_requests') ||
     message.includes('no such column: consignor_id')
   );
 }
@@ -257,7 +231,6 @@ function itemRowToItem(row: ConsignorItemRow): ConsignorItemSummary {
     payoutBalance: row.payout_balance,
     payoutCount: row.payout_count,
     lastPayoutAt: row.last_payout_at,
-    pendingWithdrawal: row.pending_withdrawal === 1,
   };
 }
 
@@ -270,6 +243,8 @@ function rowToConsignor(row: ConsignorRow): Consignor {
     name: row.name,
     phone: row.phone,
     status: row.status,
+    avatarSeed: row.avatar_seed ?? null,
+    payoutMethod: row.payout_method === 'ewallet' ? 'ewallet' : 'bank',
     bankAccountName: row.bank_account_name,
     bankName: row.bank_name,
     bankAccountNumber: row.bank_account_number,
@@ -285,8 +260,8 @@ async function readConsignorByRow(column: string, value: string) {
   const row = await db
     .prepare(
       `SELECT id, email, password_hash, password_salt, name, phone, status,
-        bank_account_name, bank_name, bank_account_number, terms_version, terms_accepted_at,
-        created_at, updated_at
+        avatar_seed, payout_method, bank_account_name, bank_name, bank_account_number,
+        terms_version, terms_accepted_at, created_at, updated_at
        FROM consignors
        WHERE ${column} = ?
        LIMIT 1`,
@@ -375,17 +350,66 @@ export async function updateConsignorTerms(consignorId: string, termsVersion: st
 
 export async function updateConsignorProfile(
   consignorId: string,
-  input: { bankAccountName: string; bankName: string; bankAccountNumber: string },
+  input: {
+    payoutMethod: ConsignorPayoutMethod;
+    bankAccountName: string;
+    bankName: string;
+    bankAccountNumber: string;
+  },
 ) {
   const db = await getD1Database();
   await db
     .prepare(
       `UPDATE consignors
-       SET bank_account_name = ?, bank_name = ?, bank_account_number = ?, updated_at = CURRENT_TIMESTAMP
+       SET payout_method = ?, bank_account_name = ?, bank_name = ?, bank_account_number = ?,
+           updated_at = CURRENT_TIMESTAMP
        WHERE id = ?`,
     )
-    .bind(input.bankAccountName.trim(), input.bankName.trim(), input.bankAccountNumber.trim(), consignorId)
+    .bind(
+      input.payoutMethod,
+      input.bankAccountName.trim(),
+      input.bankName.trim(),
+      input.bankAccountNumber.trim(),
+      consignorId,
+    )
     .run();
+}
+
+export async function updateConsignorDisplayName(consignorId: string, name: string) {
+  const db = await getD1Database();
+  await db
+    .prepare(
+      `UPDATE consignors SET name = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`,
+    )
+    .bind(name.trim(), consignorId)
+    .run();
+}
+
+export async function updateConsignorAvatar(consignorId: string, avatarSeed: string) {
+  const db = await getD1Database();
+  await db
+    .prepare(
+      `UPDATE consignors SET avatar_seed = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`,
+    )
+    .bind(avatarSeed.trim(), consignorId)
+    .run();
+}
+
+/**
+ * Permanently deletes a consignor and all of their consignment records.
+ * Child rows are removed explicitly (D1 does not reliably enforce ON DELETE
+ * cascades at runtime); consigned items are unlinked back to the studio.
+ */
+export async function deleteConsignor(consignorId: string) {
+  const db = await getD1Database();
+  await db.batch([
+    db.prepare('UPDATE kebaya_items SET consignor_id = NULL WHERE consignor_id = ?').bind(consignorId),
+    db.prepare('DELETE FROM consignor_payouts WHERE consignor_id = ?').bind(consignorId),
+    db.prepare('DELETE FROM consignor_payout_requests WHERE consignor_id = ?').bind(consignorId),
+    db.prepare('DELETE FROM consignor_tokens WHERE consignor_id = ?').bind(consignorId),
+    db.prepare('DELETE FROM consignor_sessions WHERE consignor_id = ?').bind(consignorId),
+    db.prepare('DELETE FROM consignors WHERE id = ?').bind(consignorId),
+  ]);
 }
 
 export async function createConsignorToken(input: {
@@ -475,8 +499,8 @@ export async function getConsignorBySessionToken(token: string) {
     const row = await db
       .prepare(
         `SELECT c.id, c.email, c.password_hash, c.password_salt, c.name, c.phone, c.status,
-          c.bank_account_name, c.bank_name, c.bank_account_number, c.terms_version, c.terms_accepted_at,
-          c.created_at, c.updated_at
+          c.avatar_seed, c.payout_method, c.bank_account_name, c.bank_name, c.bank_account_number,
+          c.terms_version, c.terms_accepted_at, c.created_at, c.updated_at
          FROM consignor_sessions s
          JOIN consignors c ON c.id = s.consignor_id
          WHERE s.token_hash = ? AND s.expires_at > CURRENT_TIMESTAMP
@@ -537,12 +561,7 @@ export async function listConsignors() {
             SELECT COUNT(*)
             FROM consignor_payout_requests pr
             WHERE pr.consignor_id = c.id AND pr.status = 'pending'
-          ), 0) AS pending_payout_requests,
-          COALESCE((
-            SELECT COUNT(*)
-            FROM consignor_withdrawal_requests wr
-            WHERE wr.consignor_id = c.id AND wr.status = 'pending'
-          ), 0) AS pending_withdrawal_requests
+          ), 0) AS pending_payout_requests
          FROM consignors c
          ORDER BY c.created_at DESC`,
       )
@@ -555,7 +574,64 @@ export async function listConsignors() {
       requestedBalance: row.requested_balance,
       paidBalance: row.paid_balance,
       pendingPayoutRequests: row.pending_payout_requests,
-      pendingWithdrawalRequests: row.pending_withdrawal_requests,
+    }));
+  } catch (error) {
+    if (isSchemaMissing(error)) {
+      return [];
+    }
+
+    throw error;
+  }
+}
+
+export type AdminPayoutRequestRow = {
+  id: string;
+  consignorId: string;
+  consignorName: string | null;
+  amount: number;
+  status: string;
+  requestedAt: string;
+  reference: string | null;
+  bankAccountName: string | null;
+  bankName: string | null;
+  bankAccountNumber: string | null;
+};
+
+export async function listConsignorPayoutRequests(): Promise<AdminPayoutRequestRow[]> {
+  try {
+    const db = await getD1Database();
+    const result = await db
+      .prepare(
+        `SELECT pr.id, pr.consignor_id, pr.amount, pr.status, pr.requested_at, pr.reference,
+          pr.bank_account_name, pr.bank_name, pr.bank_account_number, c.name AS consignor_name
+         FROM consignor_payout_requests pr
+         LEFT JOIN consignors c ON c.id = pr.consignor_id
+         ORDER BY pr.requested_at DESC`,
+      )
+      .all<{
+        id: string;
+        consignor_id: string;
+        consignor_name: string | null;
+        amount: number;
+        status: string;
+        requested_at: string;
+        reference: string | null;
+        bank_account_name: string | null;
+        bank_name: string | null;
+        bank_account_number: string | null;
+      }>();
+
+    return result.results.map((row) => ({
+      id: row.id,
+      consignorId: row.consignor_id,
+      consignorName: row.consignor_name,
+      amount: row.amount,
+      status: row.status,
+      requestedAt: row.requested_at,
+      reference: row.reference,
+      bankAccountName: row.bank_account_name,
+      bankName: row.bank_name,
+      bankAccountNumber: row.bank_account_number,
     }));
   } catch (error) {
     if (isSchemaMissing(error)) {
@@ -574,11 +650,10 @@ export async function getConsignorDashboard(consignorId: string) {
     return null;
   }
 
-  const [itemsResult, payoutsResult, payoutRequestsResult, withdrawalRequestsResult] =
-    await Promise.all([
-      db
-        .prepare(
-          `SELECT ki.id, ki.code, ki.name, ki.color, ki.size, ki.model, ki.rental_price,
+  const [itemsResult, payoutsResult, payoutRequestsResult] = await Promise.all([
+    db
+      .prepare(
+        `SELECT ki.id, ki.code, ki.name, ki.color, ki.size, ki.model, ki.rental_price,
             ki.compare_at_rental_price, ki.can_resize, ki.status, ki.rental_end_date, ki.image_urls,
             ki.description, ki.hijab_friendly, ki.cost, ki.published, ki.consignor_id,
             ki.rental_includes, ki.categories, ki.measurements,
@@ -596,21 +671,16 @@ export async function getConsignorDashboard(consignorId: string) {
               SELECT MAX(cp.accrued_at)
               FROM consignor_payouts cp
               WHERE cp.item_id = ki.id AND cp.consignor_id = ki.consignor_id
-            ) AS last_payout_at,
-            COALESCE((
-              SELECT COUNT(*)
-              FROM consignor_withdrawal_requests wr
-              WHERE wr.item_id = ki.id AND wr.consignor_id = ki.consignor_id AND wr.status = 'pending'
-            ), 0) AS pending_withdrawal
+            ) AS last_payout_at
            FROM kebaya_items ki
            WHERE ki.consignor_id = ?
            ORDER BY ki.created_at DESC`,
-        )
-        .bind(consignorId)
-        .all<ConsignorItemRow>(),
-      db
-        .prepare(
-          `SELECT cp.id, cp.consignor_id, cp.item_id, cp.transaction_id, cp.close_receipt_id,
+      )
+      .bind(consignorId)
+      .all<ConsignorItemRow>(),
+    db
+      .prepare(
+        `SELECT cp.id, cp.consignor_id, cp.item_id, cp.transaction_id, cp.close_receipt_id,
             cp.rental_net, cp.rate_percent, cp.payout_amount, cp.status, cp.accrued_at, cp.paid_at,
             cp.payout_request_id, cp.transfer_reference, ki.code AS item_code, ki.name AS item_name,
             pt.transaction_number
@@ -619,31 +689,20 @@ export async function getConsignorDashboard(consignorId: string) {
            LEFT JOIN pos_transactions pt ON pt.id = cp.transaction_id
            WHERE cp.consignor_id = ?
            ORDER BY cp.accrued_at DESC`,
-        )
-        .bind(consignorId)
-        .all<ConsignorPayoutRow>(),
-      db
-        .prepare(
-          `SELECT id, consignor_id, amount, status, requested_at, settled_at, reference,
+      )
+      .bind(consignorId)
+      .all<ConsignorPayoutRow>(),
+    db
+      .prepare(
+        `SELECT id, consignor_id, amount, status, requested_at, settled_at, reference,
             bank_account_name, bank_name, bank_account_number
            FROM consignor_payout_requests
            WHERE consignor_id = ?
            ORDER BY requested_at DESC`,
-        )
-        .bind(consignorId)
-        .all<ConsignorPayoutRequestRow>(),
-      db
-        .prepare(
-          `SELECT wr.id, wr.consignor_id, wr.item_id, ki.code AS item_code, ki.name AS item_name,
-            wr.status, wr.requested_at, wr.resolved_at, wr.note, wr.admin_note
-           FROM consignor_withdrawal_requests wr
-           JOIN kebaya_items ki ON ki.id = wr.item_id
-           WHERE wr.consignor_id = ?
-           ORDER BY wr.requested_at DESC`,
-        )
-        .bind(consignorId)
-        .all<ConsignorWithdrawalRequestRow>(),
-    ]);
+      )
+      .bind(consignorId)
+      .all<ConsignorPayoutRequestRow>(),
+  ]);
 
   const payouts = payoutsResult.results.map((row) => ({
     id: row.id,
@@ -689,18 +748,6 @@ export async function getConsignorDashboard(consignorId: string) {
       bankAccountName: row.bank_account_name,
       bankName: row.bank_name,
       bankAccountNumber: row.bank_account_number,
-    })),
-    withdrawalRequests: withdrawalRequestsResult.results.map((row) => ({
-      id: row.id,
-      consignorId: row.consignor_id,
-      itemId: row.item_id,
-      itemCode: row.item_code,
-      itemName: row.item_name,
-      status: row.status,
-      requestedAt: row.requested_at,
-      resolvedAt: row.resolved_at,
-      note: row.note,
-      adminNote: row.admin_note,
     })),
     availableBalance,
     requestedBalance,
@@ -824,71 +871,6 @@ export async function settleConsignorPayoutRequest(input: {
         .bind(input.reference.trim(), row.id),
     ),
   ]);
-}
-
-export async function requestConsignorWithdrawal(input: {
-  consignorId: string;
-  itemId: string;
-  note: string;
-}) {
-  const db = await getD1Database();
-  const item = await db
-    .prepare(
-      `SELECT id, code, name, status, consignor_id
-       FROM kebaya_items
-       WHERE id = ? AND consignor_id = ?
-       LIMIT 1`,
-    )
-    .bind(input.itemId, input.consignorId)
-    .first<{ id: string; code: string; name: string; status: string; consignor_id: string | null }>();
-
-  if (!item) {
-    throw new Error('Item not found.');
-  }
-
-  if (item.status === 'rented') {
-    throw new Error('Withdrawal can only be requested when the item is not currently rented.');
-  }
-
-  const existing = await db
-    .prepare(
-      `SELECT id FROM consignor_withdrawal_requests
-       WHERE item_id = ? AND consignor_id = ? AND status = 'pending'
-       LIMIT 1`,
-    )
-    .bind(input.itemId, input.consignorId)
-    .first<{ id: string }>();
-
-  if (existing) {
-    return existing.id;
-  }
-
-  const id = createId('consignor-withdrawal-request');
-  await db
-    .prepare(
-      `INSERT INTO consignor_withdrawal_requests (id, consignor_id, item_id, note)
-       VALUES (?, ?, ?, ?)`,
-    )
-    .bind(id, input.consignorId, input.itemId, input.note.trim())
-    .run();
-
-  return id;
-}
-
-export async function resolveConsignorWithdrawalRequest(input: {
-  requestId: string;
-  status: 'approved' | 'rejected';
-  adminNote?: string | null;
-}) {
-  const db = await getD1Database();
-  await db
-    .prepare(
-      `UPDATE consignor_withdrawal_requests
-       SET status = ?, resolved_at = CURRENT_TIMESTAMP, admin_note = ?
-       WHERE id = ?`,
-    )
-    .bind(input.status, input.adminNote ?? null, input.requestId)
-    .run();
 }
 
 export async function listConsignorPendingActions() {

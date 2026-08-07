@@ -116,7 +116,6 @@ function getActionErrorMessage(error: unknown, fallback: string) {
     message.includes('no such table: consignor_tokens') ||
     message.includes('no such table: consignor_payouts') ||
     message.includes('no such table: consignor_payout_requests') ||
-    message.includes('no such table: consignor_withdrawal_requests') ||
     message.includes('no such column: consignor_id')
   ) {
     return catalogSchemaError;

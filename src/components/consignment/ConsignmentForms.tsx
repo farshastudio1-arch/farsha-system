@@ -9,11 +9,10 @@ import {
   consignorLogoutAction,
   consignorRequestResetAction,
   consignorSetPasswordAction,
+  deleteConsignorAction,
   requestPayoutAction,
-  requestWithdrawalAction,
   resendConsignorInviteAction,
   settlePayoutRequestAction,
-  resolveWithdrawalAction,
   createConsignorAction,
 } from '@/lib/consignor-actions';
 
@@ -311,44 +310,92 @@ export function AdminSettlePayoutButton({ requestId }: { requestId: string }) {
   );
 }
 
-export function AdminResolveWithdrawalButton({
-  requestId,
-  status,
+export function AdminDeleteConsignorButton({
+  consignorId,
+  consignorName,
 }: {
-  requestId: string;
-  status: 'approved' | 'rejected';
+  consignorId: string;
+  consignorName: string;
 }) {
+  const router = useRouter();
   const [pending, startTransition] = useTransition();
-  const [feedback, setFeedback] = useState('');
+  const [armed, setArmed] = useState(false);
+  const [error, setError] = useState('');
+
+  if (!armed) {
+    return (
+      <button
+        type="button"
+        className="border border-rose-200 px-3 py-2 text-sm font-medium text-rose-700 transition-colors hover:bg-rose-50"
+        onClick={() => setArmed(true)}
+      >
+        Hapus akun
+      </button>
+    );
+  }
 
   return (
-    <button
-      type="button"
-      className="border border-neutral-200 px-3 py-2 text-sm font-medium text-neutral-700"
-      disabled={pending}
-      onClick={() => {
-        const adminNote = window.prompt('Admin note') || '';
-        startTransition(async () => {
-          const result = await resolveWithdrawalAction({ requestId, status, adminNote });
-          setFeedback(result.ok ? 'Saved' : result.error);
-        });
-      }}
-    >
-      {status === 'approved' ? 'Approve' : 'Reject'}
-      {feedback && <span className="ml-2 text-xs text-neutral-500">{feedback}</span>}
-    </button>
+    <div className="flex flex-col items-start gap-2 sm:items-end">
+      <p className="max-w-xs text-xs text-rose-700">
+        Hapus <strong>{consignorName}</strong> permanen? Riwayat payout ikut terhapus dan baju titipan
+        dilepas ke studio. Aksi ini tidak bisa dibatalkan.
+      </p>
+      <div className="flex gap-2">
+        <button
+          type="button"
+          disabled={pending}
+          className="border border-rose-600 bg-rose-600 px-3 py-2 text-sm font-semibold text-white transition-colors hover:bg-rose-700 disabled:opacity-50"
+          onClick={() => {
+            setError('');
+            startTransition(async () => {
+              const result = await deleteConsignorAction(consignorId);
+              if (result.ok) {
+                router.refresh();
+              } else {
+                setError(result.error);
+                setArmed(false);
+              }
+            });
+          }}
+        >
+          {pending ? 'Menghapus…' : 'Hapus permanen'}
+        </button>
+        <button
+          type="button"
+          disabled={pending}
+          className="border border-neutral-200 px-3 py-2 text-sm font-medium text-neutral-700"
+          onClick={() => setArmed(false)}
+        >
+          Batal
+        </button>
+      </div>
+      {error && <span className="text-xs text-rose-700">{error}</span>}
+    </div>
   );
 }
 
-export function PayoutRequestForm() {
+export function PayoutRequestForm({
+  method = 'bank',
+  defaultAccountName = '',
+  defaultInstitution = '',
+  defaultNumber = '',
+}: {
+  method?: 'bank' | 'ewallet';
+  defaultAccountName?: string;
+  defaultInstitution?: string;
+  defaultNumber?: string;
+} = {}) {
+  const router = useRouter();
   const [pending, startTransition] = useTransition();
-  const [feedback, setFeedback] = useState('');
+  const [feedback, setFeedback] = useState<{ tone: 'ok' | 'err'; text: string } | null>(null);
+  const isEwallet = method === 'ewallet';
 
   return (
     <form
       className="space-y-4"
       onSubmit={(event) => {
         event.preventDefault();
+        setFeedback(null);
         const formData = new FormData(event.currentTarget);
         startTransition(async () => {
           const result = await requestPayoutAction({
@@ -356,53 +403,42 @@ export function PayoutRequestForm() {
             bankName: String(formData.get('bankName') ?? ''),
             bankAccountNumber: String(formData.get('bankAccountNumber') ?? ''),
           });
-          setFeedback(result.ok ? `Requested Rp ${result.data.amount.toLocaleString('id-ID')}` : result.error);
+          if (result.ok) {
+            setFeedback({
+              tone: 'ok',
+              text: `Pencairan Rp ${result.data.amount.toLocaleString('id-ID')} sedang diproses.`,
+            });
+            router.refresh();
+          } else {
+            setFeedback({ tone: 'err', text: result.error });
+          }
         });
       }}
     >
-      <Field label="Nama rekening">
-        <input name="bankAccountName" className={inputClass()} required />
+      <Field label={isEwallet ? 'Nama pemilik' : 'Nama rekening'}>
+        <input name="bankAccountName" className={inputClass()} defaultValue={defaultAccountName} required />
       </Field>
-      <Field label="Bank">
-        <input name="bankName" className={inputClass()} required />
+      <Field label={isEwallet ? 'E-wallet (GoPay/OVO/DANA/…)' : 'Bank'}>
+        <input name="bankName" className={inputClass()} defaultValue={defaultInstitution} required />
       </Field>
-      <Field label="No rekening">
-        <input name="bankAccountNumber" className={inputClass()} required />
+      <Field label={isEwallet ? 'Nomor e-wallet' : 'No rekening'}>
+        <input
+          name="bankAccountNumber"
+          inputMode="numeric"
+          className={inputClass()}
+          defaultValue={defaultNumber}
+          required
+        />
       </Field>
-      <button disabled={pending} className={buttonClass()}>
-        Request payout
+      <button disabled={pending} className={`${buttonClass()} w-full`}>
+        {pending ? 'Memproses…' : 'Cairkan sekarang'}
       </button>
-      {feedback && <p className="text-sm text-neutral-600">{feedback}</p>}
+      {feedback && (
+        <p className={`text-sm ${feedback.tone === 'ok' ? 'text-emerald-700' : 'text-red-600'}`}>
+          {feedback.text}
+        </p>
+      )}
     </form>
   );
 }
 
-export function WithdrawalRequestForm({ itemId }: { itemId: string }) {
-  const [pending, startTransition] = useTransition();
-  const [feedback, setFeedback] = useState('');
-
-  return (
-    <form
-      className="space-y-4"
-      onSubmit={(event) => {
-        event.preventDefault();
-        const formData = new FormData(event.currentTarget);
-        startTransition(async () => {
-          const result = await requestWithdrawalAction({
-            itemId,
-            note: String(formData.get('note') ?? ''),
-          });
-          setFeedback(result.ok ? `Requested ${result.data.requestId}` : result.error);
-        });
-      }}
-    >
-      <Field label="Catatan">
-        <textarea name="note" className={inputClass()} rows={3} />
-      </Field>
-      <button disabled={pending} className={buttonClass()}>
-        Request withdrawal
-      </button>
-      {feedback && <p className="text-sm text-neutral-600">{feedback}</p>}
-    </form>
-  );
-}

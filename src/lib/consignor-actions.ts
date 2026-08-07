@@ -8,18 +8,20 @@ import {
   consumeConsignorToken,
   createConsignor,
   createConsignorToken,
+  deleteConsignor,
   getConsignorByEmail,
   getConsignorById,
   getConsignorDashboard,
   listConsignors,
   requestConsignorPayout,
-  requestConsignorWithdrawal,
-  resolveConsignorWithdrawalRequest,
   setConsignorPassword,
   settleConsignorPayoutRequest,
+  updateConsignorAvatar,
+  updateConsignorDisplayName,
   updateConsignorProfile,
   updateConsignorTerms,
   type ConsignorDashboard,
+  type ConsignorPayoutMethod,
   type ConsignorWithInvite,
 } from '@/lib/consignor-db';
 import {
@@ -62,6 +64,7 @@ function revalidateConsignment() {
   revalidatePath('/titipsewa/forgot');
   revalidatePath('/titipsewa/set-password');
   revalidatePath('/titipsewa/dashboard');
+  revalidatePath('/titipsewa/settings');
   revalidatePath('/titipsewa/terms');
   revalidatePath('/admin/consignment');
 }
@@ -224,18 +227,93 @@ export async function acceptTermsAction(version: string): Promise<ActionResult<t
   }
 }
 
+export async function consignorUpdateNameAction(input: {
+  name: string;
+}): Promise<ActionResult<true>> {
+  try {
+    const consignor = await ensureConsignor();
+    const name = input.name.trim();
+    if (name.length < 2) {
+      throw new Error('Nama minimal 2 karakter.');
+    }
+    if (name.length > 60) {
+      throw new Error('Nama maksimal 60 karakter.');
+    }
+    await updateConsignorDisplayName(consignor.id, name);
+    revalidateConsignment();
+    return { ok: true, data: true };
+  } catch (error) {
+    return { ok: false, error: getErrorMessage(error, 'Gagal menyimpan nama.') };
+  }
+}
+
+export async function consignorUpdateAvatarAction(input: {
+  seed: string;
+}): Promise<ActionResult<true>> {
+  try {
+    const consignor = await ensureConsignor();
+    const seed = input.seed.trim();
+    if (!seed) {
+      throw new Error('Avatar tidak valid.');
+    }
+    await updateConsignorAvatar(consignor.id, seed);
+    revalidateConsignment();
+    return { ok: true, data: true };
+  } catch (error) {
+    return { ok: false, error: getErrorMessage(error, 'Gagal menyimpan avatar.') };
+  }
+}
+
 export async function consignorUpdateProfileAction(input: {
+  payoutMethod: ConsignorPayoutMethod;
   bankAccountName: string;
   bankName: string;
   bankAccountNumber: string;
 }): Promise<ActionResult<true>> {
   try {
     const consignor = await ensureConsignor();
-    await updateConsignorProfile(consignor.id, input);
+    const payoutMethod: ConsignorPayoutMethod = input.payoutMethod === 'ewallet' ? 'ewallet' : 'bank';
+    if (!input.bankAccountName.trim() || !input.bankName.trim() || !input.bankAccountNumber.trim()) {
+      throw new Error('Lengkapi semua kolom.');
+    }
+    await updateConsignorProfile(consignor.id, { ...input, payoutMethod });
     revalidateConsignment();
     return { ok: true, data: true };
   } catch (error) {
     return { ok: false, error: getErrorMessage(error, 'Gagal menyimpan profil.') };
+  }
+}
+
+export async function consignorChangePasswordAction(input: {
+  currentPassword: string;
+  newPassword: string;
+}): Promise<ActionResult<true>> {
+  try {
+    const consignor = await ensureConsignor();
+
+    if (!consignor.passwordHash || !consignor.passwordSalt) {
+      throw new Error('Akun belum punya password.');
+    }
+
+    const valid = await verifyPassword(
+      input.currentPassword,
+      consignor.passwordHash,
+      consignor.passwordSalt,
+    );
+    if (!valid) {
+      throw new Error('Password saat ini salah.');
+    }
+
+    if (input.newPassword.length < 8) {
+      throw new Error('Password baru minimal 8 karakter.');
+    }
+
+    const { hash, salt } = await hashPassword(input.newPassword);
+    await setConsignorPassword({ consignorId: consignor.id, passwordHash: hash, passwordSalt: salt });
+    revalidateConsignment();
+    return { ok: true, data: true };
+  } catch (error) {
+    return { ok: false, error: getErrorMessage(error, 'Gagal mengubah password.') };
   }
 }
 
@@ -262,41 +340,20 @@ export async function requestPayoutAction(input: {
   }
 }
 
-export async function requestWithdrawalAction(input: {
-  itemId: string;
-  note: string;
-}): Promise<ActionResult<{ requestId: string }>> {
-  try {
-    const consignor = await ensureConsignor();
-    const requestId = await requestConsignorWithdrawal({
-      consignorId: consignor.id,
-      itemId: input.itemId,
-      note: input.note,
-    });
-
-    revalidateConsignment();
-    return { ok: true, data: { requestId } };
-  } catch (error) {
-    return { ok: false, error: getErrorMessage(error, 'Gagal request withdrawal.') };
-  }
-}
-
-export async function resolveWithdrawalAction(input: {
-  requestId: string;
-  status: 'approved' | 'rejected';
-  adminNote?: string;
-}): Promise<ActionResult<true>> {
+export async function deleteConsignorAction(
+  consignorId: string,
+): Promise<ActionResult<true>> {
   try {
     await ensureAdmin();
-    await resolveConsignorWithdrawalRequest({
-      requestId: input.requestId,
-      status: input.status,
-      adminNote: input.adminNote,
-    });
+    const consignor = await getConsignorById(consignorId);
+    if (!consignor) {
+      throw new Error('Consignor tidak ditemukan.');
+    }
+    await deleteConsignor(consignorId);
     revalidateConsignment();
     return { ok: true, data: true };
   } catch (error) {
-    return { ok: false, error: getErrorMessage(error, 'Gagal memproses withdrawal.') };
+    return { ok: false, error: getErrorMessage(error, 'Gagal menghapus akun.') };
   }
 }
 

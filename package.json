@@ -24,6 +24,8 @@
     "d1:migrate:remote": "wrangler d1 migrations apply DB --remote"
   },
   "dependencies": {
+    "@dicebear/core": "^10.4.0",
+    "@dicebear/styles": "^10.3.0",
     "@tiptap/extension-image": "^2.27.2",
     "@tiptap/extension-link": "^2.27.2",
     "@tiptap/pm": "^2.27.2",
