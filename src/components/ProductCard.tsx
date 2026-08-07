@@ -54,6 +54,9 @@ export default function ProductCard({
   const isOneColumn = layoutColumns === 1;
   const isMobileTwoColumn = isMobile && layoutColumns === 2;
   const showHijabFriendlyBadge = product.hijabFriendly;
+  const titleSizeClass = isMobileTwoColumn ? 'text-[12px]' : isOneColumn ? 'text-lg sm:text-xl' : 'text-sm sm:text-base';
+  const priceSizeClass = isMobileTwoColumn ? 'text-[11px]' : isOneColumn ? 'text-base sm:text-lg' : 'text-xs sm:text-sm';
+  const availabilityBadgeSizeClass = isMobileTwoColumn ? 'text-[9px] px-1.5 py-0.5' : 'text-[10px] px-2 py-0.5';
 
   if (isCompactPortraitTile) {
     return (
@@ -78,12 +81,12 @@ export default function ProductCard({
         {displaySettings.showAvailabilityBadges && (
           <span
             className={`mobile-availability-dot absolute left-1.5 top-1.5 h-2.5 w-2.5 border border-[var(--theme-surface)] shadow-sm ${product.status === 'available'
-                ? 'bg-emerald-500'
-                : product.status === 'rented'
-                  ? 'bg-amber-500'
-                  : product.status === 'maintenance'
-                    ? 'bg-rose-500'
-                    : 'bg-slate-400'
+              ? 'bg-emerald-500'
+              : product.status === 'rented'
+                ? 'bg-amber-500'
+                : product.status === 'maintenance'
+                  ? 'bg-rose-500'
+                  : 'bg-slate-400'
               }`}
             aria-label={statusInfo.text}
           />
@@ -143,8 +146,8 @@ export default function ProductCard({
                       }
                     }}
                     className={`w-1.5 h-1.5 rounded-full transition-all duration-300 ${activeImageIndex === index
-                        ? 'bg-[var(--theme-surface)] w-3'
-                        : 'bg-[color-mix(in_srgb,var(--theme-surface)_40%,transparent)] hover:bg-[color-mix(in_srgb,var(--theme-surface)_70%,transparent)]'
+                      ? 'bg-[var(--theme-surface)] w-3'
+                      : 'bg-[color-mix(in_srgb,var(--theme-surface)_40%,transparent)] hover:bg-[color-mix(in_srgb,var(--theme-surface)_70%,transparent)]'
                       }`}
                     aria-label={`Lihat foto ${index + 1}`}
                   />
@@ -177,7 +180,7 @@ export default function ProductCard({
           )}
           {displaySettings.showAvailabilityBadges && (
             <span
-              className={`text-[10px] font-semibold tracking-wide border px-2 py-0.5 backdrop-blur-xs shadow-xs ${statusInfo.class}`}
+              className={`font-semibold tracking-wide border backdrop-blur-xs shadow-xs ${availabilityBadgeSizeClass} ${statusInfo.class}`}
             >
               {statusInfo.text}
             </span>
@@ -195,7 +198,7 @@ export default function ProductCard({
 
       {/* CARD CONTENT */}
       <div
-        className={`flex flex-col flex-grow ${isOneColumn ? 'p-5' : isMobileTwoColumn ? 'p-2.5' : 'p-3 sm:p-4'
+        className={`flex flex-col flex-grow ${isOneColumn ? 'p-5' : isMobileTwoColumn ? 'px-2.5 pt-2.5 pb-4' : 'p-3 sm:p-4'
           }`}
       >
         {/* Kebaya Model Category */}
@@ -208,7 +211,7 @@ export default function ProductCard({
         {/* Title */}
         <h3
           onClick={() => onOpenDetail(product)}
-          className={`font-display text-[var(--theme-text)] cursor-pointer hover:text-[var(--theme-accent)] transition-colors leading-tight font-medium ${isOneColumn ? 'text-lg sm:text-xl mb-1' : 'text-sm sm:text-base mb-0.5 line-clamp-2'
+          className={`font-display text-[var(--theme-text)] cursor-pointer hover:text-[var(--theme-accent)] transition-colors leading-tight font-medium ${titleSizeClass} ${isOneColumn ? 'mb-1' : 'mb-0.5 line-clamp-2'
             }`}
         >
           {product.name}
@@ -227,32 +230,29 @@ export default function ProductCard({
           displaySettings.showProductColor) && (
             <div
               className={`mt-0 flex justify-between ${isOneColumn
-                  ? 'flex-row items-end gap-3'
-                  : 'flex-col items-start gap-1.5 sm:flex-row sm:items-end sm:gap-3'
+                ? 'flex-row items-end gap-3'
+                : 'flex-col items-start gap-1.5 sm:flex-row sm:items-end sm:gap-3'
                 }`}
             >
               {displaySettings.showPrices && (
                 <div className="flex flex-col">
                   <div
-                    className={`font-mono ${
-                      isMobile
+                    className={`font-mono ${isMobile
                         ? 'flex flex-col items-start leading-tight'
-                        : `flex flex-wrap items-baseline gap-x-2 gap-y-0.5 ${
-                            isOneColumn ? '' : 'leading-tight'
-                          }`
-                    }`}
+                        : `flex flex-wrap items-baseline gap-x-2 gap-y-0.5 ${isOneColumn ? '' : 'leading-tight'
+                        }`
+                      }`}
                   >
                     {visibleCompareAtRentalPrice && (
                       <span
-                        className={`theme-muted-strong line-through ${isOneColumn ? 'text-base sm:text-lg' : 'text-xs sm:text-sm'
-                          }`}
+                        className={`theme-muted-strong line-through ${priceSizeClass}`}
                       >
                         {formatRupiah(visibleCompareAtRentalPrice)}
                       </span>
                     )}
                     <span className={isMobile ? 'flex items-baseline gap-x-2' : 'contents'}>
                       <span
-                        className={`text-[var(--theme-text)] font-semibold ${isOneColumn ? 'text-base sm:text-lg' : 'text-xs sm:text-sm'}`}
+                        className={`text-[var(--theme-text)] font-semibold ${priceSizeClass}`}
                       >
                         {formatRupiah(product.rentalPrice)}
                       </span>
@@ -264,20 +264,20 @@ export default function ProductCard({
 
               {!isMobileTwoColumn &&
                 (displaySettings.showProductSize || displaySettings.showProductColor) && (
-                <div
-                  className={`flex flex-wrap gap-1.5 ${isOneColumn ? 'items-center' : 'sm:justify-end'}`}
-                >
-                  {displaySettings.showProductSize && (
-                    <span className="theme-soft-surface theme-muted-strong text-[10px] font-medium px-2 py-0.5 font-mono">
-                      Fit {product.size}
-                    </span>
-                  )}
-                  {displaySettings.showProductColor && (
-                    <span className="theme-soft-surface theme-muted-strong text-[10px] font-medium px-2 py-0.5 font-mono">
-                      {product.color}
-                    </span>
-                  )}
-                </div>
+                  <div
+                    className={`flex flex-wrap gap-1.5 ${isOneColumn ? 'items-center' : 'sm:justify-end'}`}
+                  >
+                    {displaySettings.showProductSize && (
+                      <span className="theme-soft-surface theme-muted-strong text-[10px] font-medium px-2 py-0.5 font-mono">
+                        Fit {product.size}
+                      </span>
+                    )}
+                    {displaySettings.showProductColor && (
+                      <span className="theme-soft-surface theme-muted-strong text-[10px] font-medium px-2 py-0.5 font-mono">
+                        {product.color}
+                      </span>
+                    )}
+                  </div>
                 )}
             </div>
           )}
